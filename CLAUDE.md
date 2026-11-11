@@ -72,6 +72,12 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     Od `LIB_TOOLS_MIN` (10) utworów: wyszukiwanie (`#libQ`, `libNorm()`) i filtr poziomu (`S.libLvl`).
     **Ręcznego wgrywania plików nie ma** (usunięte 11.11.2026) – utwory dodaje tylko Katalog przez `addUserSong()`;
     smoke test też dodaje pliki przez `addUserSong()`;
+  - brzmienie fortepianu: `pianoLoad()` / `pianoNote()` / `pianoUI()` – próbki FluidR3 GM (`acoustic_grand_piano-mp3.js` z gleitz/midi-js-soundfonts,
+    adres przypięty do commita `044fab8`, 88 nut A0–C8, 2,6 MB). Pobierane raz przy pierwszym dźwięku i zapisane w **IndexedDB**
+    (baza `swiecace-klawisze`, magazyn `files`, klucz `PIANO_KEY`), bo GitHub daje `max-age=300`. Przy każdym uruchomieniu dekodowane
+    po 4 naraz, zamieniane na mono i przycinane do `PIANO_SEC` (2,2 s) – pełne stereo to ~100 MB pamięci. Głośność `PIANO_GAIN` (12, próbki są ciche).
+    `tone()` gra próbką, gdy `S.voice === 'piano'` i fortepian gotowy, inaczej trójkąt (zapas). Wszystko idzie przez `audioOut()` (kompresor).
+    Ustawienia → „Dźwięk z iPada”: wybór brzmienia, stan, „Posłuchaj brzmienia”; dziennik: wpisy „FORTEPIAN:”;
   - dźwięk: `ensureAudio()` → `unlockAudio()` – iPad w trybie cichym wycisza WebAudio, więc przy stuknięciu ustawiamy
     `navigator.audioSession.type = 'playback'` i puszczamy ciche, zapętlone `<audio>` (WAV z `silentWav()`); stan w dzienniku („DŹWIĘK:”);
   - diagnostyka: `log()`, `diag()`, sekcja Dziennik w Ustawieniach z przyciskiem „Kopiuj dziennik”;
@@ -113,6 +119,7 @@ Gotowe i działa:
 - Lewy panel: Katalog na górze, jedna przewijana lista (działa też w poziomie), zwijane wbudowane, tryb „Edytuj” do usuwania,
   wyszukiwanie i filtr poziomu w „Moje utwory” od 10 utworów.
 - Tryby „Czekaj na mnie” i „W tempie” (25–150%), transpozycja, dźwięk z iPada, przewijanie, statystyki trafień.
+- Brzmienie fortepianu z nagranych próbek (pobierane raz, zapisane na iPadzie); prosty dźwięk do wyboru w Ustawieniach.
 - Klawiatura na ekranie, test świateł, przesunięcie świateł, diagnostyka i dziennik.
 - Zwarty pasek odtwarzacza: Start/Pauza, cofnij/dalej, od początku, suwak kroków; reszta opcji w menu „🎚 Opcje”.
 - Widok nut nad klawiaturą do wyboru: „Bez nut”, „🎼 Nuty” (uproszczona pięciolinia z podświetleniem aktualnych nut,
@@ -150,7 +157,9 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 - Nazwy instrumentów po angielsku (standard General MIDI), tak jak na stronach z plikami MIDI.
 - Nuty bez wartości rytmicznych (same główki w równych odstępach): MIDI nie mówi, czy to ćwierćnuta czy ósemka,
   a pełny zapis (takty, belki, pauzy) wymagałby odtwarzania rytmu i biblioteki do nut – dużo pracy, słabe wyniki na piosenkach z Lakh.
-- Odsłuch tym samym prostym dźwiękiem co „Dźwięk z iPada” (bez bibliotek z próbkami instrumentów) – wystarcza, żeby ocenić, czy plik jest dobry.
+- Dźwięk: fortepian z nagranych próbek dla wszystkiego (odsłuch i „Dźwięk z iPada”), bez osobnych brzmień basu, smyczków itd.
+  (każde to kolejne 2–3 MB). Prosty syntezator zostaje jako zapas i do wyboru w Ustawieniach. (Wcześniej: tylko prosty dźwięk – Łukasz: „jak ze starej gry”.)
+- Próbki trzymamy w IndexedDB, nie w `localStorage` (za mały, ~5 MB, i są tam już pobrane utwory).
 
 ## Do zrobienia / pomysły
 
@@ -158,6 +167,9 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 - [ ] Poziom liczony też dla pojedynczej ścieżki (np. sama melodia z piosenki z BitMidi). (Filtr poziomu w „Moje utwory” już jest – na razie po poziomie całego pliku).
       Ważne teraz, gdy jest Lakh: prawie każda piosenka wychodzi „Trudne”, choć sama melodia (⭐) bywa łatwa.
 - [ ] Sprawdzić na iPadzie, czy po poprawce odsłuch gra (wpis „DŹWIĘK:” w dzienniku) i czy wybór melodii trafia na prawdziwych plikach.
+- [ ] Sprawdzić na iPadzie fortepian: czas wczytywania (wpis „FORTEPIAN: gotowy … dekodowanie … ms”), głośność względem dawnego dźwięku,
+      czy po zamknięciu Web MIDI Browser próbki zostają (wpis „z pamięci iPada”).
+- [ ] Pomysł: osobne brzmienia dla basu/smyczków/syntezatorów w odsłuchu (pobierane na żądanie, jak fortepian).
 - [ ] Zapamiętywać wybór ścieżek dla utworu (teraz po ponownym otwarciu wraca wybór automatyczny).
 - [ ] Sprawdzić na iPadzie, czy BitMidi nie blokuje pobierania wielu plików naraz (kolejka poziomów pobiera wszystkie wyniki).
 - [ ] Katalog: więcej bibliotek, jeśli znajdziemy takie z CORS (np. zbiory MIDI na GitHubie przez raw.githubusercontent.com).
@@ -169,6 +181,8 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 
 ## Dziennik zmian
 
+- 11.11.2026: brzmienie fortepianu z nagranych próbek (FluidR3 GM) zamiast dźwięku „jak ze starej gry” – w odsłuchu i „Dźwięku z iPada”;
+  pobierane raz, zapisane w IndexedDB; wybór brzmienia i stan w Ustawieniach; testy z podstawioną paczką próbek.
 - 11.11.2026: zwarty pasek odtwarzacza – tryb, tempo, transpozycja, dźwięk z iPada i widok nut przeniesione do menu „🎚 Opcje”
   (na przycisku podsumowanie ikonami); pięciolinia zajmuje zwolnione miejsce; testy menu w `smoke_test.py`.
 
