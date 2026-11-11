@@ -81,6 +81,24 @@ input[type=range]{accent-color:var(--accent)}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 30px;text-align:center;min-width:300px}
 .card h2{margin:0 0 6px;font-size:28px}
 .card p{color:var(--muted);margin:6px 0 18px;font-size:16px}
+.catbtn{margin:8px 8px 0;display:block;width:calc(100% - 16px);background:#3a2c12;border-color:var(--accent);color:var(--accent);font-weight:700;font-size:15px}
+#catalog{position:fixed;inset:3vh 3vw;background:var(--panel);border:1px solid var(--line);border-radius:18px;z-index:25;display:none;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px #000a}
+#catalog.open{display:flex}
+#catalog .top{padding:16px 18px 10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+#catalog h2{margin:0;font-size:20px;display:flex;justify-content:space-between;align-items:center}
+#catForm{display:flex;gap:8px}
+#catQ{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;-webkit-user-select:text;user-select:text;-webkit-appearance:none}
+#catSugg{display:flex;flex-wrap:wrap;gap:6px}
+#catList{flex:1;overflow-y:auto;padding:8px 12px 12px;-webkit-overflow-scrolling:touch}
+.cat{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;border-bottom:1px solid #262a35}
+.cat .t{flex:1;min-width:0}
+.cat .t b{display:block;font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat .t small{color:var(--muted);font-size:12px}
+.cat button{white-space:nowrap;min-width:110px}
+.cat button.have{background:#173826;border-color:var(--ok);color:var(--ok)}
+.badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);margin-right:6px;color:var(--text)}
+.badge.commons{border-color:#3d6fd1;color:#8fb2ff} .badge.bitmidi{border-color:#8a5cd6;color:#c3a6ff}
+#catMsg{color:var(--muted);font-size:14px;padding:14px 10px;text-align:center}
 #toast{position:fixed;left:50%;bottom:30vh;transform:translateX(-50%);background:#000c;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:40;max-width:80vw;text-align:center}
 @media (max-width:760px){aside{width:200px}#nowNotes{font-size:28px}}
 </style>
@@ -98,8 +116,9 @@ input[type=range]{accent-color:var(--accent)}
     <div id="libBuiltin"></div>
     <h3>Moje utwory (MIDI)</h3>
     <div id="lib"></div>
+    <button class="catbtn" id="openCatalog">🔎 Katalog utworów</button>
     <label class="addfile">＋ Dodaj plik MIDI<input id="file" type="file" multiple hidden></label>
-    <p class="hint">Pliki .mid znajdziesz np. w Mutopia Project albo na MuseScore (Pobierz → MIDI). Zapisz w aplikacji Pliki i dodaj tutaj.</p>
+    <p class="hint">W katalogu wyszukasz utwory w internetowych bibliotekach MIDI i pobierzesz je jednym kliknięciem. Własne pliki .mid dodasz przyciskiem powyżej.</p>
   </aside>
 
   <section id="player">
@@ -188,6 +207,25 @@ input[type=range]{accent-color:var(--accent)}
       <button id="closeRes">Zamknij</button>
     </div>
   </div>
+</div>
+<div id="catalog">
+  <div class="top">
+    <h2>🔎 Katalog utworów <button id="closeCatalog">✕</button></h2>
+    <form id="catForm" autocomplete="off">
+      <input id="catQ" type="search" placeholder="Tytuł albo kompozytor, np. Chopin, Für Elise, Jingle Bells" enterkeyhint="search">
+      <button class="primary" type="submit">Szukaj</button>
+    </form>
+    <div class="row" style="gap:10px">
+      <div class="seg" id="catSrcSeg">
+        <button type="button" data-src="all">Wszystkie</button>
+        <button type="button" data-src="commons">Wikimedia</button>
+        <button type="button" data-src="bitmidi">BitMidi</button>
+      </div>
+      <label class="ctl"><input id="catMissing" type="checkbox"> Tylko te, których nie mam</label>
+    </div>
+    <div id="catSugg"></div>
+  </div>
+  <div id="catList"></div>
 </div>
 <div id="toast"></div>
 
@@ -744,6 +782,156 @@ $('#file').onchange = async e => {
   }
   e.target.value = '';
 };
+
+/* ---------------- katalog utworów z internetu ----------------
+   Dwie biblioteki, które pozwalają na pobieranie prosto z przeglądarki (CORS):
+   - Wikimedia Commons: pliki na wolnych licencjach, głównie klasyka i muzyka ludowa;
+   - BitMidi: ponad 100 tys. plików wgranych przez użytkowników, także muzyka rozrywkowa. */
+const CAT_NAMES = {commons: 'Wikimedia', bitmidi: 'BitMidi'};
+const CAT_SUGG = ['Für Elise', 'Chopin', 'Mozart', 'Bach', 'Satie', 'Canon in D', 'Turkish March', 'Jingle Bells', 'Silent Night', 'Twinkle'];
+const CAT_MAX_BYTES = 1500000;
+const cat = {q: '', src: 'all', seq: 0, items: [], next: {}, busy: false, msg: '', loading: {}};
+
+function catClean(name) {
+  let t = String(name).replace(/^(File|Plik):/i, '').replace(/\.(mid|midi|kar)$/i, '').replace(/_+/g, ' ');
+  if (!/\s/.test(t)) t = t.replace(/-+/g, ' ');
+  return t.replace(/\s+/g, ' ').trim() || 'Bez tytułu';
+}
+const catNorm = s => catClean(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+function catOwned(it) {
+  const n = catNorm(it.title);
+  return userSongs.find(u => u.src === it.src) || userSongs.find(u => catNorm(u.title) === n) || null;
+}
+async function catFetch(url, as) {
+  let ctl = null, timer = null;
+  try { ctl = new AbortController(); timer = setTimeout(() => ctl.abort(), 20000); } catch (e) {}
+  try {
+    const r = await fetch(url, ctl ? {signal: ctl.signal} : undefined);
+    if (!r.ok) throw new Error('błąd serwera ' + r.status);
+    return as === 'buf' ? await r.arrayBuffer() : await r.json();
+  } catch (e) {
+    throw new Error(e.name === 'AbortError' ? 'serwer nie odpowiada' : (e.message || 'brak połączenia'));
+  } finally { if (timer) clearTimeout(timer); }
+}
+async function catCommons(q, offset) {
+  const url = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*' +
+    '&generator=search&gsrnamespace=6&gsrlimit=20&gsroffset=' + offset +
+    '&gsrsearch=' + encodeURIComponent('filemime:audio/midi ' + q) + '&prop=imageinfo&iiprop=url%7Csize';
+  const j = await catFetch(url);
+  const pages = Object.values((j.query && j.query.pages) || {}).sort((a, b) => a.index - b.index);
+  const items = pages.filter(p => p.imageinfo && p.imageinfo[0]).map(p => {
+    const ii = p.imageinfo[0];
+    return {src: 'commons:' + p.pageid, source: 'commons', title: catClean(p.title), url: ii.url.split('?')[0],
+            size: ii.size, dur: ii.duration, info: ii.descriptionurl};
+  });
+  return {items, next: j.continue && j.continue.gsroffset != null ? j.continue.gsroffset : null};
+}
+async function catBitmidi(q, page) {
+  const j = await catFetch('https://bitmidi.com/api/midi/search?q=' + encodeURIComponent(q) + '&page=' + page);
+  const res = j.result || {};
+  const items = (res.results || []).map(r => ({src: 'bitmidi:' + r.id, source: 'bitmidi', title: catClean(r.name),
+    url: 'https://bitmidi.com' + (r.downloadUrl || '/uploads/' + r.id + '.mid'), plays: r.plays, info: 'https://bitmidi.com' + (r.url || '')}));
+  return {items, next: page + 1 < (res.pageTotal || 0) ? page + 1 : null};
+}
+const CAT_FN = {commons: catCommons, bitmidi: catBitmidi};
+
+async function catSearch(more) {
+  const q = cat.q.trim();
+  if (!q) { cat.items = []; cat.next = {}; cat.msg = ''; renderCatalog(); return; }
+  const seq = more ? cat.seq : ++cat.seq;
+  if (!more) { cat.items = []; cat.next = {commons: 0, bitmidi: 0}; }
+  const srcs = Object.keys(CAT_FN).filter(s => (cat.src === 'all' || cat.src === s) && cat.next[s] != null);
+  if (!srcs.length) return;
+  cat.busy = true; cat.msg = ''; renderCatalog();
+  log('KATALOG: szukam „' + q + '” w ' + srcs.join(', ') + (more ? ' (więcej)' : ''));
+  const errs = [];
+  const results = await Promise.all(srcs.map(s => CAT_FN[s](q, cat.next[s]).catch(e => { errs.push(CAT_NAMES[s] + ': ' + e.message); return null; })));
+  if (seq !== cat.seq) return; // w międzyczasie zaczęto inne wyszukiwanie
+  const seen = new Set(cat.items.map(it => it.src));
+  srcs.forEach((s, i) => {
+    const r = results[i];
+    if (!r) { cat.next[s] = null; return; }
+    cat.next[s] = r.next;
+    r.items.forEach(it => { if (!seen.has(it.src)) { seen.add(it.src); cat.items.push(it); } });
+    log('KATALOG: ' + CAT_NAMES[s] + ' – ' + r.items.length + ' wyników');
+  });
+  if (errs.length) { cat.msg = 'Nie udało się zapytać: ' + errs.join('; '); log('KATALOG błąd: ' + errs.join('; ')); }
+  cat.busy = false; renderCatalog();
+}
+
+function catMeta(it) {
+  const m = ['<span class="badge ' + it.source + '">' + CAT_NAMES[it.source] + '</span>'];
+  if (it.dur) m.push(Math.floor(it.dur / 60) + ':' + String(Math.round(it.dur % 60)).padStart(2, '0'));
+  if (it.size) m.push(Math.max(1, Math.round(it.size / 1024)) + ' KB');
+  if (it.plays) m.push(it.plays.toLocaleString('pl-PL') + ' odtworzeń');
+  return m.join(' · ').replace('</span> · ', '</span>');
+}
+function renderCatalog() {
+  document.querySelectorAll('#catSrcSeg button').forEach(b => b.classList.toggle('on', b.dataset.src === cat.src));
+  const sg = $('#catSugg'); sg.innerHTML = '';
+  CAT_SUGG.forEach(s => {
+    const c = document.createElement('span'); c.className = 'chip' + (cat.q === s ? ' on' : ''); c.textContent = s;
+    c.onclick = () => { cat.q = s; $('#catQ').value = s; catSearch(false); };
+    sg.appendChild(c);
+  });
+  const list = $('#catList'); list.innerHTML = '';
+  const onlyMissing = $('#catMissing').checked;
+  const shown = cat.items.filter(it => (cat.src === 'all' || it.source === cat.src) && !(onlyMissing && catOwned(it)));
+  shown.forEach(it => {
+    const owned = catOwned(it);
+    const row = document.createElement('div'); row.className = 'cat';
+    row.innerHTML = `<div class="t"><b>${esc(it.title)}</b><small>${catMeta(it)}</small></div>`;
+    const b = document.createElement('button');
+    if (cat.loading[it.src]) { b.textContent = '⏳ Pobieram…'; b.disabled = true; }
+    else if (owned) { b.textContent = '▶ Mam – graj'; b.className = 'have'; b.onclick = () => { closeCatalog(); try { selectSong(getUserSong(owned)); } catch (e) { toast('Nie mogę otworzyć: ' + e.message); } }; }
+    else { b.textContent = '⬇ Pobierz'; b.className = 'primary'; b.onclick = () => catDownload(it); }
+    row.appendChild(b); list.appendChild(row);
+  });
+  const msg = document.createElement('div'); msg.id = 'catMsg';
+  if (cat.busy) msg.textContent = 'Szukam…';
+  else if (!cat.q.trim()) msg.innerHTML = 'Wpisz tytuł albo kompozytora i naciśnij „Szukaj”, albo wybierz podpowiedź powyżej.<br><br>' +
+    '<b>Wikimedia Commons</b> – pliki na wolnych licencjach, głównie muzyka klasyczna.<br><b>BitMidi</b> – ponad 100 tys. plików wgranych przez internautów, także piosenki (licencje nie zawsze są jasne – do własnej nauki).';
+  else if (!shown.length && !cat.msg) msg.textContent = cat.items.length ? 'Wszystkie znalezione utwory już masz.' : 'Nic nie znaleziono. Spróbuj innej pisowni albo nazwy po angielsku.';
+  if (cat.msg) msg.innerHTML += (msg.innerHTML ? '<br>' : '') + esc(cat.msg);
+  if (msg.innerHTML) list.appendChild(msg);
+  const hasMore = !cat.busy && cat.q.trim() && Object.keys(CAT_FN).some(s => (cat.src === 'all' || cat.src === s) && cat.next[s] != null);
+  if (hasMore) {
+    const m = document.createElement('button'); m.textContent = 'Pokaż więcej wyników'; m.style.cssText = 'display:block;margin:10px auto';
+    m.onclick = () => catSearch(true); list.appendChild(m);
+  }
+}
+async function catDownload(it) {
+  if (cat.loading[it.src]) return;
+  if (it.size && it.size > CAT_MAX_BYTES) { toast('Ten plik jest za duży (' + Math.round(it.size / 1024) + ' KB)'); return; }
+  cat.loading[it.src] = true; renderCatalog();
+  log('KATALOG: pobieram ' + it.url);
+  try {
+    const buf = await catFetch(it.url, 'buf');
+    if (buf.byteLength > CAT_MAX_BYTES) throw new Error('plik jest za duży');
+    const parsed = parseMidi(buf, it.title);
+    const id = 'u' + Date.now() + Math.random().toString(36).slice(2, 6);
+    parsed.id = id; cache[id] = parsed;
+    userSongs.push({id, title: it.title, b64: toB64(buf), src: it.src}); saveUser(); renderLib();
+    log('KATALOG: pobrano „' + it.title + '” (' + buf.byteLength + ' B, ' + parsed.notes.length + ' nut)');
+    toast('Pobrano: ' + it.title);
+  } catch (e) {
+    log('KATALOG błąd pobierania: ' + e.message);
+    toast('Nie udało się pobrać „' + it.title + '”: ' + e.message, 4000);
+  }
+  delete cat.loading[it.src]; renderCatalog();
+}
+function openCatalog() { $('#catalog').classList.add('open'); renderCatalog(); if (!cat.q) setTimeout(() => $('#catQ').focus(), 50); }
+function closeCatalog() { $('#catalog').classList.remove('open'); $('#catQ').blur(); }
+$('#openCatalog').onclick = openCatalog;
+$('#closeCatalog').onclick = closeCatalog;
+$('#catForm').onsubmit = e => { e.preventDefault(); cat.q = $('#catQ').value; $('#catQ').blur(); catSearch(false); };
+$('#catMissing').onchange = renderCatalog;
+document.querySelectorAll('#catSrcSeg button').forEach(b => b.onclick = () => {
+  if (cat.src === b.dataset.src) return;
+  cat.src = b.dataset.src; renderCatalog();
+  if (cat.q.trim()) catSearch(false);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#catalog').classList.contains('open')) closeCatalog(); });
 
 /* ---------------- sterowanie ---------------- */
 $('#playBtn').onclick = () => playing ? stop() : play();

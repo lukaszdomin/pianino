@@ -29,6 +29,40 @@ navigator.requestMIDIAccess = async () => ({sysexEnabled: true,
 """
 
 
+import json
+import struct
+
+# Najmniejszy poprawny plik MIDI: jedna nuta C4
+TINY_MIDI = (b'MThd' + struct.pack('>IHHH', 6, 0, 1, 96) +
+             b'MTrk' + struct.pack('>I', 12) + bytes([0x00, 0x90, 60, 100, 0x60, 0x80, 60, 0, 0x00, 0xFF, 0x2F, 0x00]))
+CORS = {'Access-Control-Allow-Origin': '*'}
+COMMONS_JSON = {'query': {'pages': {'111': {'pageid': 111, 'index': 1, 'title': 'File:Chopin-nocturne-test.mid',
+    'imageinfo': [{'url': 'https://upload.wikimedia.org/x/Chopin-nocturne-test.mid?utm=1', 'size': 1234,
+                   'duration': 95, 'descriptionurl': 'https://commons.wikimedia.org/wiki/File:x'}]}}}}
+BITMIDI_JSON = {'result': {'pageTotal': 1, 'results': [
+    {'id': 222, 'name': 'Chopin_Waltz_Test.mid', 'downloadUrl': '/uploads/222.mid', 'url': '/x', 'plays': 1500}]}}
+
+
+async def mock_catalog(page, bitmidi_ok=True):
+    async def commons(route):
+        await route.fulfill(status=200, headers=CORS, content_type='application/json', body=json.dumps(COMMONS_JSON))
+
+    async def bitmidi(route):
+        if bitmidi_ok:
+            await route.fulfill(status=200, headers=CORS, content_type='application/json', body=json.dumps(BITMIDI_JSON))
+        else:
+            await route.fulfill(status=500, headers=CORS, body='err')
+
+    async def midi(route):
+        await route.fulfill(status=200, headers=CORS, content_type='audio/midi', body=TINY_MIDI)
+
+    await page.unroute('**/*')
+    await page.route('https://commons.wikimedia.org/**', commons)
+    await page.route('https://bitmidi.com/api/**', bitmidi)
+    await page.route('https://upload.wikimedia.org/**', midi)
+    await page.route('https://bitmidi.com/uploads/**', midi)
+
+
 def chrome_path():
     for name in ('google-chrome', 'chromium', 'chromium-browser'):
         p = shutil.which(name)
@@ -83,6 +117,33 @@ async def main():
         check(await page.evaluate("document.querySelector('#result').classList.contains('open')"),
               'kończy utwór i pokazuje wynik')
         await page.click('#closeRes')
+
+        # Katalog utworów (odpowiedzi bibliotek są podstawione, bez internetu)
+        await mock_catalog(page)
+        await page.click('#openCatalog')
+        await page.fill('#catQ', 'chopin')
+        await page.press('#catQ', 'Enter')
+        await page.wait_for_selector('.cat', timeout=3000)
+        titles = await page.eval_on_selector_all('.cat .t b', 'els => els.map(e => e.textContent)')
+        check(titles == ['Chopin nocturne test', 'Chopin Waltz Test'], 'katalog pokazuje wyniki z obu bibliotek ' + str(titles))
+        await page.click('.cat >> nth=0 >> text=Pobierz')
+        await page.wait_for_selector('.cat >> nth=0 >> text=Mam', timeout=3000)
+        check(await page.evaluate("userSongs.some(u => u.src === 'commons:111')"), 'pobrany utwór trafia do „Moje utwory”')
+        check(await page.evaluate("JSON.parse(localStorage.getItem('sk_songs')).length") == 1, 'pobrany utwór jest zapisany')
+        await page.check('#catMissing')
+        check(await page.eval_on_selector_all('.cat', 'e => e.length') == 1, 'filtr „tylko te, których nie mam” ukrywa pobrane')
+        await page.uncheck('#catMissing')
+        await page.click('.cat >> nth=0 >> text=Mam')
+        check(not await page.evaluate("document.querySelector('#catalog').classList.contains('open')"), '„Mam – graj” zamyka katalog')
+        check(await page.text_content('#songTitle') == 'Chopin nocturne test', '„Mam – graj” otwiera utwór')
+
+        await mock_catalog(page, bitmidi_ok=False)
+        await page.click('#openCatalog')
+        await page.fill('#catQ', 'nokturn')
+        await page.press('#catQ', 'Enter')
+        await page.wait_for_selector('#catMsg:has-text("BitMidi")', timeout=3000)
+        check(await page.eval_on_selector_all('.cat', 'e => e.length') == 1, 'gdy BitMidi nie działa, wyniki z Wikimedii dalej są')
+        await page.click('#closeCatalog')
 
         # Dziennik
         await page.click('#openSettings')

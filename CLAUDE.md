@@ -47,11 +47,13 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
 - Hosting: **GitHub Pages** z gałęzi `main`, folder główny. Adres: https://lukaszdomin.github.io/pianino/
   Każdy push na `main` publikuje się w 1–2 minuty.
 - Dane użytkownika (wgrane pliki MIDI jako base64, ustawienia) trzymamy w `localStorage` (`sk_songs`, `sk_settings`).
+  Utwory z katalogu mają dodatkowe pole `src` (np. `commons:6596429`, `bitmidi:27978`), po którym poznajemy, że już je mamy.
 - Główne części `index.html`:
   - wbudowane utwory: `makeSong()` + tablica `BUILTIN` (notacja `C4:1 D#4:0.5 R:2`, akordy przez `+`);
   - parser plików MIDI: `parseMidi()`;
   - MIDI i światła: `initMidi()`, `refreshPorts()`, `portList()`, `light()`, `setLit()`, `allOff()`;
   - odtwarzacz: `prepare()` buduje `ns` (nuty) i `steps` (grupy nut), tryby `wait` i `tempo`;
+  - katalog utworów z internetu: obiekt `cat`, `catSearch()`, `catCommons()`, `catBitmidi()`, `catDownload()`, `renderCatalog()`;
   - diagnostyka: `log()`, `diag()`, sekcja Dziennik w Ustawieniach z przyciskiem „Kopiuj dziennik”.
 
 ## Jak pracujemy
@@ -76,8 +78,20 @@ Gotowe i działa:
 - Wgrywanie plików MIDI z wyborem ścieżek (rąk).
 - Tryby „Czekaj na mnie” i „W tempie” (25–150%), transpozycja, dźwięk z iPada, przewijanie, statystyki trafień.
 - Klawiatura na ekranie, test świateł, przesunięcie świateł, diagnostyka i dziennik.
+- Katalog utworów: wyszukiwanie w Wikimedia Commons i BitMidi, pobieranie jednym kliknięciem, oznaczenie „Mam”, filtr „Tylko te, których nie mam”.
 
-## Decyzje
+## Katalog utworów (biblioteki MIDI)
+
+Aplikacja nie ma serwera, więc biblioteka musi pozwalać na pobieranie prosto z przeglądarki (nagłówki CORS).
+Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
+
+| Biblioteka | Wyszukiwanie | Pobieranie pliku | Uwagi |
+|---|---|---|---|
+| Wikimedia Commons | ✅ `commons.wikimedia.org/w/api.php?...&origin=*`, `gsrsearch=filemime:audio/midi <zapytanie>` | ✅ `upload.wikimedia.org` | wolne licencje, głównie klasyka |
+| BitMidi | ✅ `bitmidi.com/api/midi/search?q=&page=` (15 na stronę, `pageTotal`) | ✅ `bitmidi.com/uploads/<id>.mid` | >100 tys. plików od internautów, licencje niejasne |
+| Mutopia Project | ❌ brak CORS | ❌ | |
+| piano-midi.de | ❌ brak CORS (i tylko http) | ❌ | |
+
 
 - Aplikacja webowa zamiast natywnej aplikacji iOS: nie wymaga Maca, Xcode ani konta deweloperskiego Apple.
 - Jeden plik HTML: prosto hostować i łatwo zmieniać z każdego urządzenia.
@@ -86,8 +100,10 @@ Gotowe i działa:
 ## Do zrobienia / pomysły
 
 (Łukasz decyduje o kolejności. Claude dopisuje tu pomysły, które padną w rozmowie.)
-- [ ] …
+- [ ] Katalog: odsłuch utworu przed pobraniem.
+- [ ] Katalog: więcej bibliotek, jeśli znajdziemy takie z CORS (np. zbiory MIDI na GitHubie przez raw.githubusercontent.com).
 
 ## Dziennik zmian
 
+- 11.11.2026: katalog utworów z internetu (Wikimedia Commons + BitMidi), testy katalogu w `smoke_test.py`.
 - 11.11.2026: pierwsza wersja; naprawa wykrywania urządzeń w Web MIDI Browser; diagnostyka, liczniki, dziennik, test nuty; potwierdzone działanie na iPadzie.
