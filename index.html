@@ -132,6 +132,12 @@ input[type=range]{accent-color:var(--accent)}
 .opt .lab{color:var(--muted)} .opt .lab small{font-size:12px}
 .opt .seg{display:flex} .opt .seg button{flex:1;padding:9px 6px}
 .opt input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
+/* brzmienie utworu: siatka przycisków, gwiazdka = propozycja aplikacji */
+.voices{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}
+.voices button{padding:7px 6px;min-height:42px;font-size:14px;line-height:1.15;display:flex;align-items:center;justify-content:center;gap:5px;text-align:center}
+.voices button.on{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:700}
+.voices .star{color:#ffd25c} .voices button.on .star{color:#b8860b}
+.vwhy{font-size:12.5px;color:var(--muted);line-height:1.4}
 #posWrap{display:flex;align-items:center;gap:12px}
 #pos{flex:1;-webkit-appearance:none;appearance:none;height:24px;background:none;margin:0}
 #pos::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:var(--line)}
@@ -302,6 +308,10 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
   <div class="opt"><span class="lab">Tempo <small>(„W tempie” i „Pokaz”)</small></span><span class="ctl"><input id="speed" type="range" min="25" max="150" step="5"><b id="speedTxt">100%</b></span></div>
   <div class="opt"><span class="lab">Transpozycja</span><span class="ctl"><button id="trDown">−</button><b id="trTxt">0</b><button id="trUp">+</button></span></div>
   <label class="opt"><span class="lab">Dźwięk z iPada</span><input id="sound" type="checkbox"></label>
+  <div class="opt col" id="voiceOpt"><span class="lab">Brzmienie utworu</span>
+    <div class="voices" id="voiceSeg"></div>
+    <span class="vwhy" id="voiceWhy"></span>
+  </div>
   <div class="opt col"><span class="lab">Nad klawiaturą</span>
     <div class="seg" id="viewSeg">
       <button data-view="off">Bez nut</button>
@@ -324,25 +334,17 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
     <button id="noteTestBtn">Zagraj C na keyboardzie</button>
   </div>
   <p class="hint" style="margin:8px 0">Ten test wysyła zwykłą nutę. Jeśli keyboard ją zagra, połączenie iPad → keyboard działa.</p>
-  <h4>Dźwięk z iPada</h4>
-  <div class="field">Brzmienie <select id="voiceSel"><option value="piano">Fortepian (nagrane próbki)</option><option value="synth">Prosty dźwięk (syntezator)</option></select></div>
+  <h4>Brzmienie</h4>
+  <div class="field">Dobór brzmienia <select id="voiceSel"><option value="auto">Dopasowane do utworu</option><option value="piano">Zawsze fortepian</option></select></div>
+  <p class="hint" style="margin:4px 0 8px">Aplikacja sama proponuje brzmienie: syntezator do muzyki dance i popu, pianino elektryczne do piosenek z zespołem,
+    klawesyn do Bacha, pozytywkę do kolęd i piosenek dla dzieci, fortepian do klasyki. Dla każdego utworu zmienisz je w menu Opcje przy graniu.</p>
+  <div class="field">Keyboard <select id="kbdModeSel"><option value="song">Przełączaj na brzmienie utworu</option><option value="kbd">Nie zmieniaj (brzmienie z keyboardu)</option></select></div>
+  <div class="field">Pokaz gra <select id="demoOutSel"><option value="kbd">Na keyboardzie</option><option value="ipad">Na iPadzie (keyboard tylko świeci)</option></select></div>
   <p class="hint" id="pianoStatus" style="margin:4px 0"></p>
-  <div class="btns"><button id="voiceTestBtn">Posłuchaj brzmienia</button></div>
-  <p class="hint" style="margin:8px 0">Dotyczy odsłuchu w Katalogu i opcji „Dźwięk z iPada”. Próbki fortepianu pobierają się raz (2,6 MB) i zostają na iPadzie.
-    Źródło: FluidR3 GM (Frank Wen, licencja CC-BY 3.0) z paczki midi-js-soundfonts (Benjamin Gleitzman).</p>
-  <h4>Pokaz (aplikacja gra sama)</h4>
-  <div class="field">Brzmienie <select id="demoVoiceSel">
-    <option value="0">Fortepian na keyboardzie</option>
-    <option value="1">Jasny fortepian na keyboardzie</option>
-    <option value="4">Pianino elektryczne na keyboardzie</option>
-    <option value="6">Klawesyn na keyboardzie</option>
-    <option value="19">Organy na keyboardzie</option>
-    <option value="kbd">Brzmienie wybrane na keyboardzie</option>
-    <option value="ipad">Fortepian z iPada (keyboard tylko świeci)</option>
-  </select></div>
-  <div class="btns"><button id="demoVoiceTestBtn">Posłuchaj na keyboardzie</button></div>
-  <p class="hint" style="margin:8px 0">Przed Pokazem aplikacja przełącza brzmienie keyboardu (zmiana programu MIDI). Jeśli dalej brzmi dziwnie,
-    wybierz „Fortepian z iPada” i wklej dziennik w rozmowie.</p>
+  <div class="btns"><button id="voiceTestBtn">Posłuchaj na iPadzie</button><button id="demoVoiceTestBtn">Posłuchaj na keyboardzie</button></div>
+  <p class="hint" style="margin:8px 0">Keyboard przełączamy zmianą programu MIDI (przy otwarciu utworu i przy Starcie; po powrocie do biblioteki wraca fortepian).
+    Jeśli brzmi dziwnie, wybierz „Nie zmieniaj” i wklej dziennik w rozmowie. Na iPadzie fortepian to nagrane próbki – pobierają się raz (2,6 MB) i zostają na iPadzie
+    (FluidR3 GM, Frank Wen, licencja CC-BY 3.0, z paczki midi-js-soundfonts Benjamina Gleitzmana); pozostałe brzmienia iPad tworzy sam, nic nie pobiera.</p>
   <h4>Dziennik</h4>
   <textarea id="logBox" readonly style="width:100%;height:180px;background:#0a0c26;color:#b0b3e0;border:1px solid var(--line);border-radius:8px;font:11px/1.4 ui-monospace,Menlo,monospace;padding:8px;-webkit-user-select:text;user-select:text"></textarea>
   <div class="btns">
@@ -429,10 +431,22 @@ function toast(msg, ms = 2800) {
 }
 
 /* ---------------- ustawienia ---------------- */
-const DEF = {low: 36, offset: 0, color: 1, transpose: 0, speed: 100, mode: 'wait', sound: false, outId: '', inId: '', catLvl: 0, libLvl: 0, last: null, view: 'staff', voice: 'piano', demoVoice: '0'};
+const DEF = {low: 36, offset: 0, color: 1, transpose: 0, speed: 100, mode: 'wait', sound: false, outId: '', inId: '', catLvl: 0, libLvl: 0, last: null, view: 'staff',
+  voice: 'auto', songVoice: {}, kbdMode: 'song', demoOut: 'kbd', voiceVer: 2};
+// voice: 'auto' – brzmienie dopasowane do utworu, 'piano' – zawsze fortepian; songVoice: wybór dla utworu (id → brzmienie);
+// kbdMode: 'song' – przełączamy keyboard na brzmienie utworu, 'kbd' – nie ruszamy; demoOut: kto gra Pokaz ('kbd' / 'ipad')
 const S = Object.assign({}, DEF);
-try { Object.assign(S, JSON.parse(localStorage.getItem('sk_settings') || '{}')); } catch (e) {}
+let stored = {};
+try { stored = JSON.parse(localStorage.getItem('sk_settings') || '{}') || {}; Object.assign(S, stored); } catch (e) {}
 function saveS() { try { localStorage.setItem('sk_settings', JSON.stringify(S)); } catch (e) {} }
+// ustawienia sprzed brzmień dopasowanych do utworu: voice 'piano'/'synth', demoVoice (program, 'kbd' albo 'ipad')
+if (Object.keys(stored).length && stored.voiceVer !== 2) {
+  S.voice = 'auto'; S.songVoice = {};
+  S.kbdMode = stored.demoVoice === 'kbd' ? 'kbd' : 'song';
+  S.demoOut = stored.demoVoice === 'ipad' ? 'ipad' : 'kbd';
+  delete S.demoVoice; S.voiceVer = 2; saveS();
+}
+if (!S.songVoice || typeof S.songVoice !== 'object') S.songVoice = {};
 const high = () => S.low + 60;
 function mapNote(n) { n += S.transpose; while (n < S.low) n += 12; while (n > high()) n -= 12; return n; }
 
@@ -530,9 +544,10 @@ function parseMidi(buf, title) {
   const toSec = tk => { let seg = map[0]; for (const m of map) { if (m.tick <= tk) seg = m; else break; } return seg.sec + (tk - seg.tick) * seg.us / 1e6 / div; };
 
   const parts = new Map(), notes = [];
+  let drums = 0;
   rawTracks.forEach((tr, ti) => {
     tr.notes.forEach(n => {
-      if (n.ch === 9) return; // perkusja
+      if (n.ch === 9) { drums++; return; } // perkusja – nie gramy jej, ale liczymy (pomaga dobrać brzmienie)
       const key = fmt === 0 ? 'c' + n.ch : 't' + ti;
       if (!parts.has(key)) parts.set(key, {idx: parts.size, name: fmt === 0 ? 'Kanał ' + (n.ch + 1) : (tr.name || 'Ścieżka ' + (ti + 1)), pc: {}});
       const part = parts.get(key), pg = n.pg !== undefined ? n.pg : (firstProg[n.ch] || 0);
@@ -546,7 +561,9 @@ function parseMidi(buf, title) {
   const tracks = ps.map(x => x.name);
   // instrument ścieżki = najczęstszy program (General MIDI 0–127) wśród jej nut
   const inst = ps.map(x => +Object.keys(x.pc).sort((a, b) => x.pc[b] - x.pc[a])[0]);
-  return {title, tracks, inst, notes};
+  // tempo na początku utworu (uderzenia na minutę) – też do doboru brzmienia
+  const bpm = Math.round(60e6 / (map[0].us || 500000));
+  return {title, tracks, inst, notes, drums, bpm, progs: Object.keys(firstProg).length > 0};
 }
 /* ---------------- instrumenty i wybór melodii ----------------
    Nazwy instrumentów General MIDI (program 0–127), jak na stronach z plikami MIDI. */
@@ -775,9 +792,11 @@ async function reconnect() {
   toast(outsList.length || insList.length ? 'Znaleziono: ' + [...outsList, ...insList].map(p => p.name).filter(Boolean)[0] : 'Nie widzę żadnego urządzenia MIDI');
 }
 function setOutput(o) {
-  out = o; log('wybrane wyjście: ' + (o ? describePort(o) : 'brak'));
+  out = o; kbdProg = null; log('wybrane wyjście: ' + (o ? describePort(o) : 'brak'));
   try { if (o && typeof o.open === 'function') { const r = o.open(); log('output.open() wywołane'); if (r && r.then) r.then(() => log('output.open() OK'), e => log('output.open() błąd: ' + e.message)); } } catch (e) { log('output.open() wyjątek: ' + e.message); }
   updateStatus();
+  if (o && song && !document.body.classList.contains('home')) kbdVoice();  // keyboard połączony przy otwartym utworze
+  renderVoices();
 }
 function setInput(i) {
   if (inp && inp !== i) {
@@ -870,13 +889,13 @@ function ensureAudio() {
   if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { log('DŹWIĘK: brak AudioContext: ' + e.message); } }
   if (actx && actx.state !== 'running') { try { const r = actx.resume(); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
   if (!audioLogged && actx) { audioLogged = true; setTimeout(audioInfo, 400); }
-  if (actx && S.voice === 'piano' && (piano.state === 'none' || piano.state === 'error' && !piano.retried)) { if (piano.state === 'error') piano.retried = true; pianoLoad(); }
+  if (actx && (piano.state === 'none' || piano.state === 'error' && !piano.retried)) { if (piano.state === 'error') piano.retried = true; pianoLoad(); }
 }
 function audioInfo() {
   log('DŹWIĘK: AudioContext ' + (actx ? actx.state + ', ' + actx.sampleRate + ' Hz' : 'brak') +
       ', audioSession: ' + (navigator.audioSession ? navigator.audioSession.type : 'brak') +
       ', ciche <audio>: ' + (unlockEl ? (unlockEl.paused ? 'zatrzymane' : 'gra') : 'brak') +
-      ', brzmienie: ' + (S.voice === 'piano' ? 'fortepian (' + piano.state + ')' : 'prosty'));
+      ', brzmienie: ' + VOICES[voiceOf(song)].name + (song ? ' (utwór „' + song.title + '”)' : '') + ', fortepian: ' + piano.state);
 }
 /* Brzmienie fortepianu z nagranych próbek: FluidR3 GM (Frank Wen, CC-BY 3.0) z paczki midi-js-soundfonts
    (B. Gleitzman, MIT). Jeden plik z 88 nutami (A0–C8) w MP3, ok. 2,6 MB. Pobieramy go RAZ i zapisujemy w IndexedDB
@@ -978,8 +997,7 @@ async function pianoLoad() {
 }
 function pianoUI() {
   const el = $('#pianoStatus'); if (!el) return;
-  el.textContent = S.voice !== 'piano' ? 'Gra prosty dźwięk (syntezator).' :
-    piano.state === 'ready' ? 'Fortepian gotowy ✓ ' + (piano.fromCache ? '(zapisany na iPadzie)' : '(pobrany i zapisany na iPadzie)') :
+  el.textContent = piano.state === 'ready' ? 'Fortepian gotowy ✓ ' + (piano.fromCache ? '(zapisany na iPadzie)' : '(pobrany i zapisany na iPadzie)') :
     piano.state === 'loading' ? 'Pobieram próbki fortepianu… ' + (piano.pct ? piano.pct + '%' : '') :
     piano.state === 'decoding' ? 'Przygotowuję próbki fortepianu…' :
     piano.state === 'error' ? 'Błąd: ' + piano.msg + '. Na razie gra prosty dźwięk.' :
@@ -995,11 +1013,13 @@ function pianoNote(n, dur, t, v, dest) {
   src.connect(g); g.connect(dest || audioOut()); src.start(t); src.stop(end + 0.4);
   return true;
 }
-// at – kiedy zagrać (czas actx, domyślnie teraz), vol – głośność, dest – dokąd podłączyć (domyślnie wspólne wyjście)
-function tone(n, dur, at, vol, dest) {
+// at – kiedy zagrać (czas actx, domyślnie teraz), vol – głośność, dest – dokąd podłączyć (domyślnie wspólne wyjście),
+// voice – brzmienie (domyślnie brzmienie otwartego utworu). Fortepian, póki próbki się wczytują – prosty trójkąt.
+function tone(n, dur, at, vol, dest, voice) {
   if (!actx) return;
-  const t = Math.max(actx.currentTime, at || 0), v = vol || 0.25;
-  if (S.voice === 'piano' && piano.state === 'ready' && pianoNote(n, dur, t, v, dest)) return;
+  const t = Math.max(actx.currentTime, at || 0), v = vol || 0.25, vc = voice || voiceOf(song);
+  if (vc !== 'piano' && synthNote(vc, n, dur, t, v, dest)) return;
+  if (vc === 'piano' && piano.state === 'ready' && pianoNote(n, dur, t, v, dest)) return;
   const o = actx.createOscillator(), g = actx.createGain();
   o.type = 'triangle'; o.frequency.value = 440 * Math.pow(2, (n - 69) / 12);
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + 0.01);
@@ -1007,6 +1027,168 @@ function tone(n, dur, at, vol, dest) {
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.25);
   o.connect(g); g.connect(dest || audioOut()); o.start(t); o.stop(t + dur + 0.3);
 }
+
+/* ---------------- brzmienie dobrane do utworu ----------------
+   Każde brzmienie ma numer programu General MIDI (keyboard przełączamy zmianą programu)
+   i przepis na syntezę na iPadzie (WebAudio, nic nie pobiera). Fortepian na iPadzie – nagrane próbki.
+   Aplikacja sama proponuje brzmienie (suggestVoice), a Łukasz może je zmienić dla każdego utworu
+   (menu Opcje → „Brzmienie utworu”, zapamiętane w S.songVoice: id utworu → brzmienie). */
+const VOICES = {
+  piano:  {name: 'Fortepian', gm: 0},
+  epiano: {name: 'Pianino elektryczne', gm: 4},
+  pop:    {name: 'Syntezator pop', gm: 80},
+  synth:  {name: 'Syntezator dance', gm: 81},
+  organ:  {name: 'Organy', gm: 19},
+  harpsi: {name: 'Klawesyn', gm: 6},
+  box:    {name: 'Pozytywka', gm: 10},
+};
+const VOICE_IDS = Object.keys(VOICES);
+// słowa w tytule (z wykonawcą): [brzmienie, wzorzec, powód]. Kolejność ma znaczenie – pierwsze dopasowanie wygrywa.
+const VOICE_KW = [
+  ['box', /jingle bell|silent night|twinkle|christmas|xmas|carol of the bells|kol[eę]d|ko[łl]ysank|wiegenlied|music ?box|wlaz[łl] kotek|panie janie|mrugaj|happy birthday|sto lat|dzwonki/i,
+    'piosenka świąteczna albo dla dzieci'],
+  ['organ', /toccata|\borgan\b|orgel|organy|bwv ?565|\bhymn|chora[lł]/i, 'utwór organowy'],
+  ['synth', /techno|trance|\brave\b|eurodance|\bedm\b|remix|eiffel ?65|darude|2 ?unlimited|haddaway|daft punk|jean.?michel jarre|\bjarre\b|kraftwerk|\bcorona\b|alice deejay|scooter|vengaboys|\baqua\b|\batb\b|faithless|ti[eë]sto|armin van|prodigy|chemical brothers|\bmoby\b|la bouche|culture beat|technotronic|dr\.? alban|cascada|avicii|guetta|calvin harris|swedish house|deadmau5|skrillex|marshmello|alan walker|martin garrix|\bzedd\b|kygo|basshunter|gigi d.?agostino|benny benassi|robert miles|real mccoy|ice mc|captain hollywood|paul van dyk|\bdj\b/i,
+    'muzyka dance i techno'],
+  ['harpsi', /\b(bach|h(a|ä|ae)ndel|scarlatti|vivaldi|purcell|couperin|rameau|telemann)\b/i, 'muzyka barokowa'],
+  ['piano', /chopin|mozart|beethoven|satie|debussy|schumann|liszt|tchaikovsky|czajkowski|grieg|schubert|brahms|rachmaninov|rachmaninoff|clementi|czerny|scott joplin|haydn|mendelssohn|elise|elizy|nocturne|nokturn|sonat|etude|etiud|prelud|polonez|polonaise|mazur|\bwal(c|tz)\b/i,
+    'muzyka klasyczna na fortepian']
+
+];
+// wykonawcy popu – sprawdzani dopiero po instrumentach (piosenka nagrana na sam fortepian zostaje fortepianem)
+const POP_KW = /depeche mode|pet shop boys|erasure|\ba[- ]?ha\b|eurythmics|new order|human league|yazoo|ultravox|soft cell|duran duran|tears for fears|modern talking|bad boys blue|c\.? ?c\.? catch|kylie|weeknd|dua lipa|lady gaga|madonna|britney|katy perry|rihanna|chainsmokers|black eyed peas|pitbull|\bsia\b|ellie goulding|taylor swift|ed sheeran|justin bieber|bruno mars|harry styles|billie eilish|ariana grande|olivia rodrigo|post malone|imagine dragons|coldplay|maroon 5|onerepublic|one direction|backstreet boys|spice girls|\babba\b|michael jackson|whitney houston|mariah carey|cyndi lauper|roxette/i;
+// grupa instrumentu General MIDI
+function instGroup(p) {
+  if (p === undefined || p === null || p <= 3) return 'piano';
+  if (p <= 5) return 'ep';
+  if (p <= 7) return 'harpsi';
+  if (p <= 15) return 'bell';
+  if (p <= 20) return 'organ';
+  if (p <= 31) return p <= 23 ? 'reed' : 'guitar';
+  if (p <= 37) return 'bass';
+  if (p <= 39) return 'synth';                   // Synth Bass
+  if (p <= 49) return 'strings';
+  if (p <= 51) return 'synth';                   // Synth Strings
+  if (p <= 61) return 'other';
+  if (p <= 63) return 'synth';                   // Synth Brass
+  if (p <= 79) return 'wind';
+  if (p <= 103) return 'synth';                  // Lead, Pad, FX
+  return 'other';
+}
+/* Propozycja brzmienia: {v, why}. Po kolei: słowa w tytule i wykonawcy, rok przeboju z Billboard,
+   instrumenty w pliku (melodia na syntezatorze, dużo syntezatorów, perkusja i tempo, pianino elektryczne, organy…),
+   na końcu fortepian. Wynik zapamiętany w utworze (s._vs). */
+function suggestVoice(s) {
+  if (!s) return {v: 'piano', why: ''};
+  if (s._vs) return s._vs;
+  const r = (v, why) => (s._vs = {v, why});
+  const title = String(s.title || '').replace(/_+/g, ' ').replace(/\s+/g, ' ');  // Lakh: „Bach_Johann_Sebastian – Toccata”
+  for (const [v, re, why] of VOICE_KW) if (re.test(title)) return r(v, why);
+  const src = String(s.src || ''), bb = /^billboard:(\d{4})/.exec(src);
+  if (bb) {  // Billboard: sama melodia bez prawdziwych instrumentów – decyduje rok przeboju
+    const y = +bb[1];
+    return y >= 1980 ? r('pop', 'przebój z ' + y + ' r.') : y >= 1965 ? r('epiano', 'przebój z ' + y + ' r.') : r('piano', 'przebój z ' + y + ' r.');
+  }
+  const pop = POP_KW.test(title);
+  // instrumenty liczymy tylko wtedy, gdy plik je podaje (bez zmiany programu każda ścieżka wygląda jak fortepian)
+  if (!s.builtin && s.notes && s.notes.length && (s.progs || s.drums)) {
+    const g = {}, N = s.notes.length;
+    s.notes.forEach(n => { const k = instGroup(s.inst && s.inst[n.track]); g[k] = (g[k] || 0) + 1; });
+    const sh = k => (g[k] || 0) / N;
+    if (s.melody === undefined) defaultTracks(s);
+    const mel = s.melody >= 0 ? instGroup(s.inst && s.inst[s.melody]) : null;
+    const drums = (s.drums || 0) > 20, fast = (s.bpm || 0) >= 118;
+    if (mel === 'synth' || sh('synth') >= 0.3)
+      return drums && fast ? r('synth', 'w nagraniu grają syntezatory i perkusja, szybkie tempo') : r('pop', 'w nagraniu grają syntezatory');
+    if (mel === 'ep' || sh('ep') >= 0.25) return r('epiano', 'w nagraniu gra pianino elektryczne');
+    if (mel === 'organ' || sh('organ') >= 0.3) return r('organ', 'w nagraniu grają organy');
+    if (mel === 'harpsi' || sh('harpsi') >= 0.3) return r('harpsi', 'w nagraniu gra klawesyn');
+    if (mel === 'bell') return r('box', 'melodię grają dzwonki');
+    if (sh('piano') >= 0.98 && s.progs) return r('piano', 'nagranie na fortepian');
+    if (pop) return r('pop', 'muzyka pop');
+    if (drums && sh('synth') >= 0.08) return r(fast ? 'synth' : 'pop', 'piosenka z perkusją i syntezatorami');
+    if (drums) return r('epiano', 'piosenka z zespołem (perkusja, gitary)');
+  }
+  if (pop) return r('pop', 'muzyka pop');
+  return r('piano', 'domyślne brzmienie');
+}
+// brzmienie utworu: wybór Łukasza dla tego utworu → propozycja aplikacji (albo fortepian, gdy dopasowywanie wyłączone)
+function voiceOf(s) {
+  if (!s) return 'piano';
+  const o = S.songVoice && S.songVoice[s.id];
+  if (o && VOICES[o]) return o;
+  return S.voice === 'auto' ? suggestVoice(s).v : 'piano';
+}
+const voiceAuto = s => S.voice === 'auto' ? suggestVoice(s).v : 'piano';
+/* Synteza na iPadzie. f – częstotliwość, t – start, end – puszczenie klawisza, v – głośność (szczyt ≈ v, jak trójkąt i fortepian). */
+function synthNote(voice, n, dur, t, v, dest) {
+  const f = 440 * Math.pow(2, (n - 69) / 12), end = t + Math.max(dur, 0.08), out = dest || audioOut();
+  const amp = actx.createGain(); amp.gain.setValueAtTime(0, t); amp.connect(out);
+  let stopAt = end + 0.3, into = amp;
+  const osc = (type, ratio, gain, detune, to) => {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.value = f * ratio; if (detune) o.detune.value = detune;
+    g.gain.value = gain; o.connect(g); g.connect(to || into); o.start(t); o.stop(stopAt); return {o, g};
+  };
+  const lowpass = (q) => { const fl = actx.createBiquadFilter(); fl.type = 'lowpass'; fl.Q.value = q; fl.connect(amp); into = fl; return fl; };
+  if (voice === 'synth') {          // ostry syntezator: dwie piły lekko rozstrojone, filtr otwiera się przy uderzeniu
+    stopAt = end + 0.25;
+    const fl = lowpass(4);
+    fl.frequency.setValueAtTime(Math.min(f * 14, 10000), t); fl.frequency.setTargetAtTime(Math.min(f * 5, 5000), t + 0.01, 0.12);
+    osc('sawtooth', 1, 0.8, -9); osc('sawtooth', 1, 0.8, 9);
+    amp.gain.linearRampToValueAtTime(v, t + 0.005); amp.gain.setTargetAtTime(v * 0.75, t + 0.01, 0.15);
+    amp.gain.setValueAtTime(v * 0.75, end); amp.gain.exponentialRampToValueAtTime(0.0001, end + 0.18);
+  } else if (voice === 'pop') {     // miękki syntezator: prostokąt i trójkąt przez łagodny filtr
+    stopAt = end + 0.4;
+    const fl = lowpass(1);
+    fl.frequency.setValueAtTime(Math.min(f * 8, 7000), t); fl.frequency.setTargetAtTime(Math.min(f * 4, 3500), t + 0.01, 0.25);
+    osc('square', 1, 0.38, 0); osc('triangle', 1, 0.7, 5); osc('triangle', 0.5, 0.32, 0);
+    amp.gain.linearRampToValueAtTime(v, t + 0.012); amp.gain.setTargetAtTime(v * 0.6, t + 0.02, 0.3);
+    amp.gain.setValueAtTime(v * 0.6, end); amp.gain.exponentialRampToValueAtTime(0.0001, end + 0.3);
+  } else if (voice === 'epiano') {  // pianino elektryczne: synteza FM (sinus modulowany sinusem), dźwięk jak dzwonek, wybrzmiewa
+    stopAt = end + 0.35;
+    const mod = actx.createOscillator(), mg = actx.createGain();
+    mod.frequency.value = f; mg.gain.setValueAtTime(f * 2.2, t); mg.gain.setTargetAtTime(f * 0.25, t, 0.35);
+    const car = osc('sine', 1, 0.9, 0); mod.connect(mg); mg.connect(car.o.frequency); mod.start(t); mod.stop(stopAt);
+    osc('sine', 2, 0.08, 0);
+    amp.gain.linearRampToValueAtTime(v, t + 0.004); amp.gain.setTargetAtTime(v * 0.15, t + 0.01, 0.9);
+    amp.gain.setTargetAtTime(0, end, 0.08);
+  } else if (voice === 'organ') {   // organy: piszczałki 16', 8', 4', 2 2/3', 2' – dźwięk trwa, póki trzymamy klawisz
+    stopAt = end + 0.2;
+    [[0.5, 0.22], [1, 0.4], [2, 0.26], [3, 0.1], [4, 0.12]].forEach(([k, g]) => osc('sine', k, g * 1.3, 0));
+    amp.gain.linearRampToValueAtTime(v, t + 0.03); amp.gain.setValueAtTime(v, end); amp.gain.linearRampToValueAtTime(0, end + 0.1);
+  } else if (voice === 'harpsi') {  // klawesyn: szarpnięta struna – jasny początek, szybko cichnie
+    stopAt = Math.min(end, t + 2.5) + 0.15;
+    const fl = lowpass(1.5);
+    fl.frequency.setValueAtTime(Math.min(f * 16, 12000), t); fl.frequency.setTargetAtTime(Math.min(f * 4, 4000), t, 0.09);
+    osc('sawtooth', 1, 1.1, 0); osc('square', 2, 0.28, 0);
+    amp.gain.linearRampToValueAtTime(v, t + 0.002); amp.gain.setTargetAtTime(0, t + 0.003, 0.45);
+    amp.gain.setTargetAtTime(0, stopAt - 0.15, 0.03);  // puszczony klawisz – tłumik
+  } else if (voice === 'box') {     // pozytywka: czysty sinus i wysoki alikwot, szybko gasnący
+    stopAt = t + Math.max(2.2, dur) + 0.1;
+    osc('sine', 1, 0.85, 0); osc('sine', 2, 0.17, 0);
+    const hi = actx.createGain(); hi.connect(amp); hi.gain.setValueAtTime(0.18, t); hi.gain.setTargetAtTime(0, t, 0.08);
+    osc('sine', 4.02, 1, 0, hi);
+    amp.gain.linearRampToValueAtTime(v, t + 0.002); amp.gain.setTargetAtTime(0, t + 0.003, 0.55);
+  } else return false;
+  return true;
+}
+/* Keyboard przełączamy na brzmienie utworu: Bank Select 0 (B0 00 00, B0 20 00) + Program Change (C0 <program>).
+   Przy otwarciu utworu, zmianie brzmienia i przy Starcie. Po powrocie do biblioteki – z powrotem fortepian. */
+let kbdProg = null;  // ostatnio wysłany program (null – nie zmienialiśmy)
+function kbdProgram(prog, why) {
+  if (!out || S.kbdMode === 'kbd') return false;
+  log('BRZMIENIE keyboardu: program ' + prog + ' (' + (GM[prog] || '?') + ')' + (why ? ' – ' + why : ''));
+  sendRaw([0xB0, 0, 0]); sendRaw([0xB0, 32, 0]); sendRaw([0xC0, prog]);
+  kbdProg = prog; return true;
+}
+function kbdVoice(force) {
+  if (!song || !out || S.kbdMode === 'kbd') return;
+  if (S.mode === 'demo' && S.demoOut === 'ipad') return;  // Pokaz gra iPad, keyboard tylko świeci
+  const prog = VOICES[voiceOf(song)].gm;
+  if (force || prog !== kbdProg) kbdProgram(prog, VOICES[voiceOf(song)].name);
+}
+function kbdVoiceReset() { if (kbdProg !== null && kbdProg !== 0) kbdProgram(0, 'powrót do biblioteki'); }
 
 /* ---------------- odtwarzacz ---------------- */
 let song = null, sel = new Set(), ns = [], steps = [], lastEnd = 0;
@@ -1019,15 +1201,7 @@ const timed = () => S.mode !== 'wait';  // „W tempie” i „Pokaz” idą z z
    więc gra on swoimi głośnikami; klawisze na ekranie się wciskają, świecą diody i lecą nuty (wodospad).
    Bez keyboardu gra iPad. Nie liczymy trafień. */
 const demoOn = new Map();  // nuta brzmiąca na keyboardzie → koniec (sekundy utworu)
-const demoKbd = () => !!out && S.demoVoice !== 'ipad';  // czy w Pokazie gra keyboard (a nie iPad)
-/* Keyboard gra nuty z kanału 1 swoim bieżącym brzmieniem, które nie musi być fortepianem.
-   Przed Pokazem przełączamy je: Bank Select 0 (B0 00 00, B0 20 00) i Program Change (C0 <program General MIDI>). */
-function kbdVoice() {
-  if (!demoKbd() || S.demoVoice === 'kbd') return;
-  const prog = Math.max(0, Math.min(127, +S.demoVoice || 0));
-  log('POKAZ: brzmienie keyboardu – program ' + prog + ' (' + (GM[prog] || '?') + ')');
-  sendRaw([0xB0, 0, 0]); sendRaw([0xB0, 32, 0]); sendRaw([0xC0, prog]);
-}
+const demoKbd = () => !!out && S.demoOut !== 'ipad';  // czy w Pokazie gra keyboard (a nie iPad)
 function demoNote(n) {
   if (!demoKbd()) return;
   if (demoOn.has(n.m)) sendRaw([0x80, n.m, 0]);  // ta sama nuta jeszcze brzmi – uderzamy ją od nowa
@@ -1099,7 +1273,7 @@ function curT() { return playing ? (performance.now() - t0) / 1000 * (S.speed / 
 function play() {
   if (!song || !ns.length) { toast('Najpierw wybierz utwór'); return; }
   pvStop(true); ensureAudio(); requestWake();
-  if (S.mode === 'demo') kbdVoice();
+  kbdVoice(true);  // keyboard gra brzmieniem utworu (także gdy gram sam)
   playing = true; playUI(true);
   if (S.mode === 'wait') {
     if (stepIdx >= steps.length) { stepIdx = 0; good = bad = 0; }
@@ -1506,7 +1680,7 @@ function saveUser() {
   catch (e) { toast('Brak miejsca na zapis – utwór zniknie po zamknięciu strony'); }
 }
 function getUserSong(u) {
-  if (!cache[u.id]) { cache[u.id] = parseMidi(fromB64(u.b64), u.title); cache[u.id].id = u.id; }
+  if (!cache[u.id]) { cache[u.id] = parseMidi(fromB64(u.b64), u.title); cache[u.id].id = u.id; cache[u.id].src = u.src || ''; }
   return cache[u.id];
 }
 BUILTIN.forEach(s => { const lv = songLevel(s); s.lvl = lv ? lv.lvl : 0; });
@@ -1582,6 +1756,7 @@ function removeUserSong(u) {
   if (song && song.id === u.id) { stop(); song = null; $('#songTitle').textContent = 'Wybierz utwór'; $('#tracks').innerHTML = ''; refreshView(); }
   const i = userSongs.indexOf(u); if (i >= 0) userSongs.splice(i, 1);
   delete cache[u.id]; saveUser();
+  if (S.songVoice[u.id]) { delete S.songVoice[u.id]; saveS(); }
   if (!userSongs.length) libEditing = false;
   toast('Usunięto: ' + u.title);
   renderLib();
@@ -1647,7 +1822,7 @@ document.querySelectorAll('#libLvlSeg button').forEach(x => x.onclick = () => { 
 function addUserSong(buf, title, src) {
   const parsed = parseMidi(buf, title);
   const id = 'u' + Date.now() + Math.random().toString(36).slice(2, 6);
-  parsed.id = id; cache[id] = parsed;
+  parsed.id = id; parsed.src = src || ''; cache[id] = parsed;
   const lv = songLevel(parsed), u = {id, title, b64: toB64(buf), lvl: lv ? lv.lvl : 0, roll: rollOf(parsed)};
   if (src) u.src = src;
   userSongs.push(u); saveUser(); renderLib();
@@ -1658,7 +1833,10 @@ function selectSong(s) {
   sel = new Set(defaultTracks(s));
   if (s.melody >= 0) log('ŚCIEŻKI: wybrana melodia „' + s.tracks[s.melody] + '”' + (instName(s, s.melody) ? ' (' + instName(s, s.melody) + ')' : ''));
   $('#songTitle').textContent = s.title;
-  renderTracks(); prepare(); showPlay();
+  const sv = suggestVoice(s);
+  log('BRZMIENIE: „' + s.title + '” → ' + VOICES[voiceOf(s)].name + (S.songVoice[s.id] ? ' (wybrane ręcznie)' : '') +
+      '; propozycja: ' + VOICES[sv.v].name + ' – ' + sv.why);
+  renderTracks(); prepare(); showPlay(); renderVoices(); renderOpts(); kbdVoice();
 }
 function renderTracks() {
   const box = $('#tracks'); box.innerHTML = '';
@@ -1855,7 +2033,7 @@ function catRenderSoon() { clearTimeout(catA.timer); catA.timer = setTimeout(() 
    tym samym prostym dźwiękiem co „Dźwięk z iPada”. Nuty planujemy po kawałku (co 100 ms na 0,4 s
    do przodu), żeby na iPadzie nie tworzyć tysięcy oscylatorów naraz. */
 const PV_LEN = 30;
-const pv = {src: '', loading: '', timer: 0, notes: [], idx: 0, at0: 0, start: 0, out: null, mel: new Set()};
+const pv = {src: '', loading: '', timer: 0, notes: [], idx: 0, at0: 0, start: 0, out: null, mel: new Set(), voice: 'piano'};
 function pvStop(quiet) {
   clearInterval(pv.timer); pv.timer = 0;
   if (pv.out) { try { pv.out.gain.setTargetAtTime(0, actx.currentTime, 0.03); const o = pv.out; setTimeout(() => o.disconnect(), 300); } catch (e) {} pv.out = null; }
@@ -1872,16 +2050,16 @@ async function catPreview(it) {
     const buf = catA.buf.get(it.src) || await catFetch(it.url, 'buf');
     if (pv.loading !== it.src) return; // w międzyczasie kliknięto coś innego
     if (buf.byteLength > CAT_MAX_BYTES) throw new Error('plik jest za duży');
-    const s = parseMidi(buf, it.title);
+    const s = parseMidi(buf, it.title); s.src = it.src;
     catA.buf.set(it.src, buf);
     if (!catA.res[it.src]) { const lv = songLevel(s); catA.res[it.src] = lv ? {l: lv.lvl, d: Math.round(lv.dur)} : {l: 0}; catSaveLevels(); }
     pv.mel = new Set(defaultTracks(s));
     pv.notes = s.notes.slice().sort((a, b) => a.start - b.start);
     pv.start = pv.notes[0].start; pv.idx = 0;
     pv.out = actx.createGain(); pv.out.gain.value = 0.8; pv.out.connect(audioOut());
-    pv.at0 = actx.currentTime + 0.15; pv.loading = ''; pv.src = it.src;
+    pv.at0 = actx.currentTime + 0.15; pv.loading = ''; pv.src = it.src; pv.voice = voiceAuto(s);
     audioInfo();
-    log('ODSŁUCH: „' + it.title + '” (' + s.notes.length + ' nut, melodia: ' + [...pv.mel].map(i => s.tracks[i]).join(', ') + ')');
+    log('ODSŁUCH: „' + it.title + '” (' + s.notes.length + ' nut, melodia: ' + [...pv.mel].map(i => s.tracks[i]).join(', ') + ', brzmienie: ' + VOICES[pv.voice].name + ')');
     pvTick(); pv.timer = setInterval(pvTick, 100);
   } catch (e) {
     if (pv.loading === it.src) { pv.loading = ''; toast('Nie mogę odtworzyć: ' + e.message, 3500); log('ODSŁUCH błąd: ' + e.message); }
@@ -1900,7 +2078,7 @@ function pvTick() {
     if (Math.abs(t - lastT) > 0.02) { burst = 0; lastT = t; }
     const mel = pv.mel.has(n.track);
     if (!mel && ++burst > 6) continue; // gęste akordy tła ograniczamy do 6 dźwięków
-    tone(n.note, Math.min(n.end - n.start, mel ? 3 : 1.5), pv.at0 + t, mel ? 0.22 : 0.06, pv.out);
+    tone(n.note, Math.min(n.end - n.start, mel ? 3 : 1.5), pv.at0 + t, mel ? 0.22 : 0.06, pv.out, pv.voice);
   }
   const last = pv.notes.length ? pv.notes[pv.notes.length - 1].start - pv.start : 0;
   if (now > Math.min(PV_LEN, last) + 1) pvStop();
@@ -2056,7 +2234,7 @@ function showPlay() {
 }
 function goHome() {
   if (song) { S.last = {id: song.id, step: S.mode === 'wait' ? stepIdx : 0, total: steps.length}; saveS(); }
-  stop(); closeOpts(); libEditing = false;
+  stop(); closeOpts(); libEditing = false; kbdVoiceReset();
   document.body.classList.add('home'); renderLib();
 }
 $('#backBtn').onclick = goHome;
@@ -2080,10 +2258,12 @@ function renderOpts() {
   const p = [modeLabel()];
   if (S.transpose) p.push((S.transpose > 0 ? '+' : '') + S.transpose);
   if (S.sound) p.push('<svg class="ico" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>');
+  const vc = voiceOf(song);
+  if (vc !== 'piano') p.push('<span class="dim">' + VOICES[vc].name + '</span>');
   p.push('<span class="dim">' + {off: 'Bez nut', staff: 'Nuty', fall: 'Wodospad'}[S.view] + '</span>');
   $('#optsSum').innerHTML = p.map(x => x.startsWith('<') ? x : '<span>' + x + '</span>').join('');
   $('#optsBtn').title = modeLabel() +
-    (S.transpose ? ', transpozycja ' + S.transpose : '') + (S.sound ? ', dźwięk z iPada' : '') +
+    (S.transpose ? ', transpozycja ' + S.transpose : '') + (S.sound ? ', dźwięk z iPada' : '') + ', brzmienie: ' + VOICES[vc].name.toLowerCase() +
     ', ' + {off: 'bez nut', staff: 'nuty', fall: 'wodospad'}[S.view];
 }
 const optsOpen = () => !$('#opts').hidden;
@@ -2122,27 +2302,57 @@ function renderTr() { $('#trTxt').textContent = (S.transpose > 0 ? '+' : '') + S
 $('#trDown').onclick = () => { S.transpose = Math.max(-12, S.transpose - 1); saveS(); renderTr(); prepare(); };
 $('#trUp').onclick = () => { S.transpose = Math.min(12, S.transpose + 1); saveS(); renderTr(); prepare(); };
 $('#sound').checked = S.sound;
-$('#voiceSel').value = S.voice === 'synth' ? 'synth' : 'piano'; pianoUI();
-$('#voiceSel').onchange = e => { S.voice = e.target.value; saveS(); log('DŹWIĘK: brzmienie ' + S.voice); ensureAudio(); pianoUI(); };
-$('#voiceTestBtn').onclick = () => {
+$('#voiceSel').value = S.voice === 'piano' ? 'piano' : 'auto'; pianoUI();
+$('#voiceSel').onchange = e => {
+  S.voice = e.target.value; saveS(); log('BRZMIENIE: dobór ' + (S.voice === 'auto' ? 'dopasowany do utworu' : 'zawsze fortepian'));
+  ensureAudio(); renderVoices(); renderOpts(); kbdVoice();
+};
+$('#kbdModeSel').value = S.kbdMode;
+$('#kbdModeSel').onchange = e => { S.kbdMode = e.target.value; saveS(); log('BRZMIENIE keyboardu: ' + S.kbdMode); kbdVoice(true); renderVoices(); };
+$('#demoOutSel').value = S.demoOut;
+$('#demoOutSel').onchange = e => { S.demoOut = e.target.value; saveS(); log('POKAZ gra: ' + S.demoOut); kbdVoice(); };
+// krótki pasaż brzmieniem utworu: na iPadzie albo na keyboardzie
+function ipadArp(voice) {
   ensureAudio(); if (!actx) { toast('Ta przeglądarka nie umie odtwarzać dźwięku'); return; }
   const t = actx.currentTime + 0.05;
-  [60, 64, 67, 72].forEach((n, i) => tone(n, 0.45, t + i * 0.28, 0.25));
-  tone(48, 1.4, t + 1.15, 0.2); [60, 64, 67, 72].forEach(n => tone(n, 1.4, t + 1.15, 0.16));
-  if (S.voice === 'piano' && piano.state !== 'ready') toast('Fortepian jeszcze się wczytuje – na razie słychać prosty dźwięk');
-};
-$('#demoVoiceSel').value = S.demoVoice;
-$('#demoVoiceSel').onchange = e => { S.demoVoice = e.target.value; saveS(); log('POKAZ: wybrane brzmienie ' + S.demoVoice); kbdVoice(); };
-$('#demoVoiceTestBtn').onclick = () => {
-  if (S.demoVoice === 'ipad') { $('#voiceTestBtn').click(); return; }
-  if (!out) { toast('Najpierw połącz keyboard'); return; }
-  kbdVoice();
+  [60, 64, 67, 72].forEach((n, i) => tone(n, 0.45, t + i * 0.28, 0.25, null, voice));
+  tone(48, 1.4, t + 1.15, 0.2, null, voice); [60, 64, 67, 72].forEach(n => tone(n, 1.4, t + 1.15, 0.16, null, voice));
+  if (voice === 'piano' && piano.state !== 'ready') toast('Fortepian jeszcze się wczytuje – na razie słychać prosty dźwięk');
+}
+function kbdArp() {
   [60, 64, 67, 72].forEach((n, i) => {
     setTimeout(() => sendRaw([0x90, n, 90]), 60 + i * 280);
     setTimeout(() => sendRaw([0x80, n, 0]), 60 + i * 280 + 420);
   });
+}
+$('#voiceTestBtn').onclick = () => ipadArp(voiceOf(song));
+$('#demoVoiceTestBtn').onclick = () => {
+  if (!out) { toast('Najpierw połącz keyboard'); return; }
+  if (S.kbdMode === 'song') kbdProgram(VOICES[voiceOf(song)].gm, 'próba');
+  kbdArp();
 };
-$('#sound').onchange = e => { S.sound = e.target.checked; saveS(); renderOpts(); if (S.sound) ensureAudio(); };
+/* menu Opcje → „Brzmienie utworu”: przyciski z brzmieniami, gwiazdka przy propozycji aplikacji.
+   Stuknięcie w propozycję = wróć do automatu (usuwa wybór dla utworu). */
+function renderVoices() {
+  const box = $('#voiceSeg'); if (!box) return;
+  const cur = voiceOf(song), auto = voiceAuto(song), sv = suggestVoice(song), own = !!(song && S.songVoice[song.id]), on = S.voice === 'auto';
+  box.innerHTML = VOICE_IDS.map(id => `<button type="button" data-voice="${id}" class="${id === cur ? 'on' : ''}" aria-pressed="${id === cur}"` +
+    (on && id === auto ? ' title="Propozycja aplikacji"' : '') + `>${on && id === auto ? ICO_STAR : ''}${VOICES[id].name}</button>`).join('');
+  box.querySelectorAll('button').forEach(b => b.onclick = () => setSongVoice(b.dataset.voice));
+  const where = out && S.kbdMode === 'song' ? 'Keyboard przełącza się na to brzmienie.' : S.sound ? 'Gra iPad.' : 'Włącz „Dźwięk z iPada”, żeby usłyszeć je na iPadzie.';
+  $('#voiceWhy').textContent = !song ? '' : (on ? (own ? 'Wybrane przez Ciebie. ' : '') + 'Gwiazdka – propozycja aplikacji: ' + sv.why + '.' +
+    (own ? ' Stuknij ją, żeby wrócić do propozycji.' : '') : 'Dopasowywanie wyłączone w Ustawieniach – domyślnie fortepian.') + ' ' + where;
+}
+function setSongVoice(id) {
+  if (!song || !VOICES[id]) return;
+  if (id === voiceAuto(song)) delete S.songVoice[song.id]; else S.songVoice[song.id] = id;
+  saveS(); log('BRZMIENIE: „' + song.title + '” → ' + VOICES[id].name + (S.songVoice[song.id] ? ' (wybrane ręcznie)' : ' (propozycja)'));
+  renderVoices(); renderOpts(); kbdVoice();
+  if (playing) return;  // w trakcie grania słychać od razu w utworze
+  // krótka próbka: tam, gdzie będzie słychać utwór
+  if (out && S.kbdMode === 'song' && !S.sound && !(S.mode === 'demo' && S.demoOut === 'ipad')) kbdArp(); else ipadArp(id);
+}
+$('#sound').onchange = e => { S.sound = e.target.checked; saveS(); renderOpts(); renderVoices(); if (S.sound) ensureAudio(); };
 $('#againBtn').onclick = () => { $('#result').classList.remove('open'); reset(); play(); };
 $('#closeRes').onclick = () => { $('#result').classList.remove('open'); };
 

@@ -96,6 +96,29 @@ PIANO_MIDI = song_midi(
     track('Right', 0, 0, [72, 74, 76, 77] * 6, 96),
     track('Left', 0, 0, [48, 55] * 12, 96),
 )
+
+
+def tempo_track(bpm):
+    us = round(60e6 / bpm)
+    ev = bytes([0x00, 0xFF, 0x51, 0x03]) + us.to_bytes(3, 'big') + bytes([0x00, 0xFF, 0x2F, 0x00])
+    return b'MTrk' + struct.pack('>I', len(ev)) + ev
+
+
+# Techno: 130 BPM, perkusja (kanał 10), bas syntezatorowy i melodia na „Lead 2 (sawtooth)”
+DANCE_MIDI = song_midi(
+    tempo_track(130),
+    track('Drums', 0, 9, [36, 38] * 30, 48),
+    track('Bass', 38, 1, [36, 36, 43, 41] * 12, 48),
+    track('Lead', 81, 0, [72, 74, 76, 79, 76, 74, 72, 71] * 6, 48),
+)
+# Zespół: perkusja, gitary, bas, bez syntezatorów (100 BPM)
+BAND_MIDI = song_midi(
+    tempo_track(100),
+    track('Drums', 0, 9, [36, 38] * 30, 96),
+    track('Bass', 33, 1, [36, 43, 41, 38] * 12, 96),
+    track('Guitar', 27, 2, [[60, 64, 67], [57, 60, 64]] * 12, 192),
+    track('Melody', 65, 3, [72, 74, 76, 79, 76, 74, 72, 71] * 6, 96),
+)
 HITS = {'commons': 0, 'bitmidi': 0, 'lakh': 0, 'piano': 0}
 
 
@@ -197,6 +220,12 @@ COUNT_PX = """([r, g, b]) => {
 RIGHT, LEFT, NOW_R, MISS = [255, 159, 28], [79, 163, 255], [255, 190, 92], [255, 92, 122]
 
 
+async def tap_outside(page):
+    """Stuknięcie obok menu „Opcje” (w tytuł utworu w nagłówku) – zamyka menu."""
+    box = await page.locator('#songTitle').bounding_box()
+    await page.mouse.click(box['x'] + 10, box['y'] + box['height'] / 2)
+
+
 async def opt(page, selector):
     """Kliknięcie w menu „Opcje” (tryb, tempo, transpozycja, dźwięk, widok) – otwiera je, gdy jest zamknięte."""
     if await page.evaluate("document.querySelector('#opts').hidden"):
@@ -247,7 +276,7 @@ async def options_menu_tests(page, check):
     check('+1' in await page.text_content('#optsSum'), 'podsumowanie na przycisku pokazuje transpozycję (%s)' % await page.text_content('#optsSum'))
     await page.click('#trDown')
     check(await page.text_content('#optsSum') == sum0, 'transpozycja wraca do 0')
-    await page.mouse.click(700, 160)  # stuknięcie obok menu
+    await tap_outside(page)  # stuknięcie obok menu
     check(not await page.is_visible('#opts'), 'stuknięcie obok zamyka menu')
     # w poziomie z pięciolinią mieści się pole „Zagraj” (bez przewijania)
     fits = await page.evaluate("""() => { const n = document.querySelector('#now').getBoundingClientRect(),
@@ -317,7 +346,7 @@ async def demo_tests(page, check):
     await opt(page, '#modeSeg >> text=Pokaz')
     check(await page.evaluate("S.mode") == 'demo' and await page.evaluate("S.view") == 'fall', 'pokaz: włącza się wodospad')
     check('Pokaz' in await page.text_content('#optsSum') and await page.text_content('#stats') == '', 'pokaz: opis na przycisku, bez statystyk')
-    await page.mouse.click(700, 160)
+    await tap_outside(page)
     await page.evaluate('__sent.length = 0')
     await page.click('#playBtn')
     await page.wait_for_timeout(700)
@@ -347,17 +376,96 @@ async def demo_tests(page, check):
     r = await page.evaluate("""() => { const o = out, calls = []; const t0 = window.tone; out = null; window.tone = (...a) => calls.push(a);
         demoNote(ns[0]); window.tone = t0; out = o; return {sent: demoOn.size}; }""")
     check(r['sent'] == 0, 'pokaz: bez keyboardu nic nie wysyła')
-    # brzmienie Pokazu: inny program, brzmienie z keyboardu (bez zmiany), iPad (keyboard tylko świeci)
-    r = await page.evaluate("""() => { const res = {}; const run = v => { S.demoVoice = v; __sent.length = 0; kbdVoice(); demoNote(ns[0]);
+    # brzmienie Pokazu: brzmienie utworu, „nie zmieniaj” (brzmienie z keyboardu), Pokaz na iPadzie (keyboard tylko świeci)
+    r = await page.evaluate("""() => { const res = {}; const run = (k, d, v) => { S.kbdMode = k; S.demoOut = d;
+          if (v) S.songVoice[song.id] = v; else delete S.songVoice[song.id];
+          __sent.length = 0; kbdVoice(true); demoNote(ns[0]);
           const x = {pc: __sent.filter(m => m[0] === 0xC0).map(m => m[1]), on: __sent.filter(m => m[0] === 0x90).length}; demoSilence(); return x; };
-        res.ep = run('4'); res.kbd = run('kbd'); res.ipad = run('ipad'); S.demoVoice = '0'; return res; }""")
-    check(r['ep'] == {'pc': [4], 'on': 1}, 'pokaz: wybrane brzmienie (pianino elektryczne) ' + str(r['ep']))
-    check(r['kbd'] == {'pc': [], 'on': 1}, 'pokaz: „brzmienie wybrane na keyboardzie” nie zmienia programu ' + str(r['kbd']))
-    check(r['ipad'] == {'pc': [], 'on': 0}, 'pokaz: „fortepian z iPada” nie wysyła nut do keyboardu ' + str(r['ipad']))
+        res.ep = run('song', 'kbd', 'epiano'); res.kbd = run('kbd', 'kbd'); res.ipad = run('song', 'ipad');
+        S.kbdMode = 'song'; S.demoOut = 'kbd'; delete S.songVoice[song.id]; return res; }""")
+    check(r['ep'] == {'pc': [4], 'on': 1}, 'pokaz: gra brzmieniem utworu (pianino elektryczne → C0 04) ' + str(r['ep']))
+    check(r['kbd'] == {'pc': [], 'on': 1}, 'pokaz: „nie zmieniaj” nie zmienia programu keyboardu ' + str(r['kbd']))
+    check(r['ipad'] == {'pc': [], 'on': 0}, 'pokaz na iPadzie nie wysyła nut ani programu do keyboardu ' + str(r['ipad']))
     await opt(page, '#modeSeg >> text=Czekaj na mnie')
     await opt(page, '#viewSeg >> text=' + {'off': 'Bez nut', 'staff': 'Nuty', 'fall': 'Wodospad'}[view0])
-    await page.mouse.click(700, 160)
+    await tap_outside(page)
     await page.click('#playBtn')
+
+
+async def voice_tests(page, check):
+    """Brzmienie dobrane do utworu: propozycja aplikacji, zmiana dla utworu w menu Opcje, Program Change dla keyboardu,
+    synteza na iPadzie."""
+    # propozycje dla różnych utworów
+    sug = await page.evaluate("""() => { const v = s => suggestVoice(s).v, B = t => BUILTIN.find(b => b.title.startsWith(t));
+        const fake = (title, src) => ({title, src, notes: [], tracks: [], inst: []});
+        return {kotek: v(B('Wlazł kotek')), oda: v(B('Oda do radości')), gama: v(B('Gama')),
+          darude: v(fake('Darude – Sandstorm', 'lakh:x')), bach: v(fake('Bach – Invention 1', 'commons:1')),
+          toccata: v(fake('Bach – Toccata and Fugue in D minor', 'bitmidi:1')), jingle: v(fake('Jingle Bells', 'bitmidi:2')),
+          bb2017: v(fake('Ed Sheeran – Shape of You', 'billboard:2017/1/2017_01_full.mid')),
+          bb1972: v(fake('Roberta Flack – The First Time', 'billboard:1972/1/1972_01_full.mid')),
+          bb1958: v(fake('Domenico Modugno – Volare', 'billboard:1958/1/1958_01_full.mid')),
+          chopin: v(fake('Chopin – Nocturne Op. 9 No. 2', 'lakh:x'))}; }""")
+    want = {'kotek': 'box', 'oda': 'piano', 'gama': 'piano', 'darude': 'synth', 'bach': 'harpsi', 'toccata': 'organ', 'jingle': 'box',
+            'bb2017': 'pop', 'bb1972': 'epiano', 'bb1958': 'piano', 'chopin': 'piano'}
+    check(sug == want, 'propozycje brzmienia z tytułu, wykonawcy i roku przeboju ' + str({k: v for k, v in sug.items() if want[k] != v}))
+    r = await page.evaluate("""([d, b, p]) => { const P = (x, t) => parseMidi(new Uint8Array(x).buffer, t);
+        const dance = P(d, 'Nieznany 1'), band = P(b, 'Nieznany 2'), pop = P(p, 'Nieznany 3');
+        return {dance: suggestVoice(dance), band: suggestVoice(band).v, pop: suggestVoice(pop).v, drums: dance.drums, bpm: dance.bpm}; }""",
+        [list(DANCE_MIDI), list(BAND_MIDI), list(POP_MIDI)])
+    check(r['drums'] == 60 and r['bpm'] == 130, 'parser liczy perkusję i tempo (%s, %s BPM)' % (r['drums'], r['bpm']))
+    check(r['dance']['v'] == 'synth' and 'perkusja' in r['dance']['why'], 'techno z pliku (syntezator + perkusja, 130 BPM) → syntezator dance ' + str(r['dance']))
+    check(r['band'] == 'epiano' and r['pop'] == 'pop', 'zespół → pianino elektryczne, wolna piosenka z syntezatorami → syntezator pop ' + str(r))
+
+    # utwór z syntezatorem: przy otwarciu keyboard przełącza się na „Lead 1 (square)” (C0 50)
+    await page.evaluate('__sent.length = 0')
+    await add_song(page, POP_MIDI, 'Piosenka z syntezatorem')
+    await page.wait_for_function("song && song.title === 'Piosenka z syntezatorem'")
+    sent = await page.evaluate('__sent')
+    check([0xC0, 80] in sent and [0xB0, 0, 0] in sent, 'otwarcie utworu przełącza keyboard na jego brzmienie (C0 50)')
+    check('Syntezator pop' in await page.text_content('#optsSum'), 'na przycisku Opcje nazwa brzmienia (%s)' % await page.text_content('#optsSum'))
+    await page.click('#optsBtn')
+    ui = await page.evaluate("""() => ({n: document.querySelectorAll('#voiceSeg button').length,
+        on: [...document.querySelectorAll('#voiceSeg button.on')].map(b => b.dataset.voice),
+        star: [...document.querySelectorAll('#voiceSeg button')].filter(b => b.querySelector('.star')).map(b => b.dataset.voice),
+        why: document.querySelector('#voiceWhy').textContent})""")
+    check(ui['n'] == 7 and ui['on'] == ['pop'] and ui['star'] == ['pop'] and 'syntezatory' in ui['why'],
+          'menu Opcje: 7 brzmień, wybrana i z gwiazdką propozycja ' + str(ui))
+    # zmiana brzmienia dla utworu
+    await page.evaluate('__sent.length = 0')
+    await page.click('#voiceSeg button[data-voice="organ"]')
+    await page.wait_for_timeout(200)
+    sent = await page.evaluate('__sent')
+    sv = await page.evaluate("JSON.parse(localStorage.getItem('sk_settings')).songVoice[song.id]")
+    check(sv == 'organ' and await page.evaluate("voiceOf(song)") == 'organ', 'wybór brzmienia zapamiętany dla utworu (%s)' % sv)
+    check([0xC0, 19] in sent and any(m[0] == 0x90 for m in sent), 'zmiana brzmienia: keyboard przełączony (C0 13) i zagrana próbka')
+    ui = await page.evaluate("""() => ({on: [...document.querySelectorAll('#voiceSeg button.on')].map(b => b.dataset.voice),
+        why: document.querySelector('#voiceWhy').textContent})""")
+    check(ui['on'] == ['organ'] and 'Wybrane przez Ciebie' in ui['why'], 'menu pokazuje wybór ręczny ' + str(ui))
+    # synteza na iPadzie: organy to kilka oscylatorów, nie próbki fortepianu
+    made = await page.evaluate("""() => { ensureAudio(); let osc = 0, buf = 0; const o = actx.createOscillator, b = actx.createBufferSource;
+        actx.createOscillator = function () { osc++; return o.call(this); }; actx.createBufferSource = function () { buf++; return b.call(this); };
+        tone(60, 0.3); const res = {osc, buf}; VOICE_IDS.filter(v => v !== 'piano').forEach(v => tone(62, 0.3, 0, 0.2, null, v));
+        res.all = osc; actx.createOscillator = o; actx.createBufferSource = b; return res; }""")
+    check(made['osc'] == 5 and made['buf'] == 0 and made['all'] > 15, 'iPad gra organy syntezą (oscylatory: %s, próbki: %s)' % (made['osc'], made['buf']))
+    # gwiazdka wraca do propozycji
+    await page.click('#voiceSeg button[data-voice="pop"]')
+    check(await page.evaluate("!S.songVoice[song.id] && voiceOf(song) === 'pop'"), 'stuknięcie w propozycję wraca do automatu')
+    # „Zawsze fortepian” w Ustawieniach
+    await page.evaluate("S.voice = 'piano'; renderVoices()")
+    check(await page.evaluate("voiceOf(song)") == 'piano' and not await page.query_selector('#voiceSeg .star'), 'zawsze fortepian: bez propozycji')
+    await page.evaluate("S.voice = 'auto'; renderVoices()")
+    # „nie zmieniaj brzmienia keyboardu”
+    r = await page.evaluate("""() => { S.kbdMode = 'kbd'; __sent.length = 0; kbdVoice(true); const n = __sent.filter(m => m[0] === 0xC0).length;
+        S.kbdMode = 'song'; return n; }""")
+    check(r == 0, '„nie zmieniaj” – brak Program Change')
+    await tap_outside(page)
+    # powrót do biblioteki – keyboard wraca do fortepianu
+    await page.evaluate('__sent.length = 0')
+    await go_home(page)
+    check([0xC0, 0] in await page.evaluate('__sent'), 'po powrocie do biblioteki keyboard wraca do fortepianu (C0 00)')
+    # usunięcie utworu czyści jego wybór
+    await page.evaluate("""() => { const u = userSongs[userSongs.length - 1]; S.songVoice[u.id] = 'box'; removeUserSong(u); }""")
+    check(await page.evaluate("Object.keys(S.songVoice).length") == 0, 'usunięcie utworu czyści jego brzmienie')
 
 
 async def library_tests(page, check):
@@ -518,6 +626,7 @@ async def main():
         await add_song(page, PIANO_MIDI, 'Fortepian')
         await page.wait_for_function("song && song.title === 'Fortepian'")
         check(await page.evaluate('sel.size') == 2 and await page.evaluate('song.melody') == -1, 'fortepian na dwie ręce: obie ścieżki')
+        await voice_tests(page, check)
         await page.evaluate("userSongs.length = 0; saveUser(); renderLib()")
 
         await library_tests(page, check)
@@ -671,19 +780,23 @@ async def main():
             await page.click('#openSettings')
         check('gotowy' in await page.text_content('#pianoStatus'), 'Ustawienia pokazują stan fortepianu')
         await page.click('#voiceTestBtn')
-        await page.select_option('#voiceSel', 'synth')
-        check(await page.evaluate("S.voice") == 'synth' and 'prosty' in (await page.text_content('#pianoStatus')).lower(),
-              'można wybrać prosty dźwięk')
-        made = await page.evaluate("""() => { let made = 0; const o = actx.createOscillator;
-            actx.createOscillator = function () { made++; return o.call(this); }; tone(60, 0.3); return made; }""")
-        check(made == 1, 'prosty dźwięk gra syntezatorem')
         await page.select_option('#voiceSel', 'piano')
+        check(await page.evaluate("S.voice") == 'piano', 'Ustawienia: można wybrać „zawsze fortepian”')
+        await page.select_option('#voiceSel', 'auto')
+        await page.select_option('#demoOutSel', 'ipad')
+        check(await page.evaluate("S.demoOut") == 'ipad', 'Ustawienia: Pokaz na iPadzie')
+        await page.select_option('#demoOutSel', 'kbd')
+        # ustawienia sprzed tej zmiany (Pokaz „fortepian z iPada”, prosty dźwięk) przechodzą na nowe
+        await page.evaluate("""localStorage.setItem('sk_settings', JSON.stringify(Object.assign(JSON.parse(localStorage.getItem('sk_settings')),
+            {voice: 'synth', demoVoice: 'ipad', voiceVer: undefined, songVoice: undefined, kbdMode: undefined, demoOut: undefined})))""")
         await page.reload()
         await page.wait_for_timeout(300)
         await page.evaluate("ensureAudio()")
         await page.wait_for_function("piano.state === 'ready'", timeout=10000)
         check(await page.evaluate("piano.fromCache") and HITS['piano'] == 1,
               'po przeładowaniu fortepian z pamięci, bez pobierania (zapytań: %d)' % HITS['piano'])
+        mig = await page.evaluate("({v: S.voice, d: S.demoOut, k: S.kbdMode, sv: S.songVoice, old: 'demoVoice' in S, ver: S.voiceVer})")
+        check(mig == {'v': 'auto', 'd': 'ipad', 'k': 'song', 'sv': {}, 'old': False, 'ver': 2}, 'stare ustawienia brzmienia przeniesione ' + str(mig))
 
         check(not errors, 'brak błędów JS ' + (str(errors) if errors else ''))
         await browser.close()

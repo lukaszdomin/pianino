@@ -67,10 +67,29 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     światła bez wyprzedzenia `LEAD` (razem z dźwiękiem), klawisze na ekranie wciśnięte (`.key.lit.press`), trafień nie liczymy,
     bez statystyk i okna wyniku. Pauza, przewijanie, koniec i wyjście → `demoSilence()` (Note Off + All Notes Off `B0 7B 00`).
     Bez keyboardu gra iPad (`tone()`). Wybór „Pokaz” w menu Opcje przełącza widok na wodospad. Tempo działa jak w „W tempie”.
-    **Brzmienie Pokazu** (`S.demoVoice`, Ustawienia → „Pokaz”, `#demoVoiceSel`): numer programu General MIDI (domyślnie `'0'` fortepian),
-    `'kbd'` (bez zmiany – brzmienie wybrane na keyboardzie) albo `'ipad'` (gra iPad próbkami, keyboard tylko świeci; `demoKbd()`).
-    `kbdVoice()` przy Starcie Pokazu i przy zmianie wyboru wysyła Bank Select 0 (`B0 00 00`, `B0 20 00`) i Program Change (`C0 <program>`),
-    bo keyboard grał nuty swoim bieżącym brzmieniem (Łukasz: „dziwny dźwięk, nie fortepianowy”). Przycisk „Posłuchaj na keyboardzie” (`#demoVoiceTestBtn`);
+    Kto gra Pokaz: `S.demoOut` (`'kbd'` keyboard / `'ipad'` – gra iPad, keyboard tylko świeci; `demoKbd()`), Ustawienia → „Pokaz gra” (`#demoOutSel`).
+    Pokaz gra **brzmieniem utworu** (niżej);
+  - **brzmienie dobrane do utworu** (11.11.2026): tabela `VOICES` (id → nazwa, program GM): `piano` Fortepian 0, `epiano` Pianino elektryczne 4,
+    `pop` Syntezator pop 80, `synth` Syntezator dance 81, `organ` Organy 19, `harpsi` Klawesyn 6, `box` Pozytywka 10.
+    `suggestVoice(s)` → `{v, why}` (zapamiętane w `s._vs`), po kolei: słowa w tytule z wykonawcą (`VOICE_KW`: kolędy i piosenki dla dzieci → pozytywka,
+    toccata/hymn → organy, wykonawcy i słowa dance/techno/remix → syntezator dance, barok (Bach, Händel…) → klawesyn, klasyka fortepianowa → fortepian;
+    podkreślenia z Lakh zamieniane na spacje), **rok przeboju z Billboard** (≥1980 pop, 1965–79 pianino elektryczne, wcześniej fortepian),
+    **instrumenty w pliku** (tylko gdy plik ma zmiany programu albo perkusję): melodia na syntezatorze / ≥30% nut syntezatorów → dance (z perkusją i ≥118 BPM)
+    albo pop; pianino elektryczne, organy, klawesyn, dzwonki; sam fortepian → fortepian; potem wykonawcy popu (`POP_KW`) → pop;
+    perkusja + trochę syntezatorów → pop/dance; perkusja (zespół) → pianino elektryczne; na końcu fortepian. `parseMidi()` zwraca do tego
+    `drums` (liczba nut perkusji), `bpm` (tempo na początku) i `progs` (czy plik ma zmiany programu); utwór ma `src` (`getUserSong()` / `addUserSong()`).
+    `voiceOf(s)`: wybór Łukasza dla utworu (`S.songVoice[id]`) → propozycja (gdy `S.voice === 'auto'`) → fortepian (`S.voice === 'piano'`, „Zawsze fortepian”).
+    **Keyboard**: `kbdVoice(force)` wysyła Bank Select 0 (`B0 00 00`, `B0 20 00`) i Program Change (`C0 <program>`) przy otwarciu utworu,
+    zmianie brzmienia, Starcie (każdy tryb) i podłączeniu keyboardu; `kbdVoiceReset()` po powrocie do biblioteki → fortepian; ostatni program w `kbdProg`.
+    `S.kbdMode`: `'song'` (przełączaj) / `'kbd'` (nie ruszaj – brzmienie wybrane na keyboardzie), Ustawienia → „Keyboard” (`#kbdModeSel`).
+    **iPad**: `tone(n, dur, at, vol, dest, voice)` – fortepian próbkami, reszta `synthNote()` (WebAudio, nic nie pobiera): dance = 2 rozstrojone piły + filtr,
+    pop = prostokąt + trójkąty, pianino elektryczne = FM, organy = 5 sinusów (16'…2'), klawesyn = piła z szybko gasnącym filtrem, pozytywka = sinusy.
+    Głośności wyrównane do prostego trójkąta (pomiar przez OfflineAudioContext). Odsłuch w katalogu gra propozycją (`pv.voice`).
+    **Menu Opcje → „Brzmienie utworu”** (`#voiceSeg`, `renderVoices()`, `setSongVoice()`): 7 przycisków, gwiazdka przy propozycji, pod spodem powód
+    (`#voiceWhy`); stuknięcie zapisuje wybór dla utworu i gra krótki pasaż (na keyboardzie albo na iPadzie – tam, gdzie będzie słychać utwór);
+    stuknięcie w propozycję usuwa wybór (wraca automat). Nazwa brzmienia (gdy nie fortepian) na przycisku Opcje. Usunięcie utworu czyści jego wybór.
+    Ustawienia → „Brzmienie”: „Dobór brzmienia” (`#voiceSel`: dopasowane / zawsze fortepian), Keyboard, Pokaz gra, „Posłuchaj na iPadzie / na keyboardzie”.
+    Stare ustawienia (`voice: 'piano'/'synth'`, `demoVoice`) przenoszone raz przy starcie (`voiceVer: 2`); dziennik: wpisy „BRZMIENIE:”;
   - katalog utworów z internetu: obiekt `cat`, `catSearch()`, `catCommons()`, `catBitmidi()`, `catLakh()`, `catBillboard()`, `catDownload()`, `renderCatalog()`;
     spisy trzymane u nas (Lakh, Billboard) przeszukuje wspólne `idxFind()` (Billboard: przy równym dopasowaniu najnowsze najpierw);
     kolejność źródeł w „Wszystkie” = kolejność kluczy `CAT_FN` (Billboard pierwszy); przy wynikach Billboard „hit 2017 · sama melodia”;
@@ -98,8 +117,8 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     adres przypięty do commita `044fab8`, 88 nut A0–C8, 2,6 MB). Pobierane raz przy pierwszym dźwięku i zapisane w **IndexedDB**
     (baza `swiecace-klawisze`, magazyn `files`, klucz `PIANO_KEY`), bo GitHub daje `max-age=300`. Przy każdym uruchomieniu dekodowane
     po 4 naraz, zamieniane na mono i przycinane do `PIANO_SEC` (2,2 s) – pełne stereo to ~100 MB pamięci. Głośność `PIANO_GAIN` (12, próbki są ciche).
-    `tone()` gra próbką, gdy `S.voice === 'piano'` i fortepian gotowy, inaczej trójkąt (zapas). Wszystko idzie przez `audioOut()` (kompresor).
-    Ustawienia → „Dźwięk z iPada”: wybór brzmienia, stan, „Posłuchaj brzmienia”; dziennik: wpisy „FORTEPIAN:”;
+    `tone()` gra próbką, gdy brzmienie to fortepian i próbki gotowe, inaczej trójkąt (zapas, póki się wczytują). Wszystko idzie przez `audioOut()` (kompresor).
+    Próbki wczytują się zawsze przy pierwszym dźwięku. Stan w Ustawieniach → „Brzmienie” (`#pianoStatus`); dziennik: wpisy „FORTEPIAN:”;
   - dźwięk: `ensureAudio()` → `unlockAudio()` – iPad w trybie cichym wycisza WebAudio, więc przy stuknięciu ustawiamy
     `navigator.audioSession.type = 'playback'` i puszczamy ciche, zapętlone `<audio>` (WAV z `silentWav()`); stan w dzienniku („DŹWIĘK:”);
   - diagnostyka: `log()`, `diag()`, sekcja Dziennik w Ustawieniach z przyciskiem „Kopiuj dziennik”;
@@ -169,7 +188,10 @@ Gotowe i działa:
 - Wygląd „Scena” w palecie „Noc” (granat i indygo; prawa ręka pomarańczowa, lewa niebieska – w tym kolorze świeci to, co zagrać). Osobny ekran biblioteki: „Graj dalej”, karty z miniaturą melodii
   i poziomem, filtr poziomu, „Edytuj” do usuwania, jedna wyszukiwarka dla własnych utworów i katalogu.
 - Tryby „Czekaj na mnie”, „W tempie” (25–150%) i **„Pokaz”** (aplikacja sama gra utwór na keyboardzie, klawisze się wciskają, wodospad), transpozycja, dźwięk z iPada, przewijanie, statystyki trafień.
-- Brzmienie fortepianu z nagranych próbek (pobierane raz, zapisane na iPadzie); prosty dźwięk do wyboru w Ustawieniach.
+- Brzmienie fortepianu z nagranych próbek (pobierane raz, zapisane na iPadzie).
+- **Brzmienie dobrane do utworu**: aplikacja proponuje brzmienie (syntezator do dance/techno i popu, pianino elektryczne do piosenek z zespołem,
+  klawesyn do baroku, organy, pozytywka do kolęd i piosenek dla dzieci, fortepian do klasyki), a w menu Opcje można je zmienić dla każdego utworu.
+  Keyboard przełącza się na to brzmienie (Program Change), iPad gra je syntezą.
 - Klawiatura na ekranie, test świateł, przesunięcie świateł, diagnostyka i dziennik.
 - Pływający odtwarzacz: Start/Pauza, cofnij/dalej, od początku; suwak kroków pod tytułem; reszta opcji w menu „Opcje”.
 - Widok nut nad klawiaturą do wyboru: „Bez nut”, „Nuty” (uproszczona pięciolinia z dużą nazwą aktualnej nuty) albo
@@ -210,8 +232,13 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 - Nazwy instrumentów po angielsku (standard General MIDI), tak jak na stronach z plikami MIDI.
 - Nuty bez wartości rytmicznych (same główki w równych odstępach): MIDI nie mówi, czy to ćwierćnuta czy ósemka,
   a pełny zapis (takty, belki, pauzy) wymagałby odtwarzania rytmu i biblioteki do nut – dużo pracy, słabe wyniki na piosenkach z Lakh.
-- Dźwięk: fortepian z nagranych próbek dla wszystkiego (odsłuch i „Dźwięk z iPada”), bez osobnych brzmień basu, smyczków itd.
-  (każde to kolejne 2–3 MB). Prosty syntezator zostaje jako zapas i do wyboru w Ustawieniach. (Wcześniej: tylko prosty dźwięk – Łukasz: „jak ze starej gry”.)
+- Dźwięk: fortepian z nagranych próbek, bez pobierania osobnych próbek basu, smyczków itd. (każde to kolejne 2–3 MB).
+  (Wcześniej: tylko prosty dźwięk – Łukasz: „jak ze starej gry”.) Prosty trójkąt zostaje tylko jako zapas, póki próbki się wczytują
+  (z Ustawień zniknął wybór „Prosty dźwięk” – 11.11.2026).
+- Brzmienie dobrane do utworu (11.11.2026, Łukasz: „techniawka albo pop – nie klasyczny fortepian, tylko syntezator”):
+  7 brzmień, każde = program General MIDI dla keyboardu + synteza WebAudio na iPadzie (bez pobierania). Propozycja z tytułu/wykonawcy,
+  roku przeboju i instrumentów w pliku; wybór dla utworu w menu Opcje. Keyboard przełączamy też w trybach ćwiczenia (nie tylko w Pokazie),
+  żeby Łukasz grał tym brzmieniem; po wyjściu do biblioteki wraca fortepian.
 - Nowe hity: Lakh kończy się ok. 2010 r., BitMidi ma mało nowych piosenek. Jedyne znalezione źródło z CORS i nowymi przebojami to BiMMuDa –
   tylko top 5 z każdego roku i sama melodia, ale ręcznie spisana i łatwa do grania. Strony z dużą liczbą nowych MIDI (midishow, freemidi)
   nie mają CORS, a my nie mamy serwera.
@@ -224,7 +251,11 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
       czy nie ma opóźnień / zawieszonych nut przez Bluetooth, czy keyboard nie odsyła granych nut jako wciśniętych (fioletowe klawisze).
       Jeśli keyboard nie gra – włączyć „Dźwięk z iPada”.
       **Potwierdzone 11.11.2026: keyboard gra nuty z iPada**, ale nie fortepianem. Do sprawdzenia: czy keyboard przyjmuje Program Change
-      (Ustawienia → Pokaz → „Posłuchaj na keyboardzie”, różne brzmienia); jeśli nie – szukać komendy SysEx brzmienia w open-one-piano.
+      (Opcje → „Brzmienie utworu”: stuknięcie gra pasaż na keyboardzie; wpisy „BRZMIENIE keyboardu:” w dzienniku); jeśli nie – szukać komendy SysEx brzmienia w open-one-piano.
+- [ ] Sprawdzić brzmienia na iPadzie i keyboardzie: czy Program Change zmienia też brzmienie klawiszy, gdy Łukasz gra sam (nie tylko nuty z iPada);
+      czy programy 80/81 (syntezatory), 4, 6, 10, 19 brzmią sensownie na COLOR; jak brzmi synteza na iPadzie (głośność względem fortepianu);
+      czy propozycje trafiają na prawdziwych utworach (Darude, ABBA, Bach, kolędy, hity Billboard).
+- [ ] Pomysły do brzmień: więcej brzmień (gitara, smyczki, trąbka), ikona/nazwa brzmienia na karcie w bibliotece, propozycja brzmienia przy wynikach katalogu.
 - [ ] Pomysł do „Pokazu”: przycisk na karcie utworu w bibliotece („Posłuchaj na keyboardzie”), granie całej aranżacji
       (wszystkie ścieżki) niezależnie od wybranych rąk, perkusja na kanale 10.
 - [ ] Sprawdzić etap 3 na iPadzie: przewijanie siatki palcem, „Graj dalej” po zamknięciu i ponownym otwarciu Web MIDI Browser,
@@ -239,7 +270,6 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 - [ ] Sprawdzić na iPadzie, czy po poprawce odsłuch gra (wpis „DŹWIĘK:” w dzienniku) i czy wybór melodii trafia na prawdziwych plikach.
 - [ ] Sprawdzić na iPadzie fortepian: czas wczytywania (wpis „FORTEPIAN: gotowy … dekodowanie … ms”), głośność względem dawnego dźwięku,
       czy po zamknięciu Web MIDI Browser próbki zostają (wpis „z pamięci iPada”).
-- [ ] Pomysł: osobne brzmienia dla basu/smyczków/syntezatorów w odsłuchu (pobierane na żądanie, jak fortepian).
 - [ ] Zapamiętywać wybór ścieżek dla utworu (teraz po ponownym otwarciu wraca wybór automatyczny).
 - [ ] Sprawdzić na iPadzie, czy BitMidi nie blokuje pobierania wielu plików naraz (kolejka poziomów pobiera wszystkie wyniki).
 - [ ] Katalog: więcej bibliotek, jeśli znajdziemy takie z CORS (np. zbiory MIDI na GitHubie przez raw.githubusercontent.com).
@@ -251,6 +281,12 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
       bemole zamiast krzyżyków w tonacjach bemolowych, regulacja wysokości widoku / szybkości wodospadu.
 
 ## Dziennik zmian
+
+- 11.11.2026: **brzmienie dobrane do utworu** – 7 brzmień (fortepian, pianino elektryczne, syntezator pop, syntezator dance, organy, klawesyn, pozytywka);
+  aplikacja sama proponuje brzmienie (tytuł i wykonawca, rok przeboju, instrumenty, perkusja i tempo w pliku), a w menu Opcje można je zmienić
+  dla każdego utworu (gwiazdka = propozycja); keyboard przełącza się na brzmienie utworu (Program Change) przy otwarciu i Starcie, po wyjściu wraca fortepian;
+  iPad gra brzmienia syntezą; Ustawienia → „Brzmienie” (dopasowane / zawsze fortepian, przełączanie keyboardu, kto gra Pokaz) zamiast „Dźwięk z iPada” i „Pokaz”;
+  testy w `smoke_test.py` (`voice_tests`).
 
 - 11.11.2026: Pokaz: keyboard grał „dziwnym dźwiękiem” – przed Pokazem przełączamy jego brzmienie na fortepian (Bank Select + Program Change);
   w Ustawieniach wybór brzmienia Pokazu (fortepian, jasny fortepian, pianino elektryczne, klawesyn, organy, brzmienie z keyboardu,
