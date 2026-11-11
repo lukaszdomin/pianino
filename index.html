@@ -124,13 +124,29 @@ body.withView #now{display:none}
 .key.good{background:var(--ok)!important;color:#0d2a1b}
 .key.bad{background:var(--miss)!important;color:#2a1a00}
 #view{position:relative;height:24vh;min-height:120px}
-#view.staff{background:var(--bg)} #view.fall{background:#0b0c10;border-top:1px solid var(--line)}
+#view.staff{background:var(--bg)} #view.fall{background:var(--bg)}
+/* świecący filc nad zapalonymi klawiszami (linia trafienia) */
+#felt{position:absolute;left:0;right:0;top:-7px;height:7px;pointer-events:none;z-index:6}
+#felt i{position:absolute;top:0;bottom:0;margin:0 -7px;border-radius:3px;background:var(--led);box-shadow:0 0 22px 5px rgba(255,77,61,.8)}
+#felt i.ok{background:var(--ok);box-shadow:0 0 16px 3px rgba(95,211,154,.7)}
+/* wodospad: na całą wysokość nad klawiaturą; lista utworów jako wysuwany panel; odtwarzacz u góry wodospadu */
+.libbtn{display:none}
+body.fall .libbtn{display:flex;align-items:center;gap:6px;height:40px;padding:0 14px 0 10px;border-radius:999px;font-size:15px;flex:none;align-self:center}
+body.fall #main{flex:none}
+body.fall #player{padding-bottom:10px}
+body.fall #view{flex:1;height:auto;min-height:140px}
+body.fall.withView #kbd{height:25vh}
+body.fall aside{position:fixed;top:0;left:0;bottom:0;width:min(320px,86vw);z-index:22;transform:translateX(-105%);transition:transform .2s;box-shadow:0 0 50px rgba(0,0,0,.6)}
+body.fall.libOpen aside{transform:none}
+#view>.transport{top:12px;bottom:auto}
+body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół */
 #view[hidden]{display:none}
 #right>#view{flex:1 1 auto;height:auto;min-height:22vh}  /* pięciolinia zajmuje całe wolne miejsce pod przyciskami */
 #viewCv{position:absolute;inset:0;width:100%;height:100%;display:block}
 /* w poziomie z widokiem nut: niższa klawiatura i węższe pole „Zagraj”, żeby wszystko się zmieściło */
 @media (orientation:landscape){
   body.withView #kbd,body.withView #view{height:22vh}
+  body.fall.withView #view{height:auto}
 }
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,92vw);background:var(--panel);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .2s;z-index:20;overflow-y:auto;padding:18px}
 .drawer.open{transform:none}
@@ -207,7 +223,7 @@ body.withView #now{display:none}
 
   <div id="right">
   <section id="player">
-    <div class="ptop"><h2 id="songTitle">Wybierz utwór z listy</h2><span id="stats"></span></div>
+    <div class="ptop"><button id="libBtn" class="libbtn" type="button" aria-label="Lista utworów"><svg class="ico" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>Utwory</button><h2 id="songTitle">Wybierz utwór z listy</h2><span id="stats"></span></div>
     <div id="tracks"></div>
     <div id="posWrap"><input id="pos" type="range" min="0" max="1000" value="0" aria-label="Miejsce w utworze"><span id="posTxt">–</span></div>
 
@@ -944,11 +960,41 @@ const LEAD = 0.08;
 const ICO_PLAY = '<svg class="ico" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
 const ICO_PAUSE = '<svg class="ico" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
 function playUI(on) { const b = $('#playBtn'); b.innerHTML = on ? ICO_PAUSE : ICO_PLAY; b.setAttribute('aria-label', on ? 'Pauza' : 'Start'); b.title = on ? 'Pauza' : 'Start'; }
+/* Która ręka gra nutę (kolor paska w wodospadzie): 'L' lub 'R'.
+   1) nazwa ścieżki („Lewa ręka”, „Left”, „LH”, „Bass” → lewa; „Prawa”, „Right”, „RH” → prawa);
+   2) kilka ścieżek: ta o najwyższych dźwiękach – prawa, ścieżki ze średnią poniżej C4 – lewa
+      (gdy wszystkie są wysoko, najniższa to lewa – zwykle akordy);
+   3) jedna ścieżka z dźwiękami po obu stronach C4 (fortepian w jednej ścieżce) – podział na C4. */
+const HAND_L = /lewa|\bleft\b|\blh\b|\bbass\b|\bbas\b/i, HAND_R = /prawa|\bright\b|\brh\b/i;
+function hands(s, list) {
+  const by = new Map();
+  for (const n of list) { const t = by.get(n.track) || {sum: 0, cnt: 0, low: 0}; t.sum += n.m; t.cnt++; if (n.m < 60) t.low++; by.set(n.track, t); }
+  if (by.size <= 1) {
+    const [k, t] = [...by.entries()][0] || [0, {cnt: 0, low: 0}], name = s.tracks[k] || '';
+    if (HAND_L.test(name)) return () => 'L';
+    if (HAND_R.test(name) || !t.cnt) return () => 'R';
+    const f = t.low / t.cnt;
+    if (f >= 0.85) return () => 'L';
+    if (f <= 0.15) return () => 'R';
+    return n => n.m < 60 ? 'L' : 'R';
+  }
+  const avg = k => by.get(k).sum / by.get(k).cnt, keys = [...by.keys()];
+  const top = keys.reduce((a, b) => avg(b) > avg(a) ? b : a), low = keys.reduce((a, b) => avg(b) < avg(a) ? b : a);
+  const hand = new Map();
+  for (const k of keys) {
+    const name = s.tracks[k] || '';
+    hand.set(k, HAND_L.test(name) ? 'L' : HAND_R.test(name) ? 'R' : k === top ? 'R' : avg(k) < 60 ? 'L' : 'R');
+  }
+  if (![...hand.values()].includes('L') && !HAND_R.test(s.tracks[low] || '')) hand.set(low, 'L');
+  return n => hand.get(n.track) || 'R';
+}
 function prepare() {
   if (!song) return;
   ns = song.notes.filter(n => sel.has(n.track))
-    .map(n => ({start: n.start, end: n.end, m: mapNote(n.note)}))
-    .sort((a, b) => a.start - b.start || a.m - b.m);
+    .map(n => ({start: n.start, end: n.end, m: mapNote(n.note), track: n.track}));
+  const handOf = hands(song, ns);
+  ns.forEach(n => { n.h = handOf(n); });
+  ns.sort((a, b) => a.start - b.start || a.m - b.m);
   steps = [];
   for (const n of ns) {
     const L = steps[steps.length - 1];
@@ -1085,6 +1131,7 @@ function buildKbd() {
     el.style.left = (g.l * 100) + '%'; el.style.width = (g.w * 100) + '%';
     k.appendChild(el); keyEls.set(n, el);
   }
+  const f = document.createElement('div'); f.id = 'felt'; k.appendChild(f);
   renderKeys();
 }
 function renderKeys() {
@@ -1098,6 +1145,15 @@ function renderKeys() {
     el.classList.toggle('held', held.has(n));
     const label = (L || N) ? nnShort(n) : (pc(n) === 0 ? nn(n) : '');
     if (el.textContent !== label) el.textContent = label;
+  }
+  // filc świeci nad zapalonymi klawiszami (zielono, gdy już trafione)
+  const felt = $('#felt');
+  if (felt) {
+    const html = [...lit].filter(n => kGeom.has(n)).sort((a, b) => a - b).map(n => {
+      const g = kGeom.get(n), ok = hit.has(n) && S.mode === 'wait';
+      return `<i${ok ? ' class="ok"' : ''} style="left:${g.l * 100}%;width:${g.w * 100}%"></i>`;
+    }).join('');
+    if (felt.innerHTML !== html) felt.innerHTML = html;
   }
   drawView();
 }
@@ -1118,7 +1174,8 @@ const VIEW_SECS = 3;                 // wodospad: tyle sekund widać nad klawiat
 const DIA = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];  // nuta → numer litery (C=0 … H=6); czarne klawisze jako krzyżyki
 const dia = m => ({d: (Math.floor(m / 12) - 1) * 7 + DIA[pc(m)], sharp: isBlack(m)});
 const VC = {ink: '#f2ede3', line: 'rgba(242,237,227,.32)', past: 'rgba(242,237,227,.3)', now: '#ff4d3d', ok: '#5fd39a', bad: '#f5a524', held: '#8fb0ff'};
-const FC = {now: '#ff9f1c', ok: '#2ec27e', bad: '#f5a524', held: '#4f8cff'};  // wodospad (nowy wygląd w etapie 2)
+/* wodospad: lewa ręka jasnoniebieska, prawa kremowa (ciemniejsze odcienie na czarnych klawiszach), aktualne czerwone jak diody */
+const FC = {L: '#8fb0ff', Lb: '#6f8fe0', R: '#f2d7a0', Rb: '#d4b67c', now: '#ff4d3d', ok: '#5fd39a', bad: '#f5a524', held: '#8fb0ff'};
 const VIEW_FONT = '"Atkinson Hyperlegible",-apple-system,sans-serif';
 const STAFF_TOP = 60, STAFF_BOT = 86;  // miejsce na dużą nazwę nuty u góry i pływający odtwarzacz u dołu
 const vw = {pos: null, kind: '', raf: 0, ref: null, dmin: 0, dmax: 0, clef: null};
@@ -1127,9 +1184,13 @@ function renderView() {
   document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.view === S.view));
   const v = $('#view'); v.hidden = S.view === 'off'; v.className = S.view;
   // wodospad na całą szerokość (paski muszą trafiać w klawisze), pięciolinia tylko pod przyciskami – biblioteka zostaje wysoka
-  if (S.view === 'fall') { if (v.parentNode !== document.body) document.body.insertBefore(v, $('#kbd')); }
-  else if (v.parentNode !== $('#right')) $('#right').appendChild(v);
+  // w wodospadzie odtwarzacz wisi u góry wodospadu, a lista utworów chowa się do wysuwanego panelu
+  const tr = $('#transport');
+  if (S.view === 'fall') { if (v.parentNode !== document.body) document.body.insertBefore(v, $('#kbd')); if (tr.parentNode !== v) v.appendChild(tr); }
+  else { if (v.parentNode !== $('#right')) $('#right').appendChild(v); if (tr.parentNode !== $('#right')) $('#right').insertBefore(tr, $('#player').nextSibling); }
   document.body.classList.toggle('withView', S.view !== 'off');
+  document.body.classList.toggle('fall', S.view === 'fall');
+  if (S.view !== 'fall') document.body.classList.remove('libOpen');
   if ($('#optsSum')) renderOpts();
   vw.pos = null; drawView();
 }
@@ -1294,34 +1355,45 @@ function drawStaff({c, w, h}, pos) {
 function drawFall({c, w, h}, tRef) {
   const win = VIEW_SECS * (S.mode === 'tempo' ? S.speed / 100 : 1), pps = h / win;
   const yOf = t => h - (t - tRef) * pps;
-  // tory: linia przy każdym C i F, ciemniejsze tło pod czarnymi klawiszami
+  // tory: ciemniejsze pod czarnymi klawiszami, linia przy każdym C (i słabsza przy F)
   for (const [n, g] of kGeom) {
-    if (isBlack(n)) { c.fillStyle = '#07080b'; c.fillRect(g.l * w, 0, g.w * w, h); }
-    else if (pc(n) === 0 || pc(n) === 5) { c.fillStyle = pc(n) === 0 ? '#2a2e3a' : '#191c24'; c.fillRect(Math.round(g.l * w), 0, 1, h); }
+    if (isBlack(n)) { c.fillStyle = '#121016'; c.fillRect(g.l * w, 0, g.w * w, h); }
+    else if (pc(n) === 0 || pc(n) === 5) { c.fillStyle = pc(n) === 0 ? '#2a2430' : '#1e1a23'; c.fillRect(Math.round(g.l * w), 0, 1, h); }
   }
   if (!song) {
-    c.font = '15px -apple-system,sans-serif'; c.fillStyle = '#6b7183'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = '16px ' + VIEW_FONT; c.fillStyle = '#a79fb0'; c.textAlign = 'center'; c.textBaseline = 'middle';
     c.fillText('Wybierz utwór – nuty będą spadać na klawisze', w / 2, h / 2); return;
   }
   const exp = expected(), curStep = S.mode === 'wait' ? steps[stepIdx] : null;
   c.textAlign = 'center'; c.textBaseline = 'bottom';
+  const glowing = [];
+  const bar = (n, x, bw, yBot, bh, col, txt) => {
+    c.fillStyle = col; rrect(c, x, yBot - bh, bw, bh, Math.min(7, bw / 3)); c.fill();
+    if (bw >= 12 && Math.min(h, yBot) - Math.max(0, yBot - bh) >= 16) {
+      c.fillStyle = txt; c.font = 'bold ' + Math.min(12, bw * 0.55) + 'px ' + VIEW_FONT;
+      c.fillText(nnShort(n.m), x + bw / 2, Math.min(h, yBot) - 4);
+    }
+  };
   for (const n of ns) {
     if (n.start > tRef + win) break;
     if (n.end <= tRef - 0.02 && !(curStep && Math.abs(n.start - curStep.time) < 0.045)) continue;
     const g = kGeom.get(n.m); if (!g) continue;
-    const x = g.l * w + 1.5, bw = g.w * w - 3;
+    const x = g.l * w + 2, bw = g.w * w - 4;
     const yTop = yOf(n.end), yBot = yOf(n.start), bh = Math.max(6, yBot - yTop);
     const now = curStep ? Math.abs(n.start - curStep.time) < 0.045 : (n.start <= tRef && n.end > tRef && lit.has(n.m));
-    let col = isBlack(n.m) ? '#c9690c' : FC.now;
-    if (now) col = (S.mode === 'wait' ? hit.has(n.m) : held.has(n.m)) ? FC.ok : '#ffc266';
-    c.fillStyle = col; rrect(c, x, yBot - bh, bw, bh, Math.min(5, bw / 3)); c.fill();
-    if (now) { c.strokeStyle = '#fff'; c.lineWidth = 1.5; c.stroke(); }
-    if (bw >= 12 && Math.min(h, yBot) - Math.max(0, yBot - bh) >= 16) {
-      c.fillStyle = '#1a1200'; c.font = 'bold ' + Math.min(12, bw * 0.55) + 'px -apple-system,sans-serif';
-      c.fillText(nnShort(n.m), x + bw / 2, Math.min(h, yBot) - 3);
-    }
+    if (now) { glowing.push([n, x, bw, yBot, bh]); continue; }  // aktualne rysujemy na końcu, z poświatą
+    const blk = isBlack(n.m);
+    bar(n, x, bw, yBot, bh, n.h === 'L' ? (blk ? FC.Lb : FC.L) : (blk ? FC.Rb : FC.R), '#16131a');
   }
-  // wciśnięte klawisze: niebieski (dobrze) / czerwony (źle) pasek na dole toru
+  for (const [n, x, bw, yBot, bh] of glowing) {
+    const done = S.mode === 'wait' ? hit.has(n.m) : held.has(n.m), col = done ? FC.ok : FC.now;
+    c.save(); c.shadowColor = col; c.shadowBlur = 22; bar(n, x, bw, yBot, bh, col, done ? '#0d2a1b' : '#3a0a06'); c.restore();
+  }
+  // nuty wyłaniają się z ciemności u góry (tam wisi odtwarzacz)
+  const fade = Math.min(110, h * 0.25), gr = c.createLinearGradient(0, 0, 0, fade);
+  gr.addColorStop(0, 'rgba(22,19,26,1)'); gr.addColorStop(1, 'rgba(22,19,26,0)');
+  c.fillStyle = gr; c.fillRect(0, 0, w, fade);
+  // wciśnięte klawisze: zielony (dobrze) / bursztynowy (źle) / niebieski (bez nuty) pasek na dole toru
   for (const m of held) {
     const g = kGeom.get(m); if (!g) continue;
     c.fillStyle = wrongHeld.has(m) ? FC.bad : exp.has(m) ? FC.ok : FC.held; c.fillRect(g.l * w, h - 8, g.w * w, 8);
@@ -1435,6 +1507,7 @@ function selectSong(s) {
   sel = new Set(defaultTracks(s));
   if (s.melody >= 0) log('ŚCIEŻKI: wybrana melodia „' + s.tracks[s.melody] + '”' + (instName(s, s.melody) ? ' (' + instName(s, s.melody) + ')' : ''));
   $('#songTitle').textContent = s.title;
+  document.body.classList.remove('libOpen');
   renderTracks(); prepare(); renderLib();
 }
 function renderTracks() {
@@ -1799,7 +1872,7 @@ async function catDownload(it) {
   }
   delete cat.loading[it.src]; renderCatalog();
 }
-function openCatalog() { $('#catalog').classList.add('open'); renderCatalog(); if (!cat.q) setTimeout(() => $('#catQ').focus(), 50); }
+function openCatalog() { document.body.classList.remove('libOpen'); $('#catalog').classList.add('open'); renderCatalog(); if (!cat.q) setTimeout(() => $('#catQ').focus(), 50); }
 function closeCatalog() { pvStop(true); $('#catalog').classList.remove('open'); $('#catQ').blur(); }
 $('#openCatalog').onclick = openCatalog;
 $('#closeCatalog').onclick = closeCatalog;
@@ -1826,6 +1899,10 @@ function jump(delta) {
     if (playing) { t0 = performance.now() - t / (S.speed / 100) * 1000; seekAudio(t); } else { pauseT = t; refreshView(); }
   }
 }
+$('#libBtn').onclick = () => document.body.classList.toggle('libOpen');
+document.addEventListener('pointerdown', e => {
+  if (document.body.classList.contains('libOpen') && !e.target.closest('aside,#libBtn,#catalog')) document.body.classList.remove('libOpen');
+});
 $('#prevBtn').onclick = () => jump(-1);
 $('#nextBtn').onclick = () => jump(1);
 $('#pos').oninput = e => {
@@ -1855,11 +1932,11 @@ const optsOpen = () => !$('#opts').hidden;
 function openOpts() {
   const pop = $('#opts'), r = $('#optsBtn').getBoundingClientRect();
   pop.hidden = false;
-  // odtwarzacz jest na dole, więc menu otwiera się w górę
-  pop.style.top = 'auto';
-  pop.style.bottom = (window.innerHeight - r.top + 8) + 'px';
+  // odtwarzacz na dole (nuty) → menu w górę; odtwarzacz u góry wodospadu → w dół
+  const up = r.top >= 400 || r.top >= window.innerHeight - r.bottom;
   pop.style.right = Math.max(8, window.innerWidth - r.right - 6) + 'px';
-  pop.style.maxHeight = Math.max(160, r.top - 16) + 'px';
+  if (up) { pop.style.top = 'auto'; pop.style.bottom = (window.innerHeight - r.top + 8) + 'px'; pop.style.maxHeight = Math.max(160, r.top - 16) + 'px'; }
+  else { pop.style.bottom = 'auto'; pop.style.top = (r.bottom + 8) + 'px'; pop.style.maxHeight = Math.max(160, window.innerHeight - r.bottom - 16) + 'px'; }
   $('#optsBtn').setAttribute('aria-expanded', 'true');
 }
 function closeOpts() { $('#opts').hidden = true; $('#optsBtn').setAttribute('aria-expanded', 'false'); }

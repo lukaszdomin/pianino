@@ -92,7 +92,16 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     do pięciolinii (`clef()`), a gdy czcionka ich nie ma – litery G/F. Leży tylko w prawej kolumnie (`#right`), więc biblioteka zostaje wysoka.
     **Wodospad** `drawFall()`: paski z `ns` spadają na klawisze, 3 s nad klawiaturą (`VIEW_SECS`, skalowane tempem); na całą
     szerokość (element `#view` przenoszony przed `#kbd`), położenie klawiszy z `keyGeom()` – to samo co klawiatura na ekranie.
-    Kolory wodospadu (jeszcze stare, `FC`): przyszłe pomarańczowe, aktualne jasnopomarańczowe, trafione zielone, pomyłka bursztynowa.
+    Kolory wodospadu (`FC`): **lewa ręka jasnoniebieska, prawa kremowa** (ciemniejsze odcienie na czarnych klawiszach), aktualne
+    czerwone z poświatą (rysowane na końcu), trafione zielone, pomyłka bursztynowa; u góry wygaszanie do tła (pod odtwarzaczem).
+    Ręka nuty (`n.h` w `ns`, `'L'`/`'R'`) z `hands()`: nazwa ścieżki (`HAND_L` / `HAND_R`: lewa/left/LH/bass, prawa/right/RH),
+    przy kilku ścieżkach najwyższa = prawa, średnia < C4 = lewa (gdy wszystkie wysoko – najniższa lewa), jedna ścieżka z nutami
+    po obu stronach C4 (15–85% poniżej) – podział na C4; sama melodia – cała prawa.
+    **Układ wodospadu** (`body.fall`): wodospad na całą wysokość między tytułem a klawiaturą, odtwarzacz `#transport` przeniesiony
+    do `#view` (u góry wodospadu), menu Opcje otwiera się wtedy w dół (`openOpts()` wybiera kierunek), lewy panel to wysuwany
+    panel otwierany przyciskiem **„Utwory”** (`#libBtn`, klasa `libOpen`; chowa się po wyborze utworu, otwarciu katalogu i stuknięciu obok).
+    **Filc świeci** (`#felt` w `#kbd`, budowany w `buildKbd()`, odświeżany w `renderKeys()`) nad zapalonymi klawiszami – we wszystkich widokach,
+    na zielono po trafieniu.
     Kolory pięciolinii (`VC`, ciemna „scena”): przyszłe kość słoniowa (coraz bledsze), aktualne czerwone z poświatą (`VC.now` = `--led`)
     i **duża nazwa nuty nad kolumną** (zastępuje pole „Zagraj”), trafione zielone, pomyłka bursztynowa, minione przygaszone.
     Pięciolinia zostawia miejsce na nazwę u góry i na pływający odtwarzacz u dołu (`STAFF_TOP` / `STAFF_BOT`).
@@ -185,12 +194,12 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 ## Do zrobienia / pomysły
 
 (Łukasz decyduje o kolejności. Claude dopisuje tu pomysły, które padną w rozmowie.)
-- [ ] **Nowy wygląd, etap 2:** wodospad w stylu „Sceny” – lewa ręka jasnoniebieska, prawa kremowa, aktualne paski czerwone ze świeceniem,
-      filcowy pasek jako linia trafienia (świeci tam, gdzie spada nuta), wygaszanie u góry, odtwarzacz nad wodospadem (u góry, nie zasłania nut).
-      Wodospad na całą wysokość nad klawiaturą. Makieta „A + C. Scena z wodospadem”.
 - [ ] **Nowy wygląd, etap 3:** osobny ekran biblioteki (karty z miniaturą melodii, poziom kreskami, „Graj dalej”, jedna wyszukiwarka
       dla własnych utworów i katalogu); na ekranie grania zamiast lewego panelu przycisk „‹ Biblioteka”. Makieta „A. Scena – biblioteka”.
+      Wysuwany panel „Utwory” z wodospadu (etap 2) zastąpić wtedy powrotem do biblioteki.
       Przy okazji: emoji w katalogu i ustawieniach na ikony, napisy wielkimi literami („MOJE UTWORY”) na zwykłe.
+- [ ] Sprawdzić etap 2 na iPadzie: czy kolory rąk trafiają na prawdziwych plikach (fortepian w jednej ścieżce, piosenki z Lakh),
+      czy wodospad jest płynny na całej wysokości, wysuwany panel „Utwory” palcem.
 - [ ] Sprawdzić etap 1 na iPadzie: czy czcionki z Google Fonts się wczytują w Web MIDI Browser, czytelność dużej nazwy nuty z pulpitu,
       czy pływający odtwarzacz nie zasłania nut w pionie i w poziomie.
 - [ ] Poziom liczony też dla pojedynczej ścieżki (np. sama melodia z piosenki z BitMidi). (Filtr poziomu w „Moje utwory” już jest – na razie po poziomie całego pliku).
@@ -212,8 +221,13 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 
 ## Dziennik zmian
 
+- 11.11.2026: nowy wygląd „Scena”, etap 2 – wodospad: kolory rąk (lewa jasnoniebieska, prawa kremowa, `hands()`), aktualne paski czerwone
+  ze świeceniem, wygaszanie u góry, wodospad na całą wysokość, odtwarzacz u góry wodospadu, lista utworów jako wysuwany panel „Utwory”,
+  świecący filc nad zapalonymi klawiszami; testy rąk i układu wodospadu w `smoke_test.py`.
+
 - 11.11.2026: nowe źródło w katalogu **Hity (Billboard)** – melodie 5 największych przebojów każdego roku 1950–2024 z BiMMuDa
   (`bimmuda.json`, `tools/bimmuda_index.py`); podpowiedzi „Nowe hity” (Ed Sheeran, Justin Bieber, Taylor Swift…); testy w `smoke_test.py`.
+
 - 11.11.2026: nowy wygląd „Scena”, etap 1 – ekran grania: kolory lakieru pianina, czcionki Bricolage Grotesque + Atkinson Hyperlegible,
   ikony SVG zamiast emoji, ciemna pięciolinia z czerwoną aktualną nutą i dużą nazwą nuty (zamiast pola „Zagraj”), pływający odtwarzacz,
   klawiatura z głębią i filcowym paskiem, pomyłki na bursztynowo; testy odtwarzacza i nowych kolorów w `smoke_test.py`.

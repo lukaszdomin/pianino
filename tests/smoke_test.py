@@ -181,8 +181,8 @@ COUNT_PX = """([r, g, b]) => {
     if (d[i + 3] > 200 && Math.abs(d[i] - r) < 12 && Math.abs(d[i + 1] - g) < 12 && Math.abs(d[i + 2] - b) < 12) n++;
   return n;
 }"""
-# LED – aktualna nuta na pięciolinii (czerwona jak diody), MISS – pomyłka (bursztynowa), LIGHT_ORANGE – aktualna nuta w wodospadzie
-LED, LIGHT_ORANGE, MISS, GREEN = [255, 77, 61], [255, 194, 102], [245, 165, 36], [46, 194, 126]
+# LED – aktualna nuta (czerwona jak diody), MISS – pomyłka (bursztynowa), CREAM / SKY – prawa / lewa ręka w wodospadzie
+LED, MISS, CREAM, SKY = [255, 77, 61], [245, 165, 36], [242, 215, 160], [143, 176, 255]
 
 
 async def opt(page, selector):
@@ -190,6 +190,26 @@ async def opt(page, selector):
     if await page.evaluate("document.querySelector('#opts').hidden"):
         await page.click('#optsBtn')
     await page.click(selector)
+
+
+async def hands_tests(page, check):
+    """Podział nut na ręce (kolory w wodospadzie): nazwy ścieżek, średnia wysokość, jedna ścieżka na obie ręce."""
+    r = await page.evaluate("""() => {
+      const run = (tracks, notes) => { const s = {tracks}, f = hands(s, notes); return notes.map(n => f(n)).join(''); };
+      const gama = BUILTIN.find(b => b.title.startsWith('Gama')), list = gama.notes.map(n => ({m: n.note, track: n.track}));
+      const f = hands(gama, list);
+      return {
+        gama: list.every(n => f(n) === (n.track === 1 ? 'L' : 'R')),
+        twoUnnamed: run(['Track 1', 'Track 2'], [{m: 72, track: 0}, {m: 76, track: 0}, {m: 45, track: 1}, {m: 48, track: 1}]),
+        bothHigh: run(['Melody', 'Chords'], [{m: 76, track: 0}, {m: 79, track: 0}, {m: 62, track: 1}, {m: 64, track: 1}]),
+        onePiano: run(['Piano'], [{m: 48, track: 0}, {m: 52, track: 0}, {m: 72, track: 0}, {m: 76, track: 0}]),
+        melody: run(['Lead'], [{m: 67, track: 0}, {m: 71, track: 0}, {m: 59, track: 0}, {m: 72, track: 0}, {m: 74, track: 0}, {m: 76, track: 0}, {m: 77, track: 0}]),
+      }; }""")
+    check(r['gama'], 'ręce: „Prawa ręka” / „Lewa ręka” z nazw ścieżek')
+    check(r['twoUnnamed'] == 'RRLL', 'ręce: dwie ścieżki bez nazw – niższa to lewa ' + r['twoUnnamed'])
+    check(r['bothHigh'] == 'RRLL', 'ręce: obie ścieżki wysoko – niższa (akordy) to lewa ' + r['bothHigh'])
+    check(r['onePiano'] == 'LLRR', 'ręce: jedna ścieżka na obie ręce – podział na C4 ' + r['onePiano'])
+    check(r['melody'] == 'RRRRRRR', 'ręce: sama melodia – cała prawą ręką ' + r['melody'])
 
 
 async def options_menu_tests(page, check):
@@ -245,11 +265,25 @@ async def view_tests(page, check):
     await page.wait_for_timeout(200)
     check(await page.evaluate("JSON.parse(localStorage.getItem('sk_settings')).view") == 'fall', 'wybór widoku zapamiętany')
     check(await page.evaluate("document.querySelector('#view').className") == 'fall', 'wodospad włączony')
-    check(await px(LIGHT_ORANGE) > 30, 'wodospad: nuta do zagrania przy klawiaturze')
+    check(await px(LED) > 30, 'wodospad: nuta do zagrania przy klawiaturze na czerwono')
+    check(await px(CREAM) > 30 and await px(SKY) == 0, 'wodospad: melodia (prawa ręka) kremowa, bez lewej ręki')
+    lay = await page.evaluate("""() => { const t = document.querySelector('#transport'), v = document.querySelector('#view').getBoundingClientRect(),
+        a = document.querySelector('aside').getBoundingClientRect(), k = document.querySelector('#kbd').getBoundingClientRect();
+        return {inView: t.parentNode.id === 'view', top: t.getBoundingClientRect().top - v.top, asideHidden: a.right <= 0,
+                tall: v.height / (k.top - document.querySelector('header').getBoundingClientRect().bottom)}; }""")
+    check(lay['inView'] and lay['top'] < 30 and lay['asideHidden'] and lay['tall'] > 0.55,
+          'wodospad: odtwarzacz u góry wodospadu, lista utworów schowana, wodospad zajmuje większość ekranu ' + str(lay))
+    await page.click('#libBtn')
+    await page.wait_for_timeout(300)
+    check(await page.evaluate("document.querySelector('aside').getBoundingClientRect().left >= 0"), 'wodospad: „Utwory” wysuwa listę utworów')
+    await page.mouse.click(900, 400)
+    await page.wait_for_timeout(300)
+    check(await page.evaluate("document.querySelector('aside').getBoundingClientRect().right <= 0"), 'stuknięcie obok chowa listę utworów')
+    check(await page.evaluate("document.querySelectorAll('#felt i').length") >= 1, 'filc świeci nad zapalonym klawiszem')
     n0 = (await page.evaluate('steps[stepIdx].notes'))[0]
     check(await page.evaluate(f"""(() => {{ const g = kGeom.get({n0}), cv = document.querySelector('#viewCv');
         const x = Math.round((g.l + g.w / 2) * cv.width), d = cv.getContext('2d').getImageData(x, cv.height - 12, 1, 1).data;
-        return d[0] > 240 && d[1] > 180 && d[2] > 80; }})()"""), 'wodospad: pasek stoi nad właściwym klawiszem')
+        return d[0] > 230 && d[1] < 130 && d[2] < 110; }})()"""), 'wodospad: pasek stoi nad właściwym klawiszem')
     await page.evaluate('__in.fire([0x90,37,90])')
     await page.wait_for_timeout(50)
     check(await px(MISS) > 10, 'wodospad: pomyłka zaznaczona na dole toru')
@@ -370,6 +404,7 @@ async def main():
         await page.evaluate('__in.fire([0x90,61,90])')
         check('Pomyłki 1' in await page.text_content('#stats'), 'liczy pomyłkę')
 
+        await hands_tests(page, check)
         await view_tests(page, check)
         await options_menu_tests(page, check)
 
