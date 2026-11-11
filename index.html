@@ -314,13 +314,14 @@ function fromB64(s) { const bin = atob(s), b = new Uint8Array(bin.length); for (
 
 /* ---------------- MIDI / światła ---------------- */
 let access = null, out = null, inp = null, outsList = [], insList = [];
-const D = {api: !!navigator.requestMIDIAccess, sysex: '?', err: '', last: '–'};
+const D = {api: !!navigator.requestMIDIAccess, sysex: '?', err: '', last: '–', rx: 0, tx: 0, txErr: ''};
 function diag() {
   const el = $('#diag'); if (!el) return;
   el.innerHTML =
     `Web MIDI: <b>${D.api ? 'tak' : 'NIE'}</b> · dostęp: <b>${access ? 'tak' : 'nie'}</b> · SysEx: <b>${D.sysex}</b><br>` +
     `Wyjścia (${outsList.length}): ${esc(outsList.map(p => p.name || p.id).join(', ') || '–')}<br>` +
     `Wejścia (${insList.length}): ${esc(insList.map(p => p.name || p.id).join(', ') || '–')}<br>` +
+    `Odebrano z keyboardu: <b>${D.rx}</b> · wysłano do keyboardu: <b>${D.tx}</b>` + (D.txErr ? ` <span style="color:var(--bad)">(błąd wysyłania: ${esc(D.txErr)})</span>` : '') + `<br>` +
     `Ostatnia wiadomość z keyboardu: ${esc(D.last)}` + (D.err ? `<br><span style="color:var(--bad)">Błąd: ${esc(D.err)}</span>` : '');
 }
 window.addEventListener('error', e => { D.err = (e.message || 'błąd') + (e.lineno ? ' (linia ' + e.lineno + ')' : ''); diag(); });
@@ -381,10 +382,14 @@ async function reconnect() {
 }
 function setOutput(o) { out = o; updateStatus(); }
 function setInput(i) {
-  if (inp && inp !== i) try { inp.onmidimessage = null; } catch (e) {}
+  if (inp && inp !== i) {
+    try { inp.onmidimessage = null; } catch (e) {}
+    try { if (inp.removeEventListener) inp.removeEventListener('midimessage', onMidi); } catch (e) {}
+  }
   inp = i;
   if (inp) {
     try { inp.onmidimessage = onMidi; } catch (e) {}
+    try { if (inp.addEventListener) inp.addEventListener('midimessage', onMidi); } catch (e) {}
     try { if (typeof inp.open === 'function') { const r = inp.open(); if (r && r.catch) r.catch(() => {}); } } catch (e) {}
   }
   updateStatus();
@@ -394,14 +399,20 @@ function updateStatus() {
   else if (access) setStatus('○ Brak keyboardu – dotknij, by połączyć', '');
 }
 function setStatus(txt, cls) { const s = $('#status'); s.textContent = txt; s.className = cls || ''; }
+let lastEvt = null, lastKey = '', lastAt = 0;
 function onMidi(e) {
   const data = e && e.data ? e.data : e; if (!data || data.length === undefined) return;
+  // to samo zdarzenie może przyjść dwa razy (onmidimessage + addEventListener)
+  if (e === lastEvt) return;
+  const key = (e && (e.timeStamp || e.receivedTime) || 0) + ':' + Array.from(data).join(','), now = performance.now();
+  if (key === lastKey && now - lastAt < 5) return;
+  lastEvt = e; lastKey = key; lastAt = now; D.rx++;
   const st = data[0], a = data[1], b = data[2]; const hi = st & 0xF0;
   if (st !== 0xFE && st !== 0xF8) { D.last = Array.from(data).slice(0, 6).map(x => x.toString(16).padStart(2, '0')).join(' ') + (hi === 0x90 && b > 0 ? ' (' + nn(a) + ')' : ''); if ($('#settings').classList.contains('open')) diag(); }
   if (hi === 0x90 && b > 0) noteOn(a, false);
   else if (hi === 0x80 || (hi === 0x90 && b === 0)) noteOff(a);
 }
-function sendRaw(bytes) { if (!out) return; try { out.send(bytes); } catch (e) {} }
+function sendRaw(bytes) { if (!out) return; try { out.send(bytes); D.tx++; } catch (e) { D.txErr = e.message || String(e); } if ($('#settings').classList.contains('open')) diag(); }
 function light(n, c) { const idx = n + S.offset - 21; if (idx < 0 || idx > 127) return; sendRaw([0xA2, idx, c]); }
 function allOff() {
   if (access && access.sysexEnabled) sendRaw([0xF0, 0x00, 0x20, 0x2B, 0x69, 0x16, 0x02, 0x00, 0xF7]);
