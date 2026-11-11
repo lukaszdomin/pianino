@@ -167,7 +167,7 @@ body.withView #now{display:none}
 .cat button.pv{min-width:0}
 .cat button.pv.on{border-color:var(--accent);color:var(--accent)}
 .badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);margin-right:6px;color:var(--text)}
-.badge.commons{border-color:#3d6fd1;color:#8fb2ff} .badge.bitmidi{border-color:#8a5cd6;color:#c3a6ff} .badge.lakh{border-color:#d1813d;color:#ffbf8f}
+.badge.commons{border-color:#3d6fd1;color:#8fb2ff} .badge.bitmidi{border-color:#8a5cd6;color:#c3a6ff} .badge.lakh{border-color:#d1813d;color:#ffbf8f} .badge.billboard{border-color:#2f9e6e;color:#8fe0b9}
 #catMsg{color:var(--muted);font-size:14px;padding:14px 10px;text-align:center}
 .lvl{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);margin-right:6px;color:var(--muted);white-space:nowrap}
 .lvl.l1{border-color:#2ec27e;color:#7fe0ad} .lvl.l2{border-color:#e0b100;color:#ffd84d} .lvl.l3{border-color:#e5484d;color:#ff8f92}
@@ -313,7 +313,7 @@ body.withView #now{display:none}
   <div class="top">
     <h2>🔎 Katalog utworów <button id="closeCatalog">✕</button></h2>
     <form id="catForm" autocomplete="off">
-      <input id="catQ" type="search" placeholder="Tytuł albo wykonawca, np. Chopin, ABBA, Better Off Alone" enterkeyhint="search">
+      <input id="catQ" type="search" placeholder="Tytuł albo wykonawca, np. Chopin, ABBA, Ed Sheeran" enterkeyhint="search">
       <button class="primary" type="submit">Szukaj</button>
     </form>
     <div class="row" style="gap:10px">
@@ -322,6 +322,7 @@ body.withView #now{display:none}
         <button type="button" data-src="commons">Wikimedia</button>
         <button type="button" data-src="bitmidi">BitMidi</button>
         <button type="button" data-src="lakh">Lakh (pop)</button>
+        <button type="button" data-src="billboard">Hity (Billboard)</button>
       </div>
       <div class="seg" id="catLvlSeg">
         <button type="button" data-lvl="0">Każdy poziom</button>
@@ -1350,15 +1351,15 @@ function levelOldSongs() {
    Wiersz ma dwie linie: tytuł (do 2 linii) oraz wykonawca · poziom · źródło.
    Usuwanie tylko w trybie „Edytuj”, żeby nie skasować utworu przypadkowym stuknięciem. */
 const LIB_TOOLS_MIN = 10;          // od tylu utworów pokazujemy wyszukiwanie i filtr poziomu
-const LIB_SRC = {commons: 'Wikimedia', bitmidi: 'BitMidi', lakh: 'Lakh'};
+const LIB_SRC = {commons: 'Wikimedia', bitmidi: 'BitMidi', lakh: 'Lakh', billboard: 'Billboard'};
 let libEditing = false;
 // (catClean zamienia pusty tekst na „bez tytułu”, więc pusty sprawdzamy osobno)
 const libNorm = s => { s = String(s).trim(); return s ? catNorm(s.replace(/ł/g, 'l').replace(/Ł/g, 'L')) : ''; };
-// Lakh zapisuje tytuł jako „Wykonawca – Tytuł”: wykonawcę przenosimy do drugiej linii.
+// Lakh i Billboard zapisują tytuł jako „Wykonawca – Tytuł”: wykonawcę przenosimy do drugiej linii.
 function songParts(u) {
   const srcName = u.src ? LIB_SRC[u.src.split(':')[0]] || '' : 'własny plik';
   let title = u.title, artist = '';
-  if (u.src && u.src.startsWith('lakh:')) {
+  if (u.src && /^(lakh|billboard):/.test(u.src)) {
     const k = title.indexOf(' – ');
     if (k > 0) { artist = title.slice(0, k); title = title.slice(k + 3); }
   }
@@ -1461,12 +1462,14 @@ function renderTracks() {
 }
 
 /* ---------------- katalog utworów z internetu ----------------
-   Dwie biblioteki, które pozwalają na pobieranie prosto z przeglądarki (CORS):
+   Biblioteki, które pozwalają na pobieranie prosto z przeglądarki (CORS):
    - Wikimedia Commons: pliki na wolnych licencjach, głównie klasyka i muzyka ludowa;
-   - BitMidi: ponad 100 tys. plików wgranych przez użytkowników, także muzyka rozrywkowa. */
-const CAT_NAMES = {commons: 'Wikimedia', bitmidi: 'BitMidi', lakh: 'Lakh'};
+   - BitMidi: ponad 100 tys. plików wgranych przez użytkowników, także muzyka rozrywkowa;
+   - Lakh MIDI (pop do ok. 2010) i Billboard (melodie hitów 1950–2024): spisy u nas, pliki z GitHuba. */
+const CAT_NAMES = {commons: 'Wikimedia', bitmidi: 'BitMidi', lakh: 'Lakh', billboard: 'Billboard'};
 const CAT_SUGG = [
   ['Klasyka', ['Für Elise', 'Chopin', 'Mozart', 'Bach', 'Satie', 'Canon in D', 'Turkish March']],
+  ['Nowe hity', ['Ed Sheeran', 'Justin Bieber', 'Taylor Swift', 'The Weeknd', 'Dua Lipa', 'Bruno Mars', 'Harry Styles', 'Billie Eilish']],
   ['Pop i rock', ['ABBA', 'Queen', 'Beatles', 'Michael Jackson', 'Madonna', 'Elton John', 'Coldplay']],
   ['Dance i techno', ['Better Off Alone', 'Eiffel 65', 'Darude', '2 Unlimited', 'Haddaway', 'Daft Punk', 'Jean Michel Jarre']],
   ['Święta i dla dzieci', ['Jingle Bells', 'Silent Night', 'Twinkle']]
@@ -1544,8 +1547,9 @@ function lakhItem(e) {
           url: 'https://raw.githubusercontent.com/' + d.repo + '/' + d.sha + '/' + path,
           info: 'https://github.com/' + d.repo + '/blob/' + d.sha + '/' + path};
 }
-async function catLakh(q, page) {
-  const list = await lakhLoad(), nq = lakhNorm(q), words = nq.split(' ').filter(Boolean);
+// Szukanie w spisie trzymanym u nas (Lakh, Billboard): wszystkie słowa zapytania muszą wystąpić w wykonawcy lub tytule.
+function idxFind(list, q, page, size, toItem) {
+  const nq = lakhNorm(q), words = nq.split(' ').filter(Boolean);
   if (!words.length) return {items: [], next: null};
   const hits = [];
   for (const e of list) {
@@ -1555,11 +1559,39 @@ async function catLakh(q, page) {
     const rank = e.nt === nq ? 0 : e.na === nq || e.na === 'the ' + nq ? 1 : e.nt.startsWith(nq) ? 2 : 3;
     hits.push({e, rank});
   }
-  hits.sort((x, y) => x.rank - y.rank || x.e.na.localeCompare(y.e.na) || x.e.nt.localeCompare(y.e.nt) || x.e.ver - y.e.ver);
-  const items = hits.slice(page * LAKH_PAGE, (page + 1) * LAKH_PAGE).map(h => lakhItem(h.e));
-  return {items, next: (page + 1) * LAKH_PAGE < hits.length ? page + 1 : null};
+  hits.sort((x, y) => x.rank - y.rank || (x.e.sort || 0) - (y.e.sort || 0) || x.e.na.localeCompare(y.e.na) || x.e.nt.localeCompare(y.e.nt) || (x.e.ver || 0) - (y.e.ver || 0));
+  const items = hits.slice(page * size, (page + 1) * size).map(h => toItem(h.e));
+  return {items, next: (page + 1) * size < hits.length ? page + 1 : null};
 }
-const CAT_FN = {commons: catCommons, bitmidi: catBitmidi, lakh: catLakh};
+async function catLakh(q, page) {
+  return idxFind(await lakhLoad(), q, page, LAKH_PAGE, lakhItem);
+}
+/* Billboard Melodic Music Dataset (BiMMuDa, M. Hamilton i in., 2024): ręcznie spisane główne melodie
+   5 największych singli z rocznej listy Billboard Hot 100, 1950–2024 (Ed Sheeran, Justin Bieber, The Weeknd…).
+   Każdy plik to sama melodia (jedna ręka), więc dobrze nadaje się do nauki. Spis w bimmuda.json
+   (buduje go tools/bimmuda_index.py), pliki z raw.githubusercontent.com, adresem przypiętym do commita. */
+const bb = {data: null, list: null, loading: null};
+function bbLoad() {
+  if (bb.list) return Promise.resolve(bb.list);
+  if (!bb.loading) bb.loading = catFetch('bimmuda.json').then(d => {
+    // najnowsze hity najpierw (przy tym samym dopasowaniu)
+    const list = d.s.map(([t, a, year, path]) => ({t, a, year, path, sort: -year, na: lakhNorm(a), nt: lakhNorm(t)}));
+    bb.data = d; bb.list = list;
+    log('KATALOG: spis Billboard – ' + list.length + ' hitów');
+    return list;
+  }).catch(e => { bb.loading = null; throw e; });
+  return bb.loading;
+}
+function bbItem(e) {
+  const d = bb.data, path = 'bimmuda_dataset/' + e.path;
+  return {src: 'billboard:' + e.path, source: 'billboard', title: e.a + ' – ' + e.t, year: e.year, melodyOnly: true,
+          url: 'https://raw.githubusercontent.com/' + d.repo + '/' + d.sha + '/' + path,
+          info: 'https://github.com/' + d.repo + '/blob/' + d.sha + '/' + path};
+}
+async function catBillboard(q, page) {
+  return idxFind(await bbLoad(), q, page, LAKH_PAGE, bbItem);
+}
+const CAT_FN = {billboard: catBillboard, commons: catCommons, bitmidi: catBitmidi, lakh: catLakh};
 
 /* Poziom trudności wyników: pliki pobieramy w tle (po 3 naraz), liczymy poziom
    i zapamiętujemy go w localStorage (sk_levels), żeby kolejne wyszukiwania były od razu.
@@ -1659,7 +1691,7 @@ async function catSearch(more) {
   const q = cat.q.trim();
   if (!q) { cat.items = []; cat.next = {}; cat.msg = ''; renderCatalog(); return; }
   const seq = more ? cat.seq : ++cat.seq;
-  if (!more) { pvStop(true); cat.items = []; cat.next = {commons: 0, bitmidi: 0, lakh: 0}; catA.queue = []; }
+  if (!more) { pvStop(true); cat.items = []; cat.next = {billboard: 0, commons: 0, bitmidi: 0, lakh: 0}; catA.queue = []; }
   const srcs = Object.keys(CAT_FN).filter(s => (cat.src === 'all' || cat.src === s) && cat.next[s] != null);
   if (!srcs.length) return;
   cat.busy = true; cat.msg = ''; renderCatalog();
@@ -1685,6 +1717,8 @@ function catMeta(it) {
   const badges = (l ? lvlBadge(l) : '<span class="lvl">' + (l === 0 ? 'poziom ?' : '⏳ poziom…') + '</span>') +
     '<span class="badge ' + it.source + '">' + CAT_NAMES[it.source] + '</span>';
   const m = [], dur = it.dur || (r && r.d);
+  if (it.year) m.push('hit ' + it.year);
+  if (it.melodyOnly) m.push('sama melodia');
   if (dur) m.push(fmtTime(dur));
   if (it.size) m.push(Math.max(1, Math.round(it.size / 1024)) + ' KB');
   if (it.plays) m.push(it.plays.toLocaleString('pl-PL') + ' odtworzeń');
@@ -1730,7 +1764,8 @@ function renderCatalog() {
   if (cat.busy) msg.textContent = 'Szukam…';
   else if (!cat.q.trim()) msg.innerHTML = 'Wpisz tytuł albo kompozytora i naciśnij „Szukaj”, albo wybierz podpowiedź powyżej.<br><br>' +
     '<b>Wikimedia Commons</b> – pliki na wolnych licencjach, głównie muzyka klasyczna.<br><b>BitMidi</b> – ponad 100 tys. plików wgranych przez internautów, także piosenki (licencje nie zawsze są jasne – do własnej nauki).' +
-    '<br><b>Lakh</b> – ok. 17 tys. piosenek pop, rock i dance (ABBA, Queen, Beatles, 2 Unlimited…) z <a href="https://colinraffel.com/projects/lmd/" target="_blank" rel="noopener">Lakh MIDI Dataset</a> Colina Raffela (CC-BY 4.0); pliki zebrane z internetu – do własnej nauki. Szukaj po wykonawcy albo tytule po angielsku.' +
+    '<br><b>Lakh</b> – ok. 17 tys. piosenek pop, rock i dance (ABBA, Queen, Beatles, 2 Unlimited…) z <a href="https://colinraffel.com/projects/lmd/" target="_blank" rel="noopener">Lakh MIDI Dataset</a> Colina Raffela (CC-BY 4.0); pliki zebrane z internetu – do własnej nauki. Szukaj po wykonawcy albo tytule po angielsku. Najnowsze piosenki są tu z ok. 2010 roku.' +
+    '<br><b>Hity (Billboard)</b> – melodie 5 największych przebojów każdego roku 1950–2024 (Ed Sheeran, Justin Bieber, The Weeknd, Dua Lipa, Taylor Swift…) z <a href="https://github.com/madelinehamilton/BiMMuDa" target="_blank" rel="noopener">Billboard Melodic Music Dataset</a>. To sama melodia na jedną rękę, bez akompaniamentu – zwykle łatwa.' +
     '<br><br>Przy każdym wyniku jest <b>🔊 Posłuchaj</b> – zagra początek utworu (melodię głośniej) bez pobierania. Jeśli nic nie słychać, podgłośnij iPada przyciskami głośności; gdy dalej cisza – Ustawienia → „Kopiuj dziennik”.';
   else if (pending) msg.textContent = 'Sprawdzam poziom trudności… (zostało ' + pending + ')';
   else if (!shown.length && !cat.msg) msg.textContent = !cat.items.length ? 'Nic nie znaleziono. Spróbuj innej pisowni albo nazwy po angielsku.' :

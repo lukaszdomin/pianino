@@ -44,11 +44,13 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
 
 - Cała aplikacja to **jeden plik `index.html`**: HTML + CSS + JS, bez budowania i bez zewnętrznych bibliotek.
 - `lakh.json` – spis piosenek z Lakh MIDI (wykonawca → tytuły, ~375 KB) dla katalogu. Budowany skryptem `tools/lakh_index.py`.
+- `bimmuda.json` – spis hitów z Billboard Melodic Music Dataset (`[tytuł, wykonawca, rok, ścieżka]`, 375 utworów, 25 KB).
+  Budowany skryptem `tools/bimmuda_index.py` z metadanych CSV repozytorium (duplikaty, np. Blinding Lights 2020/2021, usunięte).
 - `swiecace-klawisze.html` przekierowuje do `./` (stary adres z zakładek).
 - Hosting: **GitHub Pages** z gałęzi `main`, folder główny. Adres: https://lukaszdomin.github.io/pianino/
   Każdy push na `main` publikuje się w 1–2 minuty.
 - Dane użytkownika (pobrane pliki MIDI jako base64, ustawienia) trzymamy w `localStorage` (`sk_songs`, `sk_settings`).
-  Utwory z katalogu mają dodatkowe pole `src` (np. `commons:6596429`, `bitmidi:27978`), po którym poznajemy, że już je mamy.
+  Utwory z katalogu mają dodatkowe pole `src` (np. `commons:6596429`, `bitmidi:27978`, `billboard:2017/1/2017_01_full.mid`), po którym poznajemy, że już je mamy.
   Każdy utwór ma pole `lvl` (1 łatwe, 2 średnie, 3 trudne, 0 nieznany). Poziomy wyników katalogu są zapamiętane w `sk_levels` (`src` → `{l, d}`).
 - Główne części `index.html`:
   - wbudowane utwory: `makeSong()` + tablica `BUILTIN` (notacja `C4:1 D#4:0.5 R:2`, akordy przez `+`);
@@ -59,8 +61,10 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     Sprawdzone na plikach z Lakh: ABBA, Haddaway, Madonna, Toto, Darude, Daft Punk, Corona, 2 Unlimited, Eiffel 65. Nazwy instrumentów: tablica `GM`;
   - MIDI i światła: `initMidi()`, `refreshPorts()`, `portList()`, `light()`, `setLit()`, `allOff()`;
   - odtwarzacz: `prepare()` buduje `ns` (nuty) i `steps` (grupy nut), tryby `wait` i `tempo`;
-  - katalog utworów z internetu: obiekt `cat`, `catSearch()`, `catCommons()`, `catBitmidi()`, `catLakh()`, `catDownload()`, `renderCatalog()`;
-    podpowiedzi `CAT_SUGG` w grupach (Klasyka, Pop i rock, Dance i techno, Święta i dla dzieci);
+  - katalog utworów z internetu: obiekt `cat`, `catSearch()`, `catCommons()`, `catBitmidi()`, `catLakh()`, `catBillboard()`, `catDownload()`, `renderCatalog()`;
+    spisy trzymane u nas (Lakh, Billboard) przeszukuje wspólne `idxFind()` (Billboard: przy równym dopasowaniu najnowsze najpierw);
+    kolejność źródeł w „Wszystkie” = kolejność kluczy `CAT_FN` (Billboard pierwszy); przy wynikach Billboard „hit 2017 · sama melodia”;
+    podpowiedzi `CAT_SUGG` w grupach (Klasyka, Nowe hity, Pop i rock, Dance i techno, Święta i dla dzieci);
   - odsłuch w katalogu: `catPreview()` / `pvTick()` / `pvStop()` – plik tylko w pamięci (`catA.buf`, więc „Pobierz” go nie ściąga drugi raz),
     pierwsze 30 s, melodia głośniej, tło max 6 dźwięków naraz, nuty planowane co 100 ms na 0,4 s do przodu; `tone()` przyjmuje czas, głośność i wyjście;
   - poziom trudności: `songLevel()` (punkty za tempo, akordy, rozpiętość, czarne klawisze, >4 ścieżki, długość; 0–2 łatwe, 3–5 średnie, 6+ trudne),
@@ -68,7 +72,7 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
   - lewy panel (biblioteka): `renderLib()`, `songRow()`, `songParts()`, `addUserSong()`, `removeUserSong()`.
     Na górze przypięty przycisk Katalogu, pod nim **jedna przewijana lista** (`#libScroll`): „Moje utwory” (najnowsze na górze),
     potem zwijane „Wbudowane” (`S.builtinOpen`; domyślnie zwinięte, gdy są pobrane utwory). Wiersz: tytuł (do 2 linii) +
-    druga linia wykonawca · poziom · źródło (z Lakh wykonawcę odcinamy z tytułu „Wykonawca – Tytuł”). Usuwanie tylko w trybie „Edytuj”.
+    druga linia wykonawca · poziom · źródło (z Lakh i Billboard wykonawcę odcinamy z tytułu „Wykonawca – Tytuł”). Usuwanie tylko w trybie „Edytuj”.
     Od `LIB_TOOLS_MIN` (10) utworów: wyszukiwanie (`#libQ`, `libNorm()`) i filtr poziomu (`S.libLvl`).
     **Ręcznego wgrywania plików nie ma** (usunięte 11.11.2026) – utwory dodaje tylko Katalog przez `addUserSong()`;
     smoke test też dodaje pliki przez `addUserSong()`;
@@ -135,7 +139,7 @@ Gotowe i działa:
 - Zwarty pasek odtwarzacza: Start/Pauza, cofnij/dalej, od początku, suwak kroków; reszta opcji w menu „🎚 Opcje”.
 - Widok nut nad klawiaturą do wyboru: „Bez nut”, „🎼 Nuty” (uproszczona pięciolinia z podświetleniem aktualnych nut,
   trafień i pomyłek) albo „🌧 Wodospad” (paski spadające na klawisze). Domyślnie „Nuty”. Działa w obu trybach.
-- Katalog utworów: wyszukiwanie w Wikimedia Commons, BitMidi i Lakh MIDI, pobieranie jednym kliknięciem, oznaczenie „Mam”, filtr „Tylko te, których nie mam”,
+- Katalog utworów: wyszukiwanie w Wikimedia Commons, BitMidi, Lakh MIDI i **Hity (Billboard)** – melodie przebojów 1950–2024 (Ed Sheeran, Bieber, Weeknd, Dua Lipa…), pobieranie jednym kliknięciem, oznaczenie „Mam”, filtr „Tylko te, których nie mam”,
   podpowiedzi klasyczne i popowe, **🔊 Posłuchaj** przed pobraniem.
 - Piosenki (wiele instrumentów): po otwarciu zaznaczona tylko melodia (⭐), przy ścieżkach nazwy instrumentów (np. „Lead 2 (sawtooth)”).
 - Poziom trudności (Łatwe / Średnie / Trudne): filtr w katalogu (zapamiętany w ustawieniach) i plakietki przy wszystkich utworach.
@@ -153,8 +157,11 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 | Wikimedia Commons | ✅ `commons.wikimedia.org/w/api.php?...&origin=*`, `gsrsearch=filemime:audio/midi <zapytanie>` | ✅ `upload.wikimedia.org` | wolne licencje, głównie klasyka |
 | BitMidi | ✅ `bitmidi.com/api/midi/search?q=&page=` (15 na stronę, `pageTotal`) | ✅ `bitmidi.com/uploads/<id>.mid` | >100 tys. plików od internautów, licencje niejasne |
 | Lakh MIDI (clean) | ✅ u nas: `lakh.json` + szukanie w przeglądarce (20 na stronę) | ✅ `raw.githubusercontent.com/imsparsh/Lakh-MIDI-Dataset-Clean/<sha>/<Wykonawca>/<Tytuł>.mid` (CORS `*`) | 17 232 pliki, 2196 wykonawców, pop/rock/dance; zbiór C. Raffela CC-BY 4.0, pliki z internetu. Adres przypięty do commita `10c79f6`. Brak Better Off Alone. Część plików ma dziwnie długi czas (np. 75 min) – śmieci na końcu pliku |
+| Billboard (BiMMuDa) | ✅ u nas: `bimmuda.json` + `idxFind()` | ✅ `raw.githubusercontent.com/madelinehamilton/BiMMuDa/<sha>/bimmuda_dataset/<rok>/<miejsce>/<rok>_<miejsce>_full.mid` (CORS `*`) | ręcznie spisane **główne melodie** 5 największych singli roku z Billboard Year-End Hot 100, 1950–2024 (375 utworów; M. Hamilton i in., TISMIR 2024). Sama melodia, jedna ścieżka → 341 łatwe, 34 średnie. Miejsca bywają z literą (`2a`, `2b`). Adres przypięty do commita `d9b2222` |
 | Mutopia Project | ❌ brak CORS | ❌ | |
 | piano-midi.de | ❌ brak CORS (i tylko http) | ❌ | |
+| shadowshahriar/midi (GitHub) | – | ✅ raw | tylko 37 plików, „pożyczone” z kanałów YouTube – nie dodane |
+| NEXTLab-ZJU/popular-hook (Hugging Face) | ? | ? | refreny (hooki) nowych piosenek, nie całe utwory; nie sprawdzone (brak dostępu z sesji) |
 
 ## Decyzje
 
@@ -170,6 +177,9 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
   a pełny zapis (takty, belki, pauzy) wymagałby odtwarzania rytmu i biblioteki do nut – dużo pracy, słabe wyniki na piosenkach z Lakh.
 - Dźwięk: fortepian z nagranych próbek dla wszystkiego (odsłuch i „Dźwięk z iPada”), bez osobnych brzmień basu, smyczków itd.
   (każde to kolejne 2–3 MB). Prosty syntezator zostaje jako zapas i do wyboru w Ustawieniach. (Wcześniej: tylko prosty dźwięk – Łukasz: „jak ze starej gry”.)
+- Nowe hity: Lakh kończy się ok. 2010 r., BitMidi ma mało nowych piosenek. Jedyne znalezione źródło z CORS i nowymi przebojami to BiMMuDa –
+  tylko top 5 z każdego roku i sama melodia, ale ręcznie spisana i łatwa do grania. Strony z dużą liczbą nowych MIDI (midishow, freemidi)
+  nie mają CORS, a my nie mamy serwera.
 - Próbki trzymamy w IndexedDB, nie w `localStorage` (za mały, ~5 MB, i są tam już pobrane utwory).
 
 ## Do zrobienia / pomysły
@@ -192,6 +202,8 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 - [ ] Zapamiętywać wybór ścieżek dla utworu (teraz po ponownym otwarciu wraca wybór automatyczny).
 - [ ] Sprawdzić na iPadzie, czy BitMidi nie blokuje pobierania wielu plików naraz (kolejka poziomów pobiera wszystkie wyniki).
 - [ ] Katalog: więcej bibliotek, jeśli znajdziemy takie z CORS (np. zbiory MIDI na GitHubie przez raw.githubusercontent.com).
+      Nowych hitów nadal mało (Billboard = 5 na rok). Do sprawdzenia: popular-hook na Hugging Face (refreny), BitMidi na iPadzie dla nowych tytułów.
+- [ ] Sprawdzić na iPadzie Hity (Billboard): czy melodia brzmi dobrze w odsłuchu i czy zakres (czasem niski, np. Love Yourself B2–B3) mieści się na keyboardzie.
 - [ ] Sprawdzić widok nut na iPadzie: czy klucze 𝄞 𝄢 dobrze siedzą na pięciolinii, czy przewijanie jest płynne
       przy długich piosenkach i czy w poziomie wszystko się mieści (pole „Zagraj”, lista utworów).
 - [ ] Pomysły do widoku nut: nazwy nut na wszystkich główkach (nie tylko aktualnych), kreski taktowe, gdy plik ma metrum,
@@ -200,6 +212,8 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 
 ## Dziennik zmian
 
+- 11.11.2026: nowe źródło w katalogu **Hity (Billboard)** – melodie 5 największych przebojów każdego roku 1950–2024 z BiMMuDa
+  (`bimmuda.json`, `tools/bimmuda_index.py`); podpowiedzi „Nowe hity” (Ed Sheeran, Justin Bieber, Taylor Swift…); testy w `smoke_test.py`.
 - 11.11.2026: nowy wygląd „Scena”, etap 1 – ekran grania: kolory lakieru pianina, czcionki Bricolage Grotesque + Atkinson Hyperlegible,
   ikony SVG zamiast emoji, ciemna pięciolinia z czerwoną aktualną nutą i dużą nazwą nuty (zamiast pola „Zagraj”), pływający odtwarzacz,
   klawiatura z głębią i filcowym paskiem, pomyłki na bursztynowo; testy odtwarzacza i nowych kolorów w `smoke_test.py`.

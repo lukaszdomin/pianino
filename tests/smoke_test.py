@@ -484,6 +484,38 @@ async def main():
         await page.wait_for_function("pv.src !== ''", timeout=3000)
         await page.click('#closeCatalog')
         check(await page.evaluate("pv.src") == '', 'zamknięcie katalogu zatrzymuje odsłuch')
+
+        # Hity (Billboard): spis z bimmuda.json (prawdziwy plik), pliki z raw.githubusercontent.com (podstawione)
+        await page.click('#openCatalog')
+        sugg = await page.eval_on_selector_all('#catSugg .sgroup', 'els => els.map(e => e.textContent)')
+        check(any('Nowe hity' in g and 'Ed Sheeran' in g and 'Justin Bieber' in g for g in sugg), 'podpowiedzi „Nowe hity” ' + str(sugg))
+        await page.click('#catSrcSeg >> text=Billboard')
+        await page.fill('#catQ', 'ed sheeran')
+        await page.press('#catQ', 'Enter')
+        await page.wait_for_selector('.cat .badge.billboard', timeout=5000)
+        titles = await page.eval_on_selector_all('.cat .t b', 'els => els.map(e => e.textContent)')
+        check(titles == ['Ed Sheeran – Shivers', 'Ed Sheeran – Perfect', 'Ed Sheeran – Shape of You', 'Ed Sheeran – Thinking Out Loud'],
+              'Billboard: hity Eda Sheerana, najnowsze najpierw ' + str(titles))
+        url = await page.evaluate("cat.items[0].url")
+        check(url.startswith('https://raw.githubusercontent.com/madelinehamilton/BiMMuDa/') and url.endswith('/bimmuda_dataset/2022/5/2022_05_full.mid'),
+              'adres pliku Billboard ' + url)
+        meta = await page.text_content('.cat >> nth=0 >> small')
+        check('hit 2022' in meta and 'sama melodia' in meta, 'Billboard: rok hitu i „sama melodia” ' + meta)
+        await page.click('#catSrcSeg >> text=Wszystkie')
+        await page.click('#catSugg >> text=Justin Bieber')
+        await page.wait_for_selector('.cat .badge.billboard', timeout=5000)
+        titles = await page.eval_on_selector_all('.cat .t b', 'els => els.map(e => e.textContent)')
+        check(titles[0] == 'Justin Bieber – Love Yourself' and 'Kid Laroi and Justin Bieber – Stay' in titles,
+              '„Wszystkie”: hity Biebera z Billboardu na górze ' + str(titles[:5]))
+        await page.wait_for_function("catA.active === 0 && !catA.queue.length", timeout=5000)
+        await page.click('.cat >> nth=0 >> text=Pobierz')
+        await page.wait_for_selector('.cat >> nth=0 >> text=Mam', timeout=3000)
+        check(await page.evaluate("userSongs.some(u => u.src === 'billboard:2016/1/2016_01_full.mid')"), 'hit z Billboardu trafia do „Moje utwory”')
+        await page.click('#closeCatalog')
+        row = await page.evaluate("[...document.querySelectorAll('#lib .song')].map(e => e.textContent).find(t => t.includes('Love Yourself'))")
+        check(row is not None and row.startswith('Love Yourself') and 'Justin Bieber' in row and 'Billboard' in row,
+              'Billboard: tytuł w 1. linii, wykonawca·źródło w 2. ' + str(row))
+
         await page.evaluate("userSongs.length = 0; saveUser(); renderLib()")
         await page.click('#openCatalog')
         await page.click('#catSrcSeg >> text=Wszystkie')
