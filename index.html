@@ -51,7 +51,8 @@ button.fold.shut .arr{transform:rotate(-90deg)}
 .song.editing:hover{background:none}
 .hint{font-size:12px;color:var(--muted);margin:0 14px 12px;line-height:1.4}
 .libempty{font-size:13px;color:var(--muted);margin:2px 6px 8px;line-height:1.45}
-#player{flex:1;padding:16px 22px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-width:0}
+#right{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+#player{flex:1;padding:16px 22px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0}
 #songTitle{margin:0;font-size:24px}
 #tracks{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 #tracks .lbl{font-size:13px;color:var(--muted);margin-right:4px}
@@ -89,6 +90,16 @@ input[type=range]{accent-color:var(--accent)}
 .key.held{background:var(--blue)!important;color:#fff}
 .key.good{background:var(--ok)!important;color:#fff}
 .key.bad{background:var(--bad)!important;color:#fff}
+#view{position:relative;height:24vh;min-height:120px;border-top:1px solid var(--line)}
+#view.staff{background:#f7f3e8} #view.fall{background:#0b0c10}
+#view[hidden]{display:none}
+#viewCv{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* w poziomie z widokiem nut: niższa klawiatura i węższe pole „Zagraj”, żeby wszystko się zmieściło */
+@media (orientation:landscape){
+  body.withView #kbd,body.withView #view{height:22vh}
+  body.withView #now{padding:6px 16px;align-items:center}
+  body.withView #nowNotes{font-size:26px} body.withView #nextNotes{font-size:17px}
+}
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,92vw);background:var(--panel);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .2s;z-index:20;overflow-y:auto;padding:18px}
 .drawer.open{transform:none}
 .drawer h2{margin:0 0 12px;font-size:20px;display:flex;justify-content:space-between;align-items:center}
@@ -162,6 +173,7 @@ input[type=range]{accent-color:var(--accent)}
     </div>
   </aside>
 
+  <div id="right">
   <section id="player">
     <h2 id="songTitle">Wybierz utwór z listy</h2>
     <div id="tracks"></div>
@@ -174,6 +186,11 @@ input[type=range]{accent-color:var(--accent)}
       <div class="ctl">Tempo <input id="speed" type="range" min="25" max="150" step="5"><b id="speedTxt">100%</b></div>
       <div class="ctl">Transpozycja <button id="trDown">−</button><b id="trTxt">0</b><button id="trUp">+</button></div>
       <label class="ctl"><input id="sound" type="checkbox"> Dźwięk z iPada</label>
+      <div class="seg" id="viewSeg" title="Co pokazać nad klawiaturą">
+        <button data-view="off">Bez nut</button>
+        <button data-view="staff">🎼 Nuty</button>
+        <button data-view="fall">🌧 Wodospad</button>
+      </div>
     </div>
 
     <div class="transport">
@@ -191,6 +208,8 @@ input[type=range]{accent-color:var(--accent)}
       <span id="stats"></span>
     </div>
   </section>
+  <div id="view" class="staff"><canvas id="viewCv"></canvas></div>
+  </div>
 </div>
 
 <div id="kbd"></div>
@@ -293,7 +312,7 @@ function toast(msg, ms = 2800) {
 }
 
 /* ---------------- ustawienia ---------------- */
-const DEF = {low: 36, offset: 0, color: 1, transpose: 0, speed: 100, mode: 'wait', sound: false, outId: '', inId: '', catLvl: 0, libLvl: 0, builtinOpen: null};
+const DEF = {low: 36, offset: 0, color: 1, transpose: 0, speed: 100, mode: 'wait', sound: false, outId: '', inId: '', catLvl: 0, libLvl: 0, builtinOpen: null, view: 'staff'};
 const S = Object.assign({}, DEF);
 try { Object.assign(S, JSON.parse(localStorage.getItem('sk_settings') || '{}')); } catch (e) {}
 function saveS() { try { localStorage.setItem('sk_settings', JSON.stringify(S)); } catch (e) {} }
@@ -754,7 +773,7 @@ function tone(n, dur, at, vol, dest) {
 let song = null, sel = new Set(), ns = [], steps = [], lastEnd = 0;
 let playing = false, stepIdx = 0, hit = new Set(), good = 0, bad = 0;
 let t0 = 0, pauseT = 0, audioIdx = 0, rafId = 0, startedAt = 0;
-const held = new Set();
+const held = new Set(), wrongHeld = new Set();  // wrongHeld: wciśnięte jako pomyłka (czerwone w widoku nut)
 const LEAD = 0.08;
 
 function prepare() {
@@ -808,7 +827,7 @@ function loop() {
     const n = ns[audioIdx++];
     if (S.sound) tone(n.m, (n.end - n.start) / (S.speed / 100));
   }
-  showPosition(); updateNow();
+  showPosition(); updateNow(); drawView();
   if (t > lastEnd + 0.4) { finish(); return; }
   rafId = requestAnimationFrame(loop);
 }
@@ -835,16 +854,16 @@ function noteOn(n, fromScreen) {
           if (!hit.has(n)) { hit.add(n); good++; }
           flash(n, 'good');
           if (st.notes.every(x => hit.has(x))) { stepIdx++; showStep(true); return; }
-        } else { bad++; flash(n, 'bad'); }
+        } else { bad++; wrongHeld.add(n); flash(n, 'bad'); }
       }
     } else {
-      if (lit.has(n)) { good++; flash(n, 'good'); } else { bad++; flash(n, 'bad'); }
+      if (lit.has(n)) { good++; flash(n, 'good'); } else { bad++; wrongHeld.add(n); flash(n, 'bad'); }
     }
     updateStats();
   }
   renderKeys();
 }
-function noteOff(n) { held.delete(n); renderKeys(); }
+function noteOff(n) { held.delete(n); wrongHeld.delete(n); renderKeys(); }
 
 /* ---------------- widok ---------------- */
 const fmtTime = s => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -878,14 +897,24 @@ function updateStats() {
   $('#stats').innerHTML = song ? `<span class="g">✓ ${good}</span> · <span class="b">✗ ${bad}</span>` : '';
 }
 const keyEls = new Map();
-function buildKbd() {
-  const k = $('#kbd'); k.innerHTML = ''; keyEls.clear();
-  let whites = 0; for (let n = S.low; n <= high(); n++) if (!isBlack(n)) whites++;
-  const w = 100 / whites; let wi = 0;
+/* położenie klawiszy jako ułamek szerokości ekranu: {l, w}; to samo dla klawiatury i wodospadu */
+function keyGeom() {
+  const g = new Map(); let whites = 0;
+  for (let n = S.low; n <= high(); n++) if (!isBlack(n)) whites++;
+  const w = 1 / whites; let wi = 0;
   for (let n = S.low; n <= high(); n++) {
+    if (isBlack(n)) g.set(n, {l: wi * w - w * 0.32, w: w * 0.64});
+    else { g.set(n, {l: wi * w, w}); wi++; }
+  }
+  return g;
+}
+let kGeom = new Map();
+function buildKbd() {
+  const k = $('#kbd'); k.innerHTML = ''; keyEls.clear(); kGeom = keyGeom();
+  for (const [n, g] of kGeom) {
     const el = document.createElement('div'); el.dataset.n = n;
-    if (isBlack(n)) { el.className = 'key black'; el.style.left = (wi * w - w * 0.32) + '%'; el.style.width = (w * 0.64) + '%'; }
-    else { el.className = 'key white'; el.style.left = (wi * w) + '%'; el.style.width = w + '%'; wi++; }
+    el.className = 'key ' + (isBlack(n) ? 'black' : 'white');
+    el.style.left = (g.l * 100) + '%'; el.style.width = (g.w * 100) + '%';
     k.appendChild(el); keyEls.set(n, el);
   }
   renderKeys();
@@ -902,10 +931,211 @@ function renderKeys() {
     const label = (L || N) ? nnShort(n) : (pc(n) === 0 ? nn(n) : '');
     if (el.textContent !== label) el.textContent = label;
   }
+  drawView();
 }
 function flash(n, cls) {
   const el = keyEls.get(n); if (el) { el.classList.add(cls); setTimeout(() => el.classList.remove(cls), 220); }
   if (cls === 'bad') { const b = $('#now'); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
+}
+
+/* ---------------- widok nut nad klawiaturą ----------------
+   S.view: 'off' (nic), 'staff' (pięciolinia), 'fall' (wodospad – paski spadają na klawisze).
+   Pięciolinia: same główki nut w równych odstępach (krok = kolumna), bez wartości rytmicznych,
+   bo plik MIDI nie mówi, czy to ćwierćnuta czy ósemka. Obie pięciolinie leżą na jednej skali
+   (C4 na linii dodanej pośrodku), więc nie trzeba decydować, w którym kluczu stoi nuta.
+   Kolory: przyszłe nuty czarne, aktualne pomarańczowe (jak światła), trafione zielone,
+   zagrane źle – czerwona główka w miejscu zagranego dźwięku, minione szare. */
+const VIEW_SECS = 3;                 // wodospad: tyle sekund widać nad klawiaturą (przy tempie 100%)
+const DIA = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];  // nuta → numer litery (C=0 … H=6); czarne klawisze jako krzyżyki
+const dia = m => ({d: (Math.floor(m / 12) - 1) * 7 + DIA[pc(m)], sharp: isBlack(m)});
+const VC = {ink: '#1d1d1f', past: '#aaa498', now: '#ff9f1c', ok: '#2ec27e', bad: '#e5484d', held: '#4f8cff'};
+const vw = {pos: null, kind: '', raf: 0, ref: null, dmin: 0, dmax: 0, clef: null};
+
+function renderView() {
+  document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.view === S.view));
+  const v = $('#view'); v.hidden = S.view === 'off'; v.className = S.view;
+  // wodospad na całą szerokość (paski muszą trafiać w klawisze), pięciolinia tylko pod przyciskami – biblioteka zostaje wysoka
+  if (S.view === 'fall') { if (v.parentNode !== document.body) document.body.insertBefore(v, $('#kbd')); }
+  else if (v.parentNode !== $('#right')) $('#right').appendChild(v);
+  document.body.classList.toggle('withView', S.view !== 'off');
+  vw.pos = null; drawView();
+}
+function viewCtx() {
+  const cv = $('#viewCv'), w = cv.clientWidth, h = cv.clientHeight, dpr = window.devicePixelRatio || 1;
+  if (!w || !h) return null;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  return {c, w, h};
+}
+/* nuty, które trzeba grać teraz (do kolorowania wciśniętych klawiszy) */
+function expected() {
+  if (S.mode === 'wait') { const st = steps[stepIdx]; return new Set(st && playing ? st.notes : []); }
+  return lit;
+}
+/* pozycja pięciolinii w krokach (ułamkowa w trybie „W tempie”, żeby przesuwała się płynnie) */
+function staffTarget() {
+  if (S.mode === 'wait') return Math.min(stepIdx, steps.length);
+  if (!steps.length) return 0;
+  const tl = curT() + LEAD;
+  let lo = 0, hi = steps.length - 1, i = -1;
+  while (lo <= hi) { const mid = (lo + hi) >> 1; if (steps[mid].time <= tl + 0.001) { i = mid; lo = mid + 1; } else hi = mid - 1; }
+  if (i < 0) return steps[0].time > 0 ? -1 + Math.max(0, tl) / steps[0].time : 0;
+  if (i === steps.length - 1) return i;
+  return i + Math.min(1, (tl - steps[i].time) / (steps[i + 1].time - steps[i].time));
+}
+function fallTarget() {
+  if (S.mode === 'wait') { const st = steps[stepIdx]; return st ? st.time : lastEnd; }
+  return curT() + LEAD;
+}
+function drawView() {
+  if (S.view === 'off') return;
+  const g = viewCtx(); if (!g) return;
+  const kind = S.view, target = kind === 'staff' ? staffTarget() : fallTarget();
+  const live = playing && S.mode === 'tempo';
+  // krok w trybie „Czekaj na mnie” przesuwamy płynnie; duże skoki (przewijanie) od razu
+  if (vw.kind !== kind || vw.pos === null || live || Math.abs(target - vw.pos) > 6) vw.pos = target;
+  else vw.pos += (target - vw.pos) * 0.3;
+  if (Math.abs(target - vw.pos) < 0.003) vw.pos = target;
+  vw.kind = kind;
+  if (kind === 'staff') drawStaff(g, vw.pos); else drawFall(g, vw.pos);
+  if (vw.pos !== target && !vw.raf) vw.raf = requestAnimationFrame(() => { vw.raf = 0; drawView(); });
+}
+function rrect(c, x, y, w, h, r) {
+  r = Math.max(0, Math.min(r, w / 2, h / 2));
+  c.beginPath(); c.moveTo(x + r, y); c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r);
+  c.lineTo(x + w, y + h - r); c.quadraticCurveTo(x + w, y + h, x + w - r, y + h); c.lineTo(x + r, y + h);
+  c.quadraticCurveTo(x, y + h, x, y + h - r); c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y); c.closePath();
+}
+/* Czy czcionka ma znaki kluczy 𝄞 𝄢? Gdy nie ma, rysujemy litery G i F (dawne kształty kluczy). */
+function clefGlyphs(c) {
+  if (vw.clef !== null) return vw.clef;
+  c.save(); c.font = '40px serif';
+  const a = c.measureText('\u{1D11E}').width, b = c.measureText('\u{1D127}').width; // drugi znak nie istnieje → „pudełko”
+  c.restore();
+  vw.clef = a > 0 && Math.abs(a - b) > 0.5;
+  return vw.clef;
+}
+
+const CLEF_FONT = 'px "Apple Symbols","Noto Music","Bravura","Segoe UI Symbol",serif';
+/* znak klucza skalowany tak, żeby zajął wysokość od top do bottom (czcionki różnie go rysują) */
+function clef(c, ch, x, top, bottom) {
+  c.font = '100' + CLEF_FONT; let m = c.measureText(ch);
+  const hh = (m.actualBoundingBoxAscent || 0) + (m.actualBoundingBoxDescent || 0);
+  if (!hh) { c.font = ((bottom - top) * 0.9) + CLEF_FONT; c.fillText(ch, x, bottom); return; }
+  c.font = (100 * (bottom - top) / hh) + CLEF_FONT; m = c.measureText(ch);
+  c.fillText(ch, x, top + m.actualBoundingBoxAscent);
+}
+function drawStaff({c, w, h}, pos) {
+  if (vw.ref !== steps) {  // zakres wysokości dla utworu (raz po prepare)
+    vw.ref = steps; vw.dmin = 99; vw.dmax = 0;
+    for (const st of steps) for (const m of st.notes) { const d = dia(m).d; vw.dmin = Math.min(vw.dmin, d); vw.dmax = Math.max(vw.dmax, d); }
+  }
+  const dTop = Math.max(vw.dmax, 39) + 1.6, dBot = Math.min(vw.dmin, 17) - 1.6;
+  const half = Math.min(9, (h - 10) / (dTop - dBot));
+  const y0 = (h - (dTop - dBot) * half) / 2, yOf = d => y0 + (dTop - d) * half;
+  const clefW = half * 7, colW = Math.max(half * 6, 36), cx = clefW + Math.max(50, w * 0.2);
+  const cur = S.mode === 'wait' ? stepIdx : Math.floor(pos + 1e-6);
+  const exp = expected();
+
+  // pięciolinie i klamra
+  c.strokeStyle = '#4a4740'; c.lineWidth = 1;
+  for (const d of [18, 20, 22, 24, 26, 30, 32, 34, 36, 38]) { const y = Math.round(yOf(d)) + 0.5; c.beginPath(); c.moveTo(4, y); c.lineTo(w, y); c.stroke(); }
+  c.lineWidth = 2; c.beginPath(); c.moveTo(5, yOf(38)); c.lineTo(5, yOf(18)); c.stroke();
+  c.fillStyle = '#2b2925'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  if (clefGlyphs(c)) {
+    clef(c, '\u{1D11E}', clefW / 2 + 4, yOf(38) - half * 3, yOf(30) + half * 3.4);
+    clef(c, '\u{1D122}', clefW / 2 + 4, yOf(26) - half * 0.15, yOf(19));
+  } else {
+    c.font = 'italic bold ' + (half * 5) + 'px Georgia,serif'; c.fillText('G', clefW / 2 + 4, yOf(32) + half * 1.7);
+    c.fillText('F', clefW / 2 + 4, yOf(24) + half * 1.7);
+  }
+  if (!song) {
+    c.font = '15px -apple-system,sans-serif'; c.fillStyle = '#8a8579'; c.textAlign = 'left';
+    c.fillText('Wybierz utwór – tu pojawią się nuty', cx, yOf(28) + 5); return;
+  }
+
+  c.save(); c.beginPath(); c.rect(clefW + 6, 0, w, h); c.clip();
+  // pasek aktualnego kroku
+  c.fillStyle = 'rgba(255,159,28,.16)'; c.fillRect(cx - colW / 2, 0, colW, h);
+  const first = Math.max(0, Math.floor(pos - (cx - clefW) / colW) - 1), last = Math.min(steps.length - 1, Math.ceil(pos + (w - cx) / colW) + 1);
+  const hx = half * 1.3, hy = half * 0.92;
+  const head = (x, y, col, ghost) => {
+    c.save(); c.translate(x, y); c.rotate(-0.33); c.beginPath(); c.ellipse(0, 0, hx, hy, 0, 0, Math.PI * 2);
+    if (ghost) { c.globalAlpha = 0.85; } c.fillStyle = col; c.fill(); c.restore();
+  };
+  const ledgers = (x, d, col) => {
+    c.strokeStyle = col; c.lineWidth = 1.3;
+    const L = [];
+    if (d >= 40) for (let k = 40; k <= d; k += 2) L.push(k);
+    if (d <= 16) for (let k = 16; k >= d; k -= 2) L.push(k);
+    if (d === 28) L.push(28);
+    for (const k of L) { const y = Math.round(yOf(k)) + 0.5; c.beginPath(); c.moveTo(x - hx * 1.7, y); c.lineTo(x + hx * 1.7, y); c.stroke(); }
+  };
+  const sharp = (x, y, col) => { c.fillStyle = col; c.font = (half * 2.8) + 'px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('♯', x - hx * 2.5, y); };
+  const note = (x, m, col, ghost, label) => {
+    const {d, sharp: sh} = dia(m), y = yOf(d);
+    ledgers(x, d, col === VC.ink || col === VC.past ? '#4a4740' : col);
+    head(x, y, col, ghost);
+    if (sh) sharp(x, y, col);
+    if (label) { c.fillStyle = col; c.font = 'bold ' + Math.max(11, half * 1.9) + 'px -apple-system,sans-serif'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText(nnShort(m), x + hx + 4, y); }
+  };
+  for (let i = first; i <= last; i++) {
+    const x = cx + (i - pos) * colW, ms = [...steps[i].notes].sort((a, b) => a - b);
+    if (x < clefW + 6 + hx * 2) continue;  // nuta schowana za kluczem
+    let prevD = -99, shifted = false;
+    for (const m of ms) {
+      const d = dia(m).d;
+      // sekunda w akordzie: główka na drugą stronę, żeby się nie nakładały
+      shifted = d - prevD <= 1 && !shifted; prevD = d;
+      let col = i < cur ? VC.past : i > cur ? VC.ink : VC.now;
+      if (i === cur && S.mode === 'wait' && hit.has(m)) col = VC.ok;
+      if (i === cur && S.mode === 'tempo') col = lit.has(m) ? (held.has(m) ? VC.ok : VC.now) : VC.past;
+      note(x + (shifted ? hx * 2 : 0), m, col, false, i === cur && col !== VC.past);
+    }
+  }
+  // koniec utworu: podwójna kreska
+  const ex = cx + (steps.length - pos) * colW;
+  if (ex < w) { c.fillStyle = '#2b2925'; c.fillRect(ex, yOf(38), 1.5, yOf(18) - yOf(38)); c.fillRect(ex + 4, yOf(38), 4, yOf(18) - yOf(38)); }
+  // wciśnięte klawisze, których teraz nie ma w nutach → czerwone główki przy kursorze
+  for (const m of wrongHeld) if (held.has(m)) note(cx - hx * 2.4, m, VC.bad, true, true);
+  c.restore();
+}
+
+function drawFall({c, w, h}, tRef) {
+  const win = VIEW_SECS * (S.mode === 'tempo' ? S.speed / 100 : 1), pps = h / win;
+  const yOf = t => h - (t - tRef) * pps;
+  // tory: linia przy każdym C i F, ciemniejsze tło pod czarnymi klawiszami
+  for (const [n, g] of kGeom) {
+    if (isBlack(n)) { c.fillStyle = '#07080b'; c.fillRect(g.l * w, 0, g.w * w, h); }
+    else if (pc(n) === 0 || pc(n) === 5) { c.fillStyle = pc(n) === 0 ? '#2a2e3a' : '#191c24'; c.fillRect(Math.round(g.l * w), 0, 1, h); }
+  }
+  if (!song) {
+    c.font = '15px -apple-system,sans-serif'; c.fillStyle = '#6b7183'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('Wybierz utwór – nuty będą spadać na klawisze', w / 2, h / 2); return;
+  }
+  const exp = expected(), curStep = S.mode === 'wait' ? steps[stepIdx] : null;
+  c.textAlign = 'center'; c.textBaseline = 'bottom';
+  for (const n of ns) {
+    if (n.start > tRef + win) break;
+    if (n.end <= tRef - 0.02 && !(curStep && Math.abs(n.start - curStep.time) < 0.045)) continue;
+    const g = kGeom.get(n.m); if (!g) continue;
+    const x = g.l * w + 1.5, bw = g.w * w - 3;
+    const yTop = yOf(n.end), yBot = yOf(n.start), bh = Math.max(6, yBot - yTop);
+    const now = curStep ? Math.abs(n.start - curStep.time) < 0.045 : (n.start <= tRef && n.end > tRef && lit.has(n.m));
+    let col = isBlack(n.m) ? '#c9690c' : VC.now;
+    if (now) col = (S.mode === 'wait' ? hit.has(n.m) : held.has(n.m)) ? VC.ok : '#ffc266';
+    c.fillStyle = col; rrect(c, x, yBot - bh, bw, bh, Math.min(5, bw / 3)); c.fill();
+    if (now) { c.strokeStyle = '#fff'; c.lineWidth = 1.5; c.stroke(); }
+    if (bw >= 12 && Math.min(h, yBot) - Math.max(0, yBot - bh) >= 16) {
+      c.fillStyle = '#1a1200'; c.font = 'bold ' + Math.min(12, bw * 0.55) + 'px -apple-system,sans-serif';
+      c.fillText(nnShort(n.m), x + bw / 2, Math.min(h, yBot) - 3);
+    }
+  }
+  // wciśnięte klawisze: niebieski (dobrze) / czerwony (źle) pasek na dole toru
+  for (const m of held) {
+    const g = kGeom.get(m); if (!g) continue;
+    c.fillStyle = wrongHeld.has(m) ? VC.bad : exp.has(m) ? VC.ok : VC.held; c.fillRect(g.l * w, h - 8, g.w * w, 8);
+  }
 }
 
 /* ---------------- biblioteka ---------------- */
@@ -1380,6 +1610,11 @@ $('#pos').oninput = e => {
   if (S.mode === 'wait') { stepIdx = Math.min(steps.length - 1, Math.floor(v * steps.length)); if (playing) showStep(false); else refreshView(); }
   else { const t = v * lastEnd; if (playing) { t0 = performance.now() - t / (S.speed / 100) * 1000; seekAudio(t); } else { pauseT = t; refreshView(); } }
 };
+document.querySelectorAll('#viewSeg button').forEach(b => b.onclick = () => {
+  if (S.view === b.dataset.view) return;
+  S.view = b.dataset.view; saveS(); renderView();
+});
+window.addEventListener('resize', () => { vw.pos = null; drawView(); });
 function renderMode() { document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.mode === S.mode)); }
 document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => {
   if (S.mode === b.dataset.mode) return;
@@ -1463,7 +1698,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { sto
 window.addEventListener('pagehide', allOff);
 
 /* start */
-renderMode(); renderTr(); renderOff(); buildKbd(); renderLib(); refreshView(); initMidi();
+renderMode(); renderView(); renderTr(); renderOff(); buildKbd(); renderLib(); refreshView(); initMidi();
 setTimeout(levelOldSongs, 300);
 </script>
 </body>

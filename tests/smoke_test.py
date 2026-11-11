@@ -147,6 +147,63 @@ LIB_TITLES = ['ABBA – Dancing Queen', 'Haddaway – What Is Love', 'Madonna �
               'Für Elise full version', 'Satie – Gymnopédie No. 1']
 
 
+COUNT_PX = """([r, g, b]) => {
+  const cv = document.querySelector('#viewCv');
+  const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let n = 0;
+  for (let i = 0; i < d.length; i += 4)
+    if (d[i + 3] > 200 && Math.abs(d[i] - r) < 12 && Math.abs(d[i + 1] - g) < 12 && Math.abs(d[i + 2] - b) < 12) n++;
+  return n;
+}"""
+ORANGE, LIGHT_ORANGE, RED, GREEN = [255, 159, 28], [255, 194, 102], [229, 72, 77], [46, 194, 126]
+
+
+async def view_tests(page, check):
+    """Widok nut nad klawiaturą: pięciolinia, wodospad, wyłączony. Oda do radości gra, krok 2, Cis4 wciśnięte jako pomyłka."""
+    px = lambda col: page.evaluate(COUNT_PX, col)
+    check(await page.evaluate("S.view") == 'staff' and await page.is_visible('#viewCv'), 'domyślnie widać pięciolinię')
+    check(await page.evaluate("document.querySelector('#viewCv').width > 0"), 'pięciolinia ma rozmiar')
+    await page.wait_for_timeout(300)
+    check(await px(ORANGE) > 30, 'pięciolinia: aktualna nuta na pomarańczowo')
+    check(await px(RED) > 30, 'pięciolinia: pomyłka (trzymany klawisz) na czerwono')
+    await page.evaluate('__in.fire([0x80,61,0])')
+    await page.wait_for_timeout(100)
+    check(await px(RED) == 0, 'po puszczeniu klawisza czerwona nuta znika')
+    st = await page.evaluate('steps[stepIdx].notes')
+    pos_before = await page.evaluate('vw.pos')
+    for n in st:
+        await page.evaluate(f'__in.fire([0x90,{n},90]); __in.fire([0x80,{n},0])')
+    await page.wait_for_timeout(500)
+    check(await page.evaluate('vw.pos') == pos_before + 1, 'po trafieniu pięciolinia przesuwa się o krok')
+
+    await page.click('#viewSeg >> text=Wodospad')
+    await page.wait_for_timeout(200)
+    check(await page.evaluate("JSON.parse(localStorage.getItem('sk_settings')).view") == 'fall', 'wybór widoku zapamiętany')
+    check(await page.evaluate("document.querySelector('#view').className") == 'fall', 'wodospad włączony')
+    check(await px(LIGHT_ORANGE) > 30, 'wodospad: nuta do zagrania przy klawiaturze')
+    n0 = (await page.evaluate('steps[stepIdx].notes'))[0]
+    check(await page.evaluate(f"""(() => {{ const g = kGeom.get({n0}), cv = document.querySelector('#viewCv');
+        const x = Math.round((g.l + g.w / 2) * cv.width), d = cv.getContext('2d').getImageData(x, cv.height - 12, 1, 1).data;
+        return d[0] > 240 && d[1] > 180 && d[2] > 80; }})()"""), 'wodospad: pasek stoi nad właściwym klawiszem')
+    await page.evaluate('__in.fire([0x90,37,90])')
+    await page.wait_for_timeout(50)
+    check(await px(RED) > 10, 'wodospad: pomyłka zaznaczona na dole toru')
+    await page.evaluate('__in.fire([0x80,37,0])')
+
+    await page.click('#viewSeg >> text=Bez nut')
+    check(not await page.is_visible('#view') and not await page.evaluate("document.body.classList.contains('withView')"), 'bez nut: widok schowany')
+
+    # tryb „W tempie”: pięciolinia przesuwa się płynnie z czasem
+    await page.click('#viewSeg >> text=Nuty')
+    await page.click('#modeSeg >> text=W tempie')
+    await page.click('#playBtn')
+    await page.wait_for_timeout(900)
+    p = await page.evaluate('vw.pos')
+    check(0 < p < 3 and p != int(p), 'w tempie pięciolinia przesuwa się płynnie (pozycja %.2f)' % p)
+    await page.click('#playBtn')
+    await page.click('#modeSeg >> text=Czekaj na mnie')
+    await page.click('#playBtn')
+
+
 async def library_tests(page, check):
     """Lewy panel: lista widoczna w poziomie, zwijane wbudowane, dwie linie, Edytuj/Usuń, szukanie i filtr poziomu."""
     for k, t in enumerate(LIB_TITLES):
@@ -245,6 +302,8 @@ async def main():
         check('krok 2' in await page.text_content('#posTxt'), 'po trafieniu przechodzi do kroku 2')
         await page.evaluate('__in.fire([0x90,61,90])')
         check('✗ 1' in await page.text_content('#stats'), 'liczy pomyłkę')
+
+        await view_tests(page, check)
 
         # Cały utwór na dwie ręce (akordy)
         await page.click('text=Gama C-dur (obie ręce)')

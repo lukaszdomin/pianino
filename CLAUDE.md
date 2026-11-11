@@ -74,7 +74,16 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     smoke test też dodaje pliki przez `addUserSong()`;
   - dźwięk: `ensureAudio()` → `unlockAudio()` – iPad w trybie cichym wycisza WebAudio, więc przy stuknięciu ustawiamy
     `navigator.audioSession.type = 'playback'` i puszczamy ciche, zapętlone `<audio>` (WAV z `silentWav()`); stan w dzienniku („DŹWIĘK:”);
-  - diagnostyka: `log()`, `diag()`, sekcja Dziennik w Ustawieniach z przyciskiem „Kopiuj dziennik”.
+  - diagnostyka: `log()`, `diag()`, sekcja Dziennik w Ustawieniach z przyciskiem „Kopiuj dziennik”;
+  - widok nut nad klawiaturą (`S.view`: `off` / `staff` / `fall`, przełącznik `#viewSeg`): jeden `<canvas id="viewCv">`,
+    `renderView()` → `drawView()` (wołane z `renderKeys()` i z `loop()`; w trybie „Czekaj” płynne przesunięcie przez `vw.pos`).
+    **Pięciolinia** `drawStaff()`: same główki nut w równych odstępach (kolumna = krok z `steps`), bez rytmu; obie pięciolinie
+    na jednej skali (`dia()`: nuta → stopień, C4 na linii dodanej pośrodku), czarne klawisze jako krzyżyki; klucze 𝄞 𝄢 skalowane
+    do pięciolinii (`clef()`), a gdy czcionka ich nie ma – litery G/F. Leży tylko w prawej kolumnie (`#right`), więc biblioteka zostaje wysoka.
+    **Wodospad** `drawFall()`: paski z `ns` spadają na klawisze, 3 s nad klawiaturą (`VIEW_SECS`, skalowane tempem); na całą
+    szerokość (element `#view` przenoszony przed `#kbd`), położenie klawiszy z `keyGeom()` – to samo co klawiatura na ekranie.
+    Kolory: przyszłe czarne / pomarańczowe, aktualne pomarańczowe (jak światła), trafione zielone, pomyłka (`wrongHeld`) czerwona, minione szare.
+    W poziomie z widokiem klawiatura i widok mają po 22vh, a pole „Zagraj” jest węższe (`body.withView`).
 
 ## Jak pracujemy
 
@@ -100,6 +109,8 @@ Gotowe i działa:
   wyszukiwanie i filtr poziomu w „Moje utwory” od 10 utworów.
 - Tryby „Czekaj na mnie” i „W tempie” (25–150%), transpozycja, dźwięk z iPada, przewijanie, statystyki trafień.
 - Klawiatura na ekranie, test świateł, przesunięcie świateł, diagnostyka i dziennik.
+- Widok nut nad klawiaturą do wyboru: „Bez nut”, „🎼 Nuty” (uproszczona pięciolinia z podświetleniem aktualnych nut,
+  trafień i pomyłek) albo „🌧 Wodospad” (paski spadające na klawisze). Domyślnie „Nuty”. Działa w obu trybach.
 - Katalog utworów: wyszukiwanie w Wikimedia Commons, BitMidi i Lakh MIDI, pobieranie jednym kliknięciem, oznaczenie „Mam”, filtr „Tylko te, których nie mam”,
   podpowiedzi klasyczne i popowe, **🔊 Posłuchaj** przed pobraniem.
 - Piosenki (wiele instrumentów): po otwarciu zaznaczona tylko melodia (⭐), przy ścieżkach nazwy instrumentów (np. „Lead 2 (sawtooth)”).
@@ -131,6 +142,8 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 - Piosenki: domyślnie ćwiczymy samą melodię (wybraną automatycznie), resztę ścieżek dołącza się ręcznie.
   Fortepian na dwie ręce i utwory wbudowane – nadal wszystkie ścieżki.
 - Nazwy instrumentów po angielsku (standard General MIDI), tak jak na stronach z plikami MIDI.
+- Nuty bez wartości rytmicznych (same główki w równych odstępach): MIDI nie mówi, czy to ćwierćnuta czy ósemka,
+  a pełny zapis (takty, belki, pauzy) wymagałby odtwarzania rytmu i biblioteki do nut – dużo pracy, słabe wyniki na piosenkach z Lakh.
 - Odsłuch tym samym prostym dźwiękiem co „Dźwięk z iPada” (bez bibliotek z próbkami instrumentów) – wystarcza, żeby ocenić, czy plik jest dobry.
 
 ## Do zrobienia / pomysły
@@ -142,9 +155,16 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 - [ ] Zapamiętywać wybór ścieżek dla utworu (teraz po ponownym otwarciu wraca wybór automatyczny).
 - [ ] Sprawdzić na iPadzie, czy BitMidi nie blokuje pobierania wielu plików naraz (kolejka poziomów pobiera wszystkie wyniki).
 - [ ] Katalog: więcej bibliotek, jeśli znajdziemy takie z CORS (np. zbiory MIDI na GitHubie przez raw.githubusercontent.com).
+- [ ] Sprawdzić widok nut na iPadzie: czy klucze 𝄞 𝄢 dobrze siedzą na pięciolinii, czy przewijanie jest płynne
+      przy długich piosenkach i czy w poziomie wszystko się mieści (pole „Zagraj”, lista utworów).
+- [ ] Pomysły do widoku nut: nazwy nut na wszystkich główkach (nie tylko aktualnych), kreski taktowe, gdy plik ma metrum,
+      bemole zamiast krzyżyków w tonacjach bemolowych, regulacja wysokości widoku / szybkości wodospadu.
 - [ ] Sprawdzić nowy lewy panel na iPadzie w obu orientacjach (przewijanie palcem, tryb „Edytuj”, szukajka z klawiaturą ekranową).
 
 ## Dziennik zmian
+
+- 11.11.2026: widok nut nad klawiaturą – do wyboru pięciolinia (aktualne nuty na pomarańczowo, trafione na zielono,
+  pomyłki na czerwono) albo wodospad (paski spadające na klawisze); przełącznik „Bez nut / Nuty / Wodospad”; testy w `smoke_test.py`.
 
 - 11.11.2026: naprawa odsłuchu na iPadzie – czas leciał, ale nie było dźwięku (tryb cichy wycisza WebAudio); odblokowanie sesji dźwięku, wpis „DŹWIĘK:” w dzienniku.
 
