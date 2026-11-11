@@ -5,20 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Świecące Klawisze</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#14161c;--panel:#1d2029;--panel2:#272b37;--line:#323745;--text:#eef0f4;--muted:#9aa1b2;--accent:#ff9f1c;--ok:#2ec27e;--bad:#e5484d;--blue:#4f8cff}
+:root{--bg:#16131a;--panel:#1e1a23;--panel2:#2a2430;--line:#3a3342;--text:#f2ede3;--muted:#a79fb0;--accent:#f2ede3;--ok:#5fd39a;--bad:#e5484d;--blue:#8fb0ff;
+  --led:#ff4d3d;--miss:#f5a524;--felt:#8e1f2a;--ui:"Atkinson Hyperlegible",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;--disp:"Bricolage Grotesque",var(--ui)}
+/* zasada kolorów: czerwony (--led) = tylko to, co trzeba zagrać teraz – jak diody w keyboardzie; pomyłki na bursztynowo (--miss) */
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--ui);-webkit-user-select:none;user-select:none}
 body{display:flex;flex-direction:column;overflow:hidden}
 button,select,input{font:inherit;color:inherit}
 button{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer}
 button:active{transform:scale(.97)}
-button.primary{background:var(--accent);border-color:var(--accent);color:#1a1200;font-weight:700}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:700}
+button:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.ico{display:block;flex:none}
 select,input[type=number]{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 8px}
-header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
-header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.2px}
-#status{margin-left:auto;font-size:14px;padding:6px 12px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45vw}
-#status.ok{color:var(--ok)} #status.err{color:var(--bad)}
+header{display:flex;align-items:center;gap:12px;padding:8px 12px 8px 18px;background:var(--bg);border-bottom:1px solid var(--line)}
+header h1{font-family:var(--disp);font-size:20px;margin:0;font-weight:700;letter-spacing:-.3px}
+#status{margin-left:auto;font-size:14px;height:40px;display:flex;align-items:center;gap:8px;padding:0 14px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45vw}
+#status::before{content:"";width:8px;height:8px;border-radius:50%;flex:none;background:var(--muted)}
+#status.ok::before{background:var(--ok)} #status.err{color:var(--bad)} #status.err::before{background:var(--bad)}
+button.iconbtn{width:44px;height:44px;padding:0;display:flex;align-items:center;justify-content:center;background:none;color:#c9c1d2;border-radius:12px}
 #main{flex:1;display:flex;min-height:0}
 aside{width:280px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
 aside h3{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700}
@@ -38,12 +47,12 @@ button.fold.shut .arr{transform:rotate(-90deg)}
 #libLvlSeg{display:flex}
 #libLvlSeg button{flex:1;padding:6px 0;font-size:12px;min-width:0}
 #libLvlSeg button.l1{color:#7fe0ad} #libLvlSeg button.l2{color:#ffd84d} #libLvlSeg button.l3{color:#ff8f92}
-#libLvlSeg button.on{color:#1a1200}
+#libLvlSeg button.on{color:var(--bg)}
 .song{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;cursor:pointer;font-size:15px;min-height:44px}
-.song:hover{background:var(--panel2)} .song.on{background:#3a2c12}
+.song:hover{background:var(--panel2)} .song.on{background:#362e3d}
 .song .t{flex:1;min-width:0}
 .song .tt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.25;overflow-wrap:anywhere}
-.song.on .tt{color:var(--accent)}
+.song.on .tt{font-weight:700}
 .song .sub{display:flex;align-items:center;flex-wrap:wrap;gap:2px 6px;margin-top:3px;font-size:12px;color:var(--muted);line-height:1.3}
 .song .sub:empty{display:none}
 .song .del{background:#3a1719;border:1px solid var(--bad);color:#ff8f92;padding:5px 10px;font-size:13px;border-radius:8px;white-space:nowrap}
@@ -51,9 +60,10 @@ button.fold.shut .arr{transform:rotate(-90deg)}
 .song.editing:hover{background:none}
 .hint{font-size:12px;color:var(--muted);margin:0 14px 12px;line-height:1.4}
 .libempty{font-size:13px;color:var(--muted);margin:2px 6px 8px;line-height:1.45}
-#right{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
-#player{flex:0 1 auto;padding:16px 22px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0}
-#songTitle{margin:0;font-size:24px}
+#right{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;position:relative}
+#player{flex:0 1 auto;padding:14px 22px 6px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0}
+.ptop{display:flex;align-items:baseline;gap:16px}
+#songTitle{margin:0;font-family:var(--disp);font-size:24px;font-weight:700;letter-spacing:-.3px;flex:1;min-width:0}
 #tracks{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 #tracks .lbl{font-size:13px;color:var(--muted);margin-right:4px}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:14px;cursor:pointer}
@@ -62,17 +72,21 @@ button.fold.shut .arr{transform:rotate(-90deg)}
 .row{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .seg button{border:none;border-radius:0;background:var(--panel2)}
-.seg button.on{background:var(--accent);color:#1a1200;font-weight:700}
+.seg button.on{background:var(--accent);color:var(--bg);font-weight:700}
 .ctl{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
 .ctl b{color:var(--text);min-width:44px;text-align:center}
 input[type=range]{accent-color:var(--accent)}
 #speed{width:160px}
-.transport{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.transport button{font-size:18px;padding:10px 16px}
-#optsBtn{margin-left:auto;font-size:15px;padding:11px 14px;white-space:nowrap}
-#optsBtn small{color:var(--muted);font-size:14px;margin:0 2px}
-#optsBtn[aria-expanded=true]{border-color:var(--accent);color:var(--accent)}
-@media (max-width:1000px){.transport .wide{display:none}}
+/* pływający odtwarzacz na dole prawej kolumny (nad pięciolinią) */
+.transport{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:2px;padding:6px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.45);max-width:calc(100% - 16px)}
+.transport button{width:48px;height:48px;padding:0;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:50%}
+.transport button:active{background:var(--line)}
+.transport #playBtn{width:56px;height:56px;background:var(--text);color:var(--bg)}
+.transport .sep{width:1px;height:28px;background:var(--line);margin:0 6px;flex:none}
+#optsBtn{width:auto;height:44px;border-radius:999px;padding:0 12px 0 14px;font-size:15px;gap:10px;white-space:nowrap;min-width:0;overflow:hidden}
+#optsSum{display:flex;align-items:center;gap:12px;min-width:0;overflow:hidden}
+#optsSum .dim{color:var(--muted)}
+#optsBtn[aria-expanded=true]{background:var(--line)}
 .pop{position:fixed;z-index:15;width:min(420px,94vw);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 16px 14px;box-shadow:0 14px 44px #000b;display:flex;flex-direction:column;gap:6px;overflow-y:auto}
 .pop[hidden]{display:none}
 .opt{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;font-size:15px}
@@ -80,37 +94,43 @@ input[type=range]{accent-color:var(--accent)}
 .opt .lab{color:var(--muted)} .opt .lab small{font-size:12px}
 .opt .seg{display:flex} .opt .seg button{flex:1;padding:9px 6px}
 .opt input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
-#playBtn{min-width:130px}
-#posWrap{display:flex;align-items:center;gap:10px}
-#pos{flex:1} #posTxt{font-size:13px;color:var(--muted);min-width:110px;text-align:right;font-variant-numeric:tabular-nums}
-#now{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
-#now .lab{color:var(--muted);font-size:14px}
-#nowNotes{font-size:38px;font-weight:800;color:var(--accent);min-width:60px}
-#nextNotes{font-size:20px;color:var(--muted)}
-#stats{margin-left:auto;font-size:15px;color:var(--muted)}
-#stats .g{color:var(--ok)} #stats .b{color:var(--bad)}
+#posWrap{display:flex;align-items:center;gap:12px}
+#pos{flex:1;-webkit-appearance:none;appearance:none;height:24px;background:none;margin:0}
+#pos::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:var(--line)}
+#pos::-moz-range-track{height:4px;border-radius:2px;background:var(--line)}
+#pos::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;background:var(--text);border:none}
+#pos::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--text);border:none}
+#posTxt{font-size:13px;color:var(--muted);min-width:96px;text-align:right;font-variant-numeric:tabular-nums}
+/* „Zagraj / potem” – tylko bez widoku nut; z nutami nazwa nuty jest nad pięciolinią */
+#now{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding:18px 2px}
+body.withView #now{display:none}
+#now .lab{color:var(--muted);font-size:16px}
+#nowNotes{font-size:72px;font-weight:700;line-height:1;color:var(--led);min-width:60px}
+#nextNotes{font-size:28px;color:var(--muted)}
+#stats{display:flex;gap:16px;font-size:14px;color:var(--muted);white-space:nowrap}
+#stats b{color:var(--text)}
 .shake{animation:shake .25s}
 @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
-#kbd{position:relative;height:27vh;min-height:140px;background:#000;border-top:3px solid var(--accent);touch-action:none}
-.key{position:absolute;top:0;display:flex;align-items:flex-end;justify-content:center;font-size:11px;font-weight:700;padding-bottom:6px}
-.key.white{height:100%;background:#f4f4f2;border:1px solid #999;border-top:none;border-radius:0 0 6px 6px;color:#555;z-index:1}
-.key.black{height:62%;background:#1b1b1f;border-radius:0 0 4px 4px;color:#ddd;z-index:2;box-shadow:inset 0 -3px 0 #333}
-.key.next{box-shadow:inset 0 0 0 3px var(--accent)}
-.key.lit{background:var(--accent)!important;color:#1a1200}
-.key.hitk{background:#9fe3bf!important}
-.key.held{background:var(--blue)!important;color:#fff}
-.key.good{background:var(--ok)!important;color:#fff}
-.key.bad{background:var(--bad)!important;color:#fff}
-#view{position:relative;height:24vh;min-height:120px;border-top:1px solid var(--line)}
-#view.staff{background:#f7f3e8} #view.fall{background:#0b0c10}
+#kbd{position:relative;height:27vh;min-height:140px;background:#0c0a0e;border-top:7px solid var(--felt);touch-action:none}
+.key{position:absolute;top:0;display:flex;align-items:flex-end;justify-content:center;font-size:11px;font-weight:700;padding-bottom:12px;box-sizing:border-box}
+.key.white{height:calc(100% - 4px);background:linear-gradient(180deg,#e9e3d7 0%,#f6f2ea 55%,#efe9de 100%);border-right:2px solid #0c0a0e;border-radius:0 0 6px 6px;color:#8a8274;z-index:1;box-shadow:inset 0 -7px 0 #d8d0c1}
+.key.black{height:60%;background:linear-gradient(180deg,#0e0c11 0%,#2c2732 85%,#1a171e 100%);border-radius:0 0 4px 4px;color:#c9c1d2;z-index:4;box-shadow:inset 0 -5px 0 #3b3542,0 3px 4px rgba(0,0,0,.5);padding-bottom:9px}
+.key.white.next{box-shadow:inset 0 -7px 0 #d8d0c1,inset 0 0 0 3px rgba(255,77,61,.6)}
+.key.black.next{box-shadow:inset 0 0 0 2px rgba(255,77,61,.75)}
+.key.lit{background:linear-gradient(180deg,#ffb3a8 0%,var(--led) 70%)!important;color:#3a0a06;font-size:16px;box-shadow:0 0 18px 1px rgba(255,77,61,.45),inset 0 -7px 0 rgba(0,0,0,.18)!important}
+.key.white.lit{z-index:3}
+.key.hitk{background:linear-gradient(180deg,#d5f5e4 0%,#9fe6c0 100%)!important;color:#0d2a1b;box-shadow:inset 0 -7px 0 rgba(0,0,0,.12)!important}
+.key.held{background:var(--blue)!important;color:#16131a}
+.key.good{background:var(--ok)!important;color:#0d2a1b}
+.key.bad{background:var(--miss)!important;color:#2a1a00}
+#view{position:relative;height:24vh;min-height:120px}
+#view.staff{background:var(--bg)} #view.fall{background:#0b0c10;border-top:1px solid var(--line)}
 #view[hidden]{display:none}
 #right>#view{flex:1 1 auto;height:auto;min-height:22vh}  /* pięciolinia zajmuje całe wolne miejsce pod przyciskami */
 #viewCv{position:absolute;inset:0;width:100%;height:100%;display:block}
 /* w poziomie z widokiem nut: niższa klawiatura i węższe pole „Zagraj”, żeby wszystko się zmieściło */
 @media (orientation:landscape){
   body.withView #kbd,body.withView #view{height:22vh}
-  body.withView #now{padding:6px 16px;align-items:center}
-  body.withView #nowNotes{font-size:26px} body.withView #nextNotes{font-size:17px}
 }
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,92vw);background:var(--panel);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .2s;z-index:20;overflow-y:auto;padding:18px}
 .drawer.open{transform:none}
@@ -124,9 +144,9 @@ input[type=range]{accent-color:var(--accent)}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:30}
 .overlay.open{display:flex}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 30px;text-align:center;min-width:300px}
-.card h2{margin:0 0 6px;font-size:28px}
+.card h2{margin:0 0 6px;font-size:28px;font-family:var(--disp)}
 .card p{color:var(--muted);margin:6px 0 18px;font-size:16px}
-.catbtn{display:block;width:100%;background:#3a2c12;border-color:var(--accent);color:var(--accent);font-weight:700;font-size:15px}
+.catbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;background:none;border-color:#5a5063;color:var(--text);font-weight:700;font-size:15px}
 #catalog{position:fixed;inset:3vh 3vw;background:var(--panel);border:1px solid var(--line);border-radius:18px;z-index:25;display:none;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px #000a}
 #catalog.open{display:flex}
 #catalog .top{padding:16px 18px 10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
@@ -154,20 +174,20 @@ input[type=range]{accent-color:var(--accent)}
 .song .lvl{margin:0;font-size:10px;padding:0 6px}
 .song .src{font-size:11px}
 #catLvlSeg button{padding:7px 11px}
-#toast{position:fixed;left:50%;bottom:30vh;transform:translateX(-50%);background:#000c;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:40;max-width:80vw;text-align:center}
-@media (max-width:760px){aside{width:230px}#nowNotes{font-size:28px}}
+#toast{position:fixed;left:50%;top:68px;transform:translateX(-50%);background:#000c;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:40;max-width:80vw;text-align:center}
+@media (max-width:760px){aside{width:230px}#nowNotes{font-size:48px}}
 </style>
 </head>
 <body>
 <header>
-  <h1>🎹 Świecące Klawisze</h1>
-  <div id="status" title="Ustawienia połączenia">○ Brak keyboardu</div>
-  <button id="openSettings">⚙︎ Ustawienia</button>
+  <h1>Świecące Klawisze</h1>
+  <div id="status" title="Ustawienia połączenia">Brak keyboardu</div>
+  <button id="openSettings" class="iconbtn" aria-label="Ustawienia" title="Ustawienia"><svg class="ico" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
 </header>
 
 <div id="main">
   <aside>
-    <div class="libtop"><button class="catbtn" id="openCatalog">🔎 Katalog utworów</button></div>
+    <div class="libtop"><button class="catbtn" id="openCatalog"><svg class="ico" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>Katalog utworów</button></div>
     <div id="libScroll">
       <div class="libhead"><h3 id="libHead">Moje utwory</h3><button id="libEdit" type="button">Edytuj</button></div>
       <div id="libTools" hidden>
@@ -187,25 +207,23 @@ input[type=range]{accent-color:var(--accent)}
 
   <div id="right">
   <section id="player">
-    <h2 id="songTitle">Wybierz utwór z listy</h2>
+    <div class="ptop"><h2 id="songTitle">Wybierz utwór z listy</h2><span id="stats"></span></div>
     <div id="tracks"></div>
-
-    <div class="transport">
-      <button id="prevBtn" title="Cofnij">⏮</button>
-      <button id="playBtn" class="primary">▶ Start</button>
-      <button id="nextBtn" title="Dalej">⏭</button>
-      <button id="restartBtn" title="Od początku">↺<span class="wide"> Od początku</span></button>
-      <button id="optsBtn" type="button" aria-expanded="false">🎚 Opcje <small id="optsSum"></small> ▾</button>
-    </div>
-
-    <div id="posWrap"><input id="pos" type="range" min="0" max="1000" value="0"><span id="posTxt">–</span></div>
+    <div id="posWrap"><input id="pos" type="range" min="0" max="1000" value="0" aria-label="Miejsce w utworze"><span id="posTxt">–</span></div>
 
     <div id="now">
       <span class="lab">Zagraj:</span><span id="nowNotes">–</span>
       <span class="lab">potem:</span><span id="nextNotes">–</span>
-      <span id="stats"></span>
     </div>
   </section>
+  <div class="transport" id="transport">
+    <button id="prevBtn" aria-label="Cofnij" title="Cofnij"><svg class="ico" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14M19 5l-9 7 9 7z"/></svg></button>
+    <button id="playBtn" aria-label="Start" title="Start"></button>
+    <button id="nextBtn" aria-label="Dalej" title="Dalej"><svg class="ico" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5v14M5 5l9 7-9 7z"/></svg></button>
+    <button id="restartBtn" aria-label="Od początku" title="Od początku"><svg class="ico" aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.5-5.8M4 4v5h5"/></svg></button>
+    <span class="sep"></span>
+    <button id="optsBtn" type="button" aria-expanded="false" aria-label="Opcje"><span id="optsSum"></span><svg class="ico" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a79fb0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
+  </div>
   <div id="view" class="staff"><canvas id="viewCv"></canvas></div>
   </div>
 </div>
@@ -215,8 +233,8 @@ input[type=range]{accent-color:var(--accent)}
 <div id="opts" class="pop" hidden>
   <div class="opt col"><span class="lab">Tryb</span>
     <div class="seg" id="modeSeg">
-      <button data-mode="wait">⏳ Czekaj na mnie</button>
-      <button data-mode="tempo">⏱ W tempie</button>
+      <button data-mode="wait">Czekaj na mnie</button>
+      <button data-mode="tempo">W tempie</button>
     </div>
   </div>
   <div class="opt"><span class="lab">Tempo <small>(tryb „W tempie”)</small></span><span class="ctl"><input id="speed" type="range" min="25" max="150" step="5"><b id="speedTxt">100%</b></span></div>
@@ -225,8 +243,8 @@ input[type=range]{accent-color:var(--accent)}
   <div class="opt col"><span class="lab">Nad klawiaturą</span>
     <div class="seg" id="viewSeg">
       <button data-view="off">Bez nut</button>
-      <button data-view="staff">🎼 Nuty</button>
-      <button data-view="fall">🌧 Wodospad</button>
+      <button data-view="staff">Nuty</button>
+      <button data-view="fall">Wodospad</button>
     </div>
   </div>
 </div>
@@ -283,10 +301,10 @@ input[type=range]{accent-color:var(--accent)}
 
 <div class="overlay" id="result">
   <div class="card">
-    <h2 id="resTitle">Brawo! 🎉</h2>
+    <h2 id="resTitle">Brawo!</h2>
     <p id="resText"></p>
     <div class="btns" style="justify-content:center">
-      <button class="primary" id="againBtn">↺ Jeszcze raz</button>
+      <button class="primary" id="againBtn">Jeszcze raz</button>
       <button id="closeRes">Zamknij</button>
     </div>
   </div>
@@ -700,8 +718,9 @@ function setInput(i) {
   updateStatus();
 }
 function updateStatus() {
-  if (out || inp) setStatus('● ' + ((out && out.name) || (inp && inp.name) || 'Połączono'), 'ok');
-  else if (access) setStatus('○ Brak keyboardu – dotknij, by połączyć', '');
+  const dev = (out && out.name) || (inp && inp.name) || '';
+  if (out || inp) { setStatus('Keyboard połączony', 'ok'); $('#status').title = 'Połączono: ' + dev + ' – stuknij, by zobaczyć ustawienia'; }
+  else if (access) { setStatus('Brak keyboardu – stuknij, by połączyć', ''); $('#status').title = 'Ustawienia połączenia'; }
 }
 function setStatus(txt, cls) { const s = $('#status'); s.textContent = txt; s.className = cls || ''; }
 let lastEvt = null, lastKey = '', lastAt = 0;
@@ -873,7 +892,7 @@ async function pianoLoad() {
     if (n < 80) throw new Error('iPad nie odczytał próbek (' + n + ' z ' + found.length + ')');
     piano.bufs = bufs; piano.state = 'ready';
     log('FORTEPIAN: gotowy – ' + n + ' nut, ' + (piano.fromCache ? 'z pamięci iPada' : 'pobrane z internetu') + ', dekodowanie ' + Math.round(performance.now() - t0) + ' ms');
-    if (!piano.fromCache) toast('Fortepian gotowy 🎹');
+    if (!piano.fromCache) toast('Fortepian gotowy');
   } catch (e) {
     piano.state = 'error'; piano.msg = e.message;
     log('FORTEPIAN błąd: ' + e.message + ' – gra prosty dźwięk');
@@ -920,6 +939,10 @@ let t0 = 0, pauseT = 0, audioIdx = 0, rafId = 0, startedAt = 0;
 const held = new Set(), wrongHeld = new Set();  // wrongHeld: wciśnięte jako pomyłka (czerwone w widoku nut)
 const LEAD = 0.08;
 
+/* przycisk Start/Pauza: sama ikona (napis w aria-label i podpowiedzi) */
+const ICO_PLAY = '<svg class="ico" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
+const ICO_PAUSE = '<svg class="ico" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+function playUI(on) { const b = $('#playBtn'); b.innerHTML = on ? ICO_PAUSE : ICO_PLAY; b.setAttribute('aria-label', on ? 'Pauza' : 'Start'); b.title = on ? 'Pauza' : 'Start'; }
 function prepare() {
   if (!song) return;
   ns = song.notes.filter(n => sel.has(n.track))
@@ -939,7 +962,7 @@ function curT() { return playing ? (performance.now() - t0) / 1000 * (S.speed / 
 function play() {
   if (!song || !ns.length) { toast('Najpierw wybierz utwór'); return; }
   pvStop(true); ensureAudio(); requestWake();
-  playing = true; $('#playBtn').textContent = '⏸ Pauza';
+  playing = true; playUI(true);
   if (S.mode === 'wait') {
     if (stepIdx >= steps.length) { stepIdx = 0; good = bad = 0; }
     if (!startedAt) startedAt = performance.now();
@@ -953,7 +976,7 @@ function play() {
 function stop() {
   if (playing && S.mode === 'tempo') pauseT = curT();
   playing = false; cancelAnimationFrame(rafId);
-  setLit(new Set()); $('#playBtn').textContent = '▶ Start';
+  setLit(new Set()); playUI(false);
   refreshView();
 }
 function seekAudio(t) { audioIdx = ns.findIndex(n => n.start >= t); if (audioIdx < 0) audioIdx = ns.length; }
@@ -978,11 +1001,11 @@ function loop() {
 function finish() {
   const secs = startedAt ? (performance.now() - startedAt) / 1000 : 0;
   playing = false; cancelAnimationFrame(rafId); setLit(new Set());
-  $('#playBtn').textContent = '▶ Start';
+  playUI(false);
   if (S.mode === 'wait') stepIdx = steps.length; else pauseT = lastEnd;
   startedAt = 0; refreshView();
   const total = good + bad, acc = total ? Math.round(good / total * 100) : 100;
-  $('#resTitle').textContent = acc >= 90 ? 'Brawo! 🎉' : acc >= 70 ? 'Dobrze! 👍' : 'Ćwicz dalej 💪';
+  $('#resTitle').textContent = acc >= 90 ? 'Brawo!' : acc >= 70 ? 'Dobrze!' : 'Ćwicz dalej';
   $('#resText').innerHTML = `Trafione: <b>${good}</b> · Pomyłki: <b>${bad}</b> · Celność: <b>${acc}%</b>` +
     (S.mode === 'wait' && secs ? `<br>Czas: ${fmtTime(secs)}` : '');
   $('#result').classList.add('open');
@@ -1038,7 +1061,7 @@ function updateNow() {
   }
 }
 function updateStats() {
-  $('#stats').innerHTML = song ? `<span class="g">✓ ${good}</span> · <span class="b">✗ ${bad}</span>` : '';
+  $('#stats').innerHTML = song ? `<span>Trafione <b>${good}</b></span><span>Pomyłki <b>${bad}</b></span>` : '';
 }
 const keyEls = new Map();
 /* położenie klawiszy jako ułamek szerokości ekranu: {l, w}; to samo dla klawiatury i wodospadu */
@@ -1079,7 +1102,7 @@ function renderKeys() {
 }
 function flash(n, cls) {
   const el = keyEls.get(n); if (el) { el.classList.add(cls); setTimeout(() => el.classList.remove(cls), 220); }
-  if (cls === 'bad') { const b = $('#now'); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
+  if (cls === 'bad') { const b = $('#stats'); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
 }
 
 /* ---------------- widok nut nad klawiaturą ----------------
@@ -1087,12 +1110,16 @@ function flash(n, cls) {
    Pięciolinia: same główki nut w równych odstępach (krok = kolumna), bez wartości rytmicznych,
    bo plik MIDI nie mówi, czy to ćwierćnuta czy ósemka. Obie pięciolinie leżą na jednej skali
    (C4 na linii dodanej pośrodku), więc nie trzeba decydować, w którym kluczu stoi nuta.
-   Kolory: przyszłe nuty czarne, aktualne pomarańczowe (jak światła), trafione zielone,
-   zagrane źle – czerwona główka w miejscu zagranego dźwięku, minione szare. */
+   Kolory (ciemna „scena”): przyszłe nuty kość słoniowa (coraz bledsze), aktualne czerwone jak diody
+   w keyboardzie (z poświatą i dużą nazwą nad kolumną), trafione zielone, zagrane źle – bursztynowa
+   główka w miejscu zagranego dźwięku, minione przygaszone. */
 const VIEW_SECS = 3;                 // wodospad: tyle sekund widać nad klawiaturą (przy tempie 100%)
 const DIA = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];  // nuta → numer litery (C=0 … H=6); czarne klawisze jako krzyżyki
 const dia = m => ({d: (Math.floor(m / 12) - 1) * 7 + DIA[pc(m)], sharp: isBlack(m)});
-const VC = {ink: '#1d1d1f', past: '#aaa498', now: '#ff9f1c', ok: '#2ec27e', bad: '#e5484d', held: '#4f8cff'};
+const VC = {ink: '#f2ede3', line: 'rgba(242,237,227,.32)', past: 'rgba(242,237,227,.3)', now: '#ff4d3d', ok: '#5fd39a', bad: '#f5a524', held: '#8fb0ff'};
+const FC = {now: '#ff9f1c', ok: '#2ec27e', bad: '#f5a524', held: '#4f8cff'};  // wodospad (nowy wygląd w etapie 2)
+const VIEW_FONT = '"Atkinson Hyperlegible",-apple-system,sans-serif';
+const STAFF_TOP = 60, STAFF_BOT = 86;  // miejsce na dużą nazwę nuty u góry i pływający odtwarzacz u dołu
 const vw = {pos: null, kind: '', raf: 0, ref: null, dmin: 0, dmax: 0, clef: null};
 
 function renderView() {
@@ -1175,41 +1202,53 @@ function drawStaff({c, w, h}, pos) {
     vw.ref = steps; vw.dmin = 99; vw.dmax = 0;
     for (const st of steps) for (const m of st.notes) { const d = dia(m).d; vw.dmin = Math.min(vw.dmin, d); vw.dmax = Math.max(vw.dmax, d); }
   }
+  const top = h > 260 ? STAFF_TOP : 34, bot = h > 260 ? STAFF_BOT : 74, sh = Math.max(60, h - top - bot);
   const dTop = Math.max(vw.dmax, 39) + 1.6, dBot = Math.min(vw.dmin, 17) - 1.6;
-  const half = Math.min(12, (h - 10) / (dTop - dBot));
-  const y0 = (h - (dTop - dBot) * half) / 2, yOf = d => y0 + (dTop - d) * half;
-  const clefW = half * 7, colW = Math.max(half * 6, 36), cx = clefW + Math.max(50, w * 0.2);
+  const half = Math.min(11, (sh - 10) / (dTop - dBot));
+  const y0 = top + (sh - (dTop - dBot) * half) / 2, yOf = d => y0 + (dTop - d) * half;
+  const clefW = half * 7 + 14, colW = Math.max(half * 7, 40), cx = clefW + Math.max(56, w * 0.2);
   const cur = S.mode === 'wait' ? stepIdx : Math.floor(pos + 1e-6);
-  const exp = expected();
 
   // pięciolinie i klamra
-  c.strokeStyle = '#4a4740'; c.lineWidth = 1;
-  for (const d of [18, 20, 22, 24, 26, 30, 32, 34, 36, 38]) { const y = Math.round(yOf(d)) + 0.5; c.beginPath(); c.moveTo(4, y); c.lineTo(w, y); c.stroke(); }
-  c.lineWidth = 2; c.beginPath(); c.moveTo(5, yOf(38)); c.lineTo(5, yOf(18)); c.stroke();
-  c.fillStyle = '#2b2925'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.strokeStyle = VC.line; c.lineWidth = 1.5;
+  for (const d of [18, 20, 22, 24, 26, 30, 32, 34, 36, 38]) { const y = Math.round(yOf(d)) + 0.5; c.beginPath(); c.moveTo(14, y); c.lineTo(w, y); c.stroke(); }
+  c.strokeStyle = 'rgba(242,237,227,.5)'; c.lineWidth = 3; c.beginPath(); c.moveTo(15, yOf(38)); c.lineTo(15, yOf(18)); c.stroke();
+  c.fillStyle = 'rgba(242,237,227,.75)'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  const clx = clefW / 2 + 12;
   if (clefGlyphs(c)) {
-    clef(c, '\u{1D11E}', clefW / 2 + 4, yOf(38) - half * 3, yOf(30) + half * 3.4);
-    clef(c, '\u{1D122}', clefW / 2 + 4, yOf(26) - half * 0.15, yOf(19));
+    clef(c, '\u{1D11E}', clx, yOf(38) - half * 3, yOf(30) + half * 3.4);
+    clef(c, '\u{1D122}', clx, yOf(26) - half * 0.15, yOf(19));
   } else {
-    c.font = 'italic bold ' + (half * 5) + 'px Georgia,serif'; c.fillText('G', clefW / 2 + 4, yOf(32) + half * 1.7);
-    c.fillText('F', clefW / 2 + 4, yOf(24) + half * 1.7);
+    c.font = 'italic bold ' + (half * 5) + 'px Georgia,serif'; c.fillText('G', clx, yOf(32) + half * 1.7);
+    c.fillText('F', clx, yOf(24) + half * 1.7);
   }
   if (!song) {
-    c.font = '15px -apple-system,sans-serif'; c.fillStyle = '#8a8579'; c.textAlign = 'left';
-    c.fillText('Wybierz utwór – tu pojawią się nuty', cx, yOf(28) + 5); return;
+    c.font = '16px ' + VIEW_FONT; c.fillStyle = '#a79fb0'; c.textAlign = 'left';
+    c.fillText('Wybierz utwór z listy – tu pojawią się nuty', cx - 20, yOf(28) + 5); return;
   }
 
   c.save(); c.beginPath(); c.rect(clefW + 6, 0, w, h); c.clip();
-  // pasek aktualnego kroku
-  c.fillStyle = 'rgba(255,159,28,.16)'; c.fillRect(cx - colW / 2, 0, colW, h);
+  // kolumna aktualnego kroku i duża nazwa nuty nad nią (czytelna z daleka)
+  const colTop = Math.max(4, top - 54), colBot = Math.min(h - bot + 20, yOf(dBot) + half * 2);
+  c.fillStyle = 'rgba(255,77,61,.12)'; rrect(c, cx - colW / 2 - 4, colTop, colW + 8, colBot - colTop, (colW + 8) / 2); c.fill();
+  const curNotes = S.mode === 'wait' ? (steps[stepIdx] ? steps[stepIdx].notes : null) : (lit.size ? [...lit] : null);
+  const big = curNotes ? names(curNotes) : (S.mode === 'wait' && stepIdx >= steps.length ? '✓' : '');
+  if (big) {
+    let fs = h > 260 ? 44 : 30; c.font = 'bold ' + fs + 'px ' + VIEW_FONT;
+    const mw = c.measureText(big).width, maxW = Math.max(colW + 8, (w - cx) * 1.6);
+    if (mw > maxW) { fs = Math.max(16, fs * maxW / mw); c.font = 'bold ' + fs + 'px ' + VIEW_FONT; }
+    c.fillStyle = big === '✓' ? VC.ok : VC.now; c.textAlign = 'center'; c.textBaseline = 'top';
+    c.fillText(big, cx, colTop + 10);
+  }
   const first = Math.max(0, Math.floor(pos - (cx - clefW) / colW) - 1), last = Math.min(steps.length - 1, Math.ceil(pos + (w - cx) / colW) + 1);
-  const hx = half * 1.3, hy = half * 0.92;
-  const head = (x, y, col, ghost) => {
-    c.save(); c.translate(x, y); c.rotate(-0.33); c.beginPath(); c.ellipse(0, 0, hx, hy, 0, 0, Math.PI * 2);
-    if (ghost) { c.globalAlpha = 0.85; } c.fillStyle = col; c.fill(); c.restore();
+  const hx = half * 1.35, hy = half * 0.95;
+  const head = (x, y, col, glow) => {
+    c.save(); c.translate(x, y); c.rotate(-0.35); c.beginPath(); c.ellipse(0, 0, hx, hy, 0, 0, Math.PI * 2);
+    if (glow) { c.shadowColor = col; c.shadowBlur = 18; }
+    c.fillStyle = col; c.fill(); c.restore();
   };
   const ledgers = (x, d, col) => {
-    c.strokeStyle = col; c.lineWidth = 1.3;
+    c.strokeStyle = col; c.lineWidth = 1.5;
     const L = [];
     if (d >= 40) for (let k = 40; k <= d; k += 2) L.push(k);
     if (d <= 16) for (let k = 16; k >= d; k -= 2) L.push(k);
@@ -1217,12 +1256,14 @@ function drawStaff({c, w, h}, pos) {
     for (const k of L) { const y = Math.round(yOf(k)) + 0.5; c.beginPath(); c.moveTo(x - hx * 1.7, y); c.lineTo(x + hx * 1.7, y); c.stroke(); }
   };
   const sharp = (x, y, col) => { c.fillStyle = col; c.font = (half * 2.8) + 'px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('♯', x - hx * 2.5, y); };
-  const note = (x, m, col, ghost, label) => {
+  const note = (x, m, col, alpha, glow, label) => {
     const {d, sharp: sh} = dia(m), y = yOf(d);
-    ledgers(x, d, col === VC.ink || col === VC.past ? '#4a4740' : col);
-    head(x, y, col, ghost);
+    c.globalAlpha = alpha;
+    ledgers(x, d, col === VC.ink ? VC.line : col);
+    head(x, y, col, glow);
     if (sh) sharp(x, y, col);
-    if (label) { c.fillStyle = col; c.font = 'bold ' + Math.max(11, half * 1.9) + 'px -apple-system,sans-serif'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText(nnShort(m), x + hx + 4, y); }
+    if (label) { c.fillStyle = col; c.font = 'bold ' + Math.max(12, half * 1.9) + 'px ' + VIEW_FONT; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText(nnShort(m), x + hx + 5, y); }
+    c.globalAlpha = 1;
   };
   for (let i = first; i <= last; i++) {
     const x = cx + (i - pos) * colW, ms = [...steps[i].notes].sort((a, b) => a - b);
@@ -1232,17 +1273,20 @@ function drawStaff({c, w, h}, pos) {
       const d = dia(m).d;
       // sekunda w akordzie: główka na drugą stronę, żeby się nie nakładały
       shifted = d - prevD <= 1 && !shifted; prevD = d;
-      let col = i < cur ? VC.past : i > cur ? VC.ink : VC.now;
-      if (i === cur && S.mode === 'wait' && hit.has(m)) col = VC.ok;
-      if (i === cur && S.mode === 'tempo') col = lit.has(m) ? (held.has(m) ? VC.ok : VC.now) : VC.past;
-      note(x + (shifted ? hx * 2 : 0), m, col, false, i === cur && col !== VC.past);
+      let col = VC.ink, alpha = 1, glow = false;
+      if (i < cur) alpha = 0.3;
+      else if (i > cur) alpha = Math.max(0.42, 1 - (i - cur - 1) * 0.07);
+      else if (S.mode === 'wait') { col = hit.has(m) ? VC.ok : VC.now; glow = true; }
+      else if (lit.has(m)) { col = held.has(m) ? VC.ok : VC.now; glow = true; }
+      else alpha = 0.3;
+      note(x + (shifted ? hx * 2 : 0), m, col, alpha, glow, false);
     }
   }
   // koniec utworu: podwójna kreska
   const ex = cx + (steps.length - pos) * colW;
-  if (ex < w) { c.fillStyle = '#2b2925'; c.fillRect(ex, yOf(38), 1.5, yOf(18) - yOf(38)); c.fillRect(ex + 4, yOf(38), 4, yOf(18) - yOf(38)); }
-  // wciśnięte klawisze, których teraz nie ma w nutach → czerwone główki przy kursorze
-  for (const m of wrongHeld) if (held.has(m)) note(cx - hx * 2.4, m, VC.bad, true, true);
+  if (ex < w) { c.fillStyle = 'rgba(242,237,227,.7)'; c.fillRect(ex, yOf(38), 1.5, yOf(18) - yOf(38)); c.fillRect(ex + 4, yOf(38), 4, yOf(18) - yOf(38)); }
+  // wciśnięte klawisze, których teraz nie ma w nutach → bursztynowe główki przy kursorze
+  for (const m of wrongHeld) if (held.has(m)) note(cx - hx * 2.6, m, VC.bad, 1, false, true);
   c.restore();
 }
 
@@ -1267,8 +1311,8 @@ function drawFall({c, w, h}, tRef) {
     const x = g.l * w + 1.5, bw = g.w * w - 3;
     const yTop = yOf(n.end), yBot = yOf(n.start), bh = Math.max(6, yBot - yTop);
     const now = curStep ? Math.abs(n.start - curStep.time) < 0.045 : (n.start <= tRef && n.end > tRef && lit.has(n.m));
-    let col = isBlack(n.m) ? '#c9690c' : VC.now;
-    if (now) col = (S.mode === 'wait' ? hit.has(n.m) : held.has(n.m)) ? VC.ok : '#ffc266';
+    let col = isBlack(n.m) ? '#c9690c' : FC.now;
+    if (now) col = (S.mode === 'wait' ? hit.has(n.m) : held.has(n.m)) ? FC.ok : '#ffc266';
     c.fillStyle = col; rrect(c, x, yBot - bh, bw, bh, Math.min(5, bw / 3)); c.fill();
     if (now) { c.strokeStyle = '#fff'; c.lineWidth = 1.5; c.stroke(); }
     if (bw >= 12 && Math.min(h, yBot) - Math.max(0, yBot - bh) >= 16) {
@@ -1279,7 +1323,7 @@ function drawFall({c, w, h}, tRef) {
   // wciśnięte klawisze: niebieski (dobrze) / czerwony (źle) pasek na dole toru
   for (const m of held) {
     const g = kGeom.get(m); if (!g) continue;
-    c.fillStyle = wrongHeld.has(m) ? VC.bad : exp.has(m) ? VC.ok : VC.held; c.fillRect(g.l * w, h - 8, g.w * w, 8);
+    c.fillStyle = wrongHeld.has(m) ? FC.bad : exp.has(m) ? FC.ok : FC.held; c.fillRect(g.l * w, h - 8, g.w * w, 8);
   }
 }
 
@@ -1360,7 +1404,7 @@ function renderLib() {
   // najnowsze na górze
   const shown = userSongs.slice().reverse().filter(u => (!lvl || u.lvl === lvl) && (!q || libNorm(u.title).includes(q)));
   const l = $('#lib'); l.innerHTML = '';
-  if (!n) l.innerHTML = '<p class="libempty">Jeszcze nic. Stuknij <b>🔎 Katalog utworów</b> na górze, wyszukaj utwór i pobierz go jednym kliknięciem.</p>';
+  if (!n) l.innerHTML = '<p class="libempty">Jeszcze nic. Stuknij <b>Katalog utworów</b> na górze, wyszukaj utwór i pobierz go jednym kliknięciem.</p>';
   else if (!shown.length) l.innerHTML = '<p class="libempty">Żaden utwór nie pasuje' + (q ? ' do „' + esc($('#libQ').value.trim()) + '”' : '') +
     (lvl ? ' na poziomie „' + LEVELS[lvl] + '”' : '') + '.</p>';
   shown.forEach(u => {
@@ -1762,11 +1806,12 @@ document.querySelectorAll('#viewSeg button').forEach(b => b.onclick = () => {
 window.addEventListener('resize', () => { vw.pos = null; drawView(); });
 /* menu „Opcje”: tryb, tempo, transpozycja, dźwięk, widok. Na przycisku krótkie podsumowanie ikonami. */
 function renderOpts() {
-  const p = [S.mode === 'wait' ? '⏳' : '⏱ ' + S.speed + '%'];
+  // podsumowanie słowami na przycisku w odtwarzaczu (tryb, transpozycja, dźwięk, widok)
+  const p = [S.mode === 'wait' ? 'Czekaj na mnie' : 'W tempie ' + S.speed + '%'];
   if (S.transpose) p.push((S.transpose > 0 ? '+' : '') + S.transpose);
-  if (S.sound) p.push('🔊');
-  if (S.view !== 'off') p.push(S.view === 'staff' ? '🎼' : '🌧');
-  $('#optsSum').textContent = p.join(' · ');
+  if (S.sound) p.push('<svg class="ico" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>');
+  p.push('<span class="dim">' + {off: 'Bez nut', staff: 'Nuty', fall: 'Wodospad'}[S.view] + '</span>');
+  $('#optsSum').innerHTML = p.map(x => x.startsWith('<') ? x : '<span>' + x + '</span>').join('');
   $('#optsBtn').title = (S.mode === 'wait' ? 'Czekaj na mnie' : 'W tempie ' + S.speed + '%') +
     (S.transpose ? ', transpozycja ' + S.transpose : '') + (S.sound ? ', dźwięk z iPada' : '') +
     ', ' + {off: 'bez nut', staff: 'nuty', fall: 'wodospad'}[S.view];
@@ -1775,9 +1820,11 @@ const optsOpen = () => !$('#opts').hidden;
 function openOpts() {
   const pop = $('#opts'), r = $('#optsBtn').getBoundingClientRect();
   pop.hidden = false;
-  pop.style.top = (r.bottom + 6) + 'px';
-  pop.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
-  pop.style.maxHeight = Math.max(160, window.innerHeight - r.bottom - 14) + 'px';
+  // odtwarzacz jest na dole, więc menu otwiera się w górę
+  pop.style.top = 'auto';
+  pop.style.bottom = (window.innerHeight - r.top + 8) + 'px';
+  pop.style.right = Math.max(8, window.innerWidth - r.right - 6) + 'px';
+  pop.style.maxHeight = Math.max(160, r.top - 16) + 'px';
   $('#optsBtn').setAttribute('aria-expanded', 'true');
 }
 function closeOpts() { $('#opts').hidden = true; $('#optsBtn').setAttribute('aria-expanded', 'false'); }
@@ -1877,7 +1924,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { sto
 window.addEventListener('pagehide', allOff);
 
 /* start */
-renderMode(); renderView(); renderTr(); renderOff(); buildKbd(); renderLib(); refreshView(); initMidi();
+playUI(false); renderMode(); renderView(); renderTr(); renderOff(); buildKbd(); renderLib(); refreshView(); initMidi();
 setTimeout(levelOldSongs, 300);
 </script>
 </body>

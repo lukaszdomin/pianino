@@ -88,12 +88,23 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     do pięciolinii (`clef()`), a gdy czcionka ich nie ma – litery G/F. Leży tylko w prawej kolumnie (`#right`), więc biblioteka zostaje wysoka.
     **Wodospad** `drawFall()`: paski z `ns` spadają na klawisze, 3 s nad klawiaturą (`VIEW_SECS`, skalowane tempem); na całą
     szerokość (element `#view` przenoszony przed `#kbd`), położenie klawiszy z `keyGeom()` – to samo co klawiatura na ekranie.
-    Kolory: przyszłe czarne / pomarańczowe, aktualne pomarańczowe (jak światła), trafione zielone, pomyłka (`wrongHeld`) czerwona, minione szare.
-    W poziomie z widokiem klawiatura i widok mają po 22vh, a pole „Zagraj” jest węższe (`body.withView`).
-    Pięciolinia w `#right` rośnie i zajmuje całe wolne miejsce pod przyciskami (`#right>#view{flex:1}`, główki do `half` = 12 px);
-  - pasek odtwarzacza: na wierzchu tylko ⏮ Start/Pauza ⏭ ↺ (napis „Od początku” chowa się poniżej 1000 px szerokości), suwak i przycisk
-    **🎚 Opcje** (`#optsBtn`) z podsumowaniem ikonami (`renderOpts()`: ⏳/⏱ tempo, transpozycja, 🔊, 🎼/🌧).
-    Menu `#opts` to pływający panel (`position:fixed`, `openOpts()` / `closeOpts()`): tryb, tempo, transpozycja, dźwięk z iPada, widok nut.
+    Kolory wodospadu (jeszcze stare, `FC`): przyszłe pomarańczowe, aktualne jasnopomarańczowe, trafione zielone, pomyłka bursztynowa.
+    Kolory pięciolinii (`VC`, ciemna „scena”): przyszłe kość słoniowa (coraz bledsze), aktualne czerwone z poświatą (`VC.now` = `--led`)
+    i **duża nazwa nuty nad kolumną** (zastępuje pole „Zagraj”), trafione zielone, pomyłka bursztynowa, minione przygaszone.
+    Pięciolinia zostawia miejsce na nazwę u góry i na pływający odtwarzacz u dołu (`STAFF_TOP` / `STAFF_BOT`).
+    W poziomie z widokiem klawiatura i widok mają po 22vh. Pole „Zagraj / potem” (`#now`) widać tylko w trybie „Bez nut” (`body.withView #now{display:none}`).
+    Pięciolinia w `#right` rośnie i zajmuje całe wolne miejsce (`#right>#view{flex:1}`, główki do `half` = 11 px);
+  - wygląd „Scena” (etap 1 z 3, 11.11.2026; makiety: https://claude.ai/artifact/PsCLH8WKuvSDmZbxqmCrvp): kolory lakieru pianina
+    (zmienne CSS `--bg`, `--panel`, `--text` = kość słoniowa, `--led` = czerwień diod, `--miss` = bursztyn, `--felt` = bordowy filc),
+    czcionki z Google Fonts: **Bricolage Grotesque** (tytuły, `--disp`) i **Atkinson Hyperlegible** (reszta i nazwy nut, `--ui`; czytelna z daleka).
+    Zasada: **czerwony tylko dla tego, co trzeba zagrać teraz** (jak diody w keyboardzie); przyciski główne w kolorze kości słoniowej.
+    Ikony to wbudowane SVG (`class="ico"`), bez emoji. Klawiatura z głębią (gradienty, „krawędź” klawisza), nad nią filcowy pasek,
+    świecący klawisz czerwony z poświatą. Status: „Keyboard połączony” z kropką, nazwa urządzenia w `title`;
+  - pasek odtwarzacza: pływająca „pigułka” `#transport` na dole prawej kolumny (`position:absolute` w `#right`): ⏮ Start/Pauza ⏭ ↺
+    (same ikony, `playUI()` zmienia ikonę i `aria-label`) i przycisk **Opcje** (`#optsBtn`) z podsumowaniem słowami
+    (`renderOpts()`: „Czekaj na mnie” / „W tempie 80%”, transpozycja, ikona głośnika, widok). Suwak `#pos` i krok są pod tytułem,
+    statystyki („Trafione / Pomyłki”, `#stats`) obok tytułu. Menu `#opts` to pływający panel otwierany **w górę** od przycisku
+    (`openOpts()` / `closeOpts()`): tryb, tempo, transpozycja, dźwięk z iPada, widok nut.
     Zamyka się stuknięciem obok, Escape i przy obrocie ekranu. Smoke test klika w menu przez `opt(page, selektor)`.
 
 ## Jak pracujemy
@@ -164,6 +175,14 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 ## Do zrobienia / pomysły
 
 (Łukasz decyduje o kolejności. Claude dopisuje tu pomysły, które padną w rozmowie.)
+- [ ] **Nowy wygląd, etap 2:** wodospad w stylu „Sceny” – lewa ręka jasnoniebieska, prawa kremowa, aktualne paski czerwone ze świeceniem,
+      filcowy pasek jako linia trafienia (świeci tam, gdzie spada nuta), wygaszanie u góry, odtwarzacz nad wodospadem (u góry, nie zasłania nut).
+      Wodospad na całą wysokość nad klawiaturą. Makieta „A + C. Scena z wodospadem”.
+- [ ] **Nowy wygląd, etap 3:** osobny ekran biblioteki (karty z miniaturą melodii, poziom kreskami, „Graj dalej”, jedna wyszukiwarka
+      dla własnych utworów i katalogu); na ekranie grania zamiast lewego panelu przycisk „‹ Biblioteka”. Makieta „A. Scena – biblioteka”.
+      Przy okazji: emoji w katalogu i ustawieniach na ikony, napisy wielkimi literami („MOJE UTWORY”) na zwykłe.
+- [ ] Sprawdzić etap 1 na iPadzie: czy czcionki z Google Fonts się wczytują w Web MIDI Browser, czytelność dużej nazwy nuty z pulpitu,
+      czy pływający odtwarzacz nie zasłania nut w pionie i w poziomie.
 - [ ] Poziom liczony też dla pojedynczej ścieżki (np. sama melodia z piosenki z BitMidi). (Filtr poziomu w „Moje utwory” już jest – na razie po poziomie całego pliku).
       Ważne teraz, gdy jest Lakh: prawie każda piosenka wychodzi „Trudne”, choć sama melodia (⭐) bywa łatwa.
 - [ ] Sprawdzić na iPadzie, czy po poprawce odsłuch gra (wpis „DŹWIĘK:” w dzienniku) i czy wybór melodii trafia na prawdziwych plikach.
@@ -180,6 +199,10 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 - [ ] Sprawdzić nowy lewy panel na iPadzie w obu orientacjach (przewijanie palcem, tryb „Edytuj”, szukajka z klawiaturą ekranową).
 
 ## Dziennik zmian
+
+- 11.11.2026: nowy wygląd „Scena”, etap 1 – ekran grania: kolory lakieru pianina, czcionki Bricolage Grotesque + Atkinson Hyperlegible,
+  ikony SVG zamiast emoji, ciemna pięciolinia z czerwoną aktualną nutą i dużą nazwą nuty (zamiast pola „Zagraj”), pływający odtwarzacz,
+  klawiatura z głębią i filcowym paskiem, pomyłki na bursztynowo; testy odtwarzacza i nowych kolorów w `smoke_test.py`.
 
 - 11.11.2026: brzmienie fortepianu z nagranych próbek (FluidR3 GM) zamiast dźwięku „jak ze starej gry” – w odsłuchu i „Dźwięku z iPada”;
   pobierane raz, zapisane w IndexedDB; wybór brzmienia i stan w Ustawieniach; testy z podstawioną paczką próbek.

@@ -181,7 +181,8 @@ COUNT_PX = """([r, g, b]) => {
     if (d[i + 3] > 200 && Math.abs(d[i] - r) < 12 && Math.abs(d[i + 1] - g) < 12 && Math.abs(d[i + 2] - b) < 12) n++;
   return n;
 }"""
-ORANGE, LIGHT_ORANGE, RED, GREEN = [255, 159, 28], [255, 194, 102], [229, 72, 77], [46, 194, 126]
+# LED – aktualna nuta na pięciolinii (czerwona jak diody), MISS – pomyłka (bursztynowa), LIGHT_ORANGE – aktualna nuta w wodospadzie
+LED, LIGHT_ORANGE, MISS, GREEN = [255, 77, 61], [255, 194, 102], [245, 165, 36], [46, 194, 126]
 
 
 async def opt(page, selector):
@@ -197,7 +198,16 @@ async def options_menu_tests(page, check):
           'tryb, tempo i widok schowane w menu „Opcje”')
     for sel in ('#playBtn', '#restartBtn', '#prevBtn', '#nextBtn', '#pos', '#optsBtn'):
         check(await page.is_visible(sel), 'na wierzchu: ' + sel)
+    lay = await page.evaluate("""() => { const t = document.querySelector('#transport').getBoundingClientRect(),
+        k = document.querySelector('#kbd').getBoundingClientRect(), r = document.querySelector('#right').getBoundingClientRect();
+        return {above: t.bottom <= k.top, inside: t.left >= r.left - 1 && t.right <= r.right + 1}; }""")
+    check(lay['above'] and lay['inside'], 'pływający odtwarzacz leży nad klawiaturą, w prawej kolumnie ' + str(lay))
+    check(await page.get_attribute('#playBtn', 'aria-label') in ('Start', 'Pauza') and await page.query_selector('#playBtn svg'),
+          'Start/Pauza: ikona i opis dla czytnika')
     await page.click('#optsBtn')
+    pop = await page.evaluate("""() => { const p = document.querySelector('#opts').getBoundingClientRect(),
+        b = document.querySelector('#optsBtn').getBoundingClientRect(); return p.bottom <= b.top && p.top >= 0; }""")
+    check(pop, 'menu „Opcje” otwiera się w górę i mieści na ekranie')
     check(await page.is_visible('#modeSeg') and await page.is_visible('#speed') and await page.is_visible('#trUp')
           and await page.is_visible('#sound') and await page.is_visible('#viewSeg'), 'menu „Opcje” pokazuje wszystkie opcje')
     sum0 = await page.text_content('#optsSum')
@@ -219,11 +229,11 @@ async def view_tests(page, check):
     check(await page.evaluate("S.view") == 'staff' and await page.is_visible('#viewCv'), 'domyślnie widać pięciolinię')
     check(await page.evaluate("document.querySelector('#viewCv').width > 0"), 'pięciolinia ma rozmiar')
     await page.wait_for_timeout(300)
-    check(await px(ORANGE) > 30, 'pięciolinia: aktualna nuta na pomarańczowo')
-    check(await px(RED) > 30, 'pięciolinia: pomyłka (trzymany klawisz) na czerwono')
+    check(await px(LED) > 30, 'pięciolinia: aktualna nuta na czerwono (jak diody)')
+    check(await px(MISS) > 30, 'pięciolinia: pomyłka (trzymany klawisz) na bursztynowo')
     await page.evaluate('__in.fire([0x80,61,0])')
     await page.wait_for_timeout(100)
-    check(await px(RED) == 0, 'po puszczeniu klawisza czerwona nuta znika')
+    check(await px(MISS) == 0, 'po puszczeniu klawisza bursztynowa nuta znika')
     st = await page.evaluate('steps[stepIdx].notes')
     pos_before = await page.evaluate('vw.pos')
     for n in st:
@@ -242,7 +252,7 @@ async def view_tests(page, check):
         return d[0] > 240 && d[1] > 180 && d[2] > 80; }})()"""), 'wodospad: pasek stoi nad właściwym klawiszem')
     await page.evaluate('__in.fire([0x90,37,90])')
     await page.wait_for_timeout(50)
-    check(await px(RED) > 10, 'wodospad: pomyłka zaznaczona na dole toru')
+    check(await px(MISS) > 10, 'wodospad: pomyłka zaznaczona na dole toru')
     await page.evaluate('__in.fire([0x80,37,0])')
 
     await opt(page, '#viewSeg >> text=Bez nut')
@@ -344,7 +354,7 @@ async def main():
         await page.goto(serve())
         await page.wait_for_timeout(400)
 
-        check('Bluetooth Session 1' in await page.text_content('#status'), 'wykrywa keyboard')
+        check('połączony' in await page.text_content('#status') and 'Bluetooth Session 1' in await page.get_attribute('#status', 'title'), 'wykrywa keyboard')
         lib = await page.eval_on_selector_all('#libBuiltin .song', 'els => els.map(e => e.textContent)')
         check('Wlazł kotek na płotekŁatwe' in lib and 'Dla Elizy – początekŚrednie' in lib, 'wbudowane utwory mają poziom ' + str(lib))
 
@@ -358,7 +368,7 @@ async def main():
         await page.wait_for_timeout(150)
         check('krok 2' in await page.text_content('#posTxt'), 'po trafieniu przechodzi do kroku 2')
         await page.evaluate('__in.fire([0x90,61,90])')
-        check('✗ 1' in await page.text_content('#stats'), 'liczy pomyłkę')
+        check('Pomyłki 1' in await page.text_content('#stats'), 'liczy pomyłkę')
 
         await view_tests(page, check)
         await options_menu_tests(page, check)
