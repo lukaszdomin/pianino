@@ -322,7 +322,10 @@ async def demo_tests(page, check):
     await page.click('#playBtn')
     await page.wait_for_timeout(700)
     sent = await page.evaluate('__sent')
+    pc = [i for i, m in enumerate(sent) if m == [0xC0, 0]]
     ons = [m for m in sent if m[0] == 0x90]
+    check(pc and [0xB0, 0, 0] in sent[:pc[0]] and pc[0] < sent.index(ons[0]) if ons else False,
+          'pokaz: przed nutami przełącza keyboard na fortepian (Bank Select + Program Change C0 00)')
     first = await page.evaluate('ns[0].m')
     check(len(ons) >= 2 and ons[0][1] == first and ons[0][2] > 0, 'pokaz: wysyła nuty do keyboardu (Note On %s)' % ons[:3])
     check(any(m[0] == 0x80 for m in sent), 'pokaz: puszcza nuty (Note Off)')
@@ -344,6 +347,13 @@ async def demo_tests(page, check):
     r = await page.evaluate("""() => { const o = out, calls = []; const t0 = window.tone; out = null; window.tone = (...a) => calls.push(a);
         demoNote(ns[0]); window.tone = t0; out = o; return {sent: demoOn.size}; }""")
     check(r['sent'] == 0, 'pokaz: bez keyboardu nic nie wysyła')
+    # brzmienie Pokazu: inny program, brzmienie z keyboardu (bez zmiany), iPad (keyboard tylko świeci)
+    r = await page.evaluate("""() => { const res = {}; const run = v => { S.demoVoice = v; __sent.length = 0; kbdVoice(); demoNote(ns[0]);
+          const x = {pc: __sent.filter(m => m[0] === 0xC0).map(m => m[1]), on: __sent.filter(m => m[0] === 0x90).length}; demoSilence(); return x; };
+        res.ep = run('4'); res.kbd = run('kbd'); res.ipad = run('ipad'); S.demoVoice = '0'; return res; }""")
+    check(r['ep'] == {'pc': [4], 'on': 1}, 'pokaz: wybrane brzmienie (pianino elektryczne) ' + str(r['ep']))
+    check(r['kbd'] == {'pc': [], 'on': 1}, 'pokaz: „brzmienie wybrane na keyboardzie” nie zmienia programu ' + str(r['kbd']))
+    check(r['ipad'] == {'pc': [], 'on': 0}, 'pokaz: „fortepian z iPada” nie wysyła nut do keyboardu ' + str(r['ipad']))
     await opt(page, '#modeSeg >> text=Czekaj na mnie')
     await opt(page, '#viewSeg >> text=' + {'off': 'Bez nut', 'staff': 'Nuty', 'fall': 'Wodospad'}[view0])
     await page.mouse.click(700, 160)

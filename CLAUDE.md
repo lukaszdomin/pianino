@@ -66,7 +66,11 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     Note On / Note Off na kanale 1 (`demoNote()`, `demoOffs()`, brzmiące nuty w `demoOn`), więc gra on swoimi głośnikami;
     światła bez wyprzedzenia `LEAD` (razem z dźwiękiem), klawisze na ekranie wciśnięte (`.key.lit.press`), trafień nie liczymy,
     bez statystyk i okna wyniku. Pauza, przewijanie, koniec i wyjście → `demoSilence()` (Note Off + All Notes Off `B0 7B 00`).
-    Bez keyboardu gra iPad (`tone()`). Wybór „Pokaz” w menu Opcje przełącza widok na wodospad. Tempo działa jak w „W tempie”;
+    Bez keyboardu gra iPad (`tone()`). Wybór „Pokaz” w menu Opcje przełącza widok na wodospad. Tempo działa jak w „W tempie”.
+    **Brzmienie Pokazu** (`S.demoVoice`, Ustawienia → „Pokaz”, `#demoVoiceSel`): numer programu General MIDI (domyślnie `'0'` fortepian),
+    `'kbd'` (bez zmiany – brzmienie wybrane na keyboardzie) albo `'ipad'` (gra iPad próbkami, keyboard tylko świeci; `demoKbd()`).
+    `kbdVoice()` przy Starcie Pokazu i przy zmianie wyboru wysyła Bank Select 0 (`B0 00 00`, `B0 20 00`) i Program Change (`C0 <program>`),
+    bo keyboard grał nuty swoim bieżącym brzmieniem (Łukasz: „dziwny dźwięk, nie fortepianowy”). Przycisk „Posłuchaj na keyboardzie” (`#demoVoiceTestBtn`);
   - katalog utworów z internetu: obiekt `cat`, `catSearch()`, `catCommons()`, `catBitmidi()`, `catLakh()`, `catBillboard()`, `catDownload()`, `renderCatalog()`;
     spisy trzymane u nas (Lakh, Billboard) przeszukuje wspólne `idxFind()` (Billboard: przy równym dopasowaniu najnowsze najpierw);
     kolejność źródeł w „Wszystkie” = kolejność kluczy `CAT_FN` (Billboard pierwszy); przy wynikach Billboard „hit 2017 · sama melodia”;
@@ -219,6 +223,8 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 - [ ] Sprawdzić „Pokaz” na iPadzie: czy keyboard gra nuty wysłane z iPada (ten sam test: Ustawienia → „Zagraj C na keyboardzie”),
       czy nie ma opóźnień / zawieszonych nut przez Bluetooth, czy keyboard nie odsyła granych nut jako wciśniętych (fioletowe klawisze).
       Jeśli keyboard nie gra – włączyć „Dźwięk z iPada”.
+      **Potwierdzone 11.11.2026: keyboard gra nuty z iPada**, ale nie fortepianem. Do sprawdzenia: czy keyboard przyjmuje Program Change
+      (Ustawienia → Pokaz → „Posłuchaj na keyboardzie”, różne brzmienia); jeśli nie – szukać komendy SysEx brzmienia w open-one-piano.
 - [ ] Pomysł do „Pokazu”: przycisk na karcie utworu w bibliotece („Posłuchaj na keyboardzie”), granie całej aranżacji
       (wszystkie ścieżki) niezależnie od wybranych rąk, perkusja na kanale 10.
 - [ ] Sprawdzić etap 3 na iPadzie: przewijanie siatki palcem, „Graj dalej” po zamknięciu i ponownym otwarciu Web MIDI Browser,
@@ -245,6 +251,10 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
       bemole zamiast krzyżyków w tonacjach bemolowych, regulacja wysokości widoku / szybkości wodospadu.
 
 ## Dziennik zmian
+
+- 11.11.2026: Pokaz: keyboard grał „dziwnym dźwiękiem” – przed Pokazem przełączamy jego brzmienie na fortepian (Bank Select + Program Change);
+  w Ustawieniach wybór brzmienia Pokazu (fortepian, jasny fortepian, pianino elektryczne, klawesyn, organy, brzmienie z keyboardu,
+  fortepian z iPada) i „Posłuchaj na keyboardzie”; testy w `smoke_test.py`.
 
 - 11.11.2026: tryb **„Pokaz”** – aplikacja sama gra pobrany utwór na keyboardzie (Note On/Off, z siłą uderzenia z pliku),
   świecą diody, klawisze na ekranie się wciskają, nuty spływają w wodospadzie; pauza wycisza keyboard; bez keyboardu gra iPad;
