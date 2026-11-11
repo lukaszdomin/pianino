@@ -21,14 +21,36 @@ header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.2px}
 #status.ok{color:var(--ok)} #status.err{color:var(--bad)}
 #main{flex:1;display:flex;min-height:0}
 aside{width:280px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
-aside h3{margin:14px 14px 6px;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
-#lib{flex:1;overflow-y:auto;padding:0 8px 8px}
-.song{display:flex;align-items:center;gap:6px;padding:10px;border-radius:10px;cursor:pointer;font-size:15px}
-.song:hover{background:var(--panel2)} .song.on{background:#3a2c12;color:var(--accent)}
-.song .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.song .del{background:none;border:none;color:var(--muted);padding:2px 6px;font-size:18px}
-.addfile{margin:8px;text-align:center;display:block;background:var(--panel2);border:1px dashed var(--muted);border-radius:10px;padding:11px;cursor:pointer;font-size:15px}
+aside h3{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700}
+.libtop{padding:8px 8px 8px;border-bottom:1px solid var(--line)}
+#libScroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 8px 16px}
+.libhead{display:flex;align-items:center;gap:8px;padding:14px 6px 6px;min-height:44px}
+.libhead h3{flex:1;white-space:nowrap;letter-spacing:.6px}
+.libhead button{padding:4px 10px;font-size:13px;border-radius:8px}
+.libhead button.on{border-color:var(--accent);color:var(--accent)}
+button.fold{width:100%;background:none;border:none;border-radius:8px;text-align:left;margin-top:6px}
+button.fold:active{transform:none}
+button.fold .arr{color:var(--muted);font-size:13px;transition:transform .15s}
+button.fold.shut .arr{transform:rotate(-90deg)}
+#libTools{display:flex;flex-direction:column;gap:6px;padding:0 2px 6px}
+#libTools[hidden]{display:none}
+#libQ{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:14px;-webkit-user-select:text;user-select:text;-webkit-appearance:none}
+#libLvlSeg{display:flex}
+#libLvlSeg button{flex:1;padding:6px 0;font-size:12px;min-width:0}
+#libLvlSeg button.l1{color:#7fe0ad} #libLvlSeg button.l2{color:#ffd84d} #libLvlSeg button.l3{color:#ff8f92}
+#libLvlSeg button.on{color:#1a1200}
+.song{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;cursor:pointer;font-size:15px;min-height:44px}
+.song:hover{background:var(--panel2)} .song.on{background:#3a2c12}
+.song .t{flex:1;min-width:0}
+.song .tt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.25;overflow-wrap:anywhere}
+.song.on .tt{color:var(--accent)}
+.song .sub{display:flex;align-items:center;flex-wrap:wrap;gap:2px 6px;margin-top:3px;font-size:12px;color:var(--muted);line-height:1.3}
+.song .sub:empty{display:none}
+.song .del{background:#3a1719;border:1px solid var(--bad);color:#ff8f92;padding:5px 10px;font-size:13px;border-radius:8px;white-space:nowrap}
+.song.editing{cursor:default}
+.song.editing:hover{background:none}
 .hint{font-size:12px;color:var(--muted);margin:0 14px 12px;line-height:1.4}
+.libempty{font-size:13px;color:var(--muted);margin:2px 6px 8px;line-height:1.45}
 #player{flex:1;padding:16px 22px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-width:0}
 #songTitle{margin:0;font-size:24px}
 #tracks{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -81,7 +103,7 @@ input[type=range]{accent-color:var(--accent)}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 30px;text-align:center;min-width:300px}
 .card h2{margin:0 0 6px;font-size:28px}
 .card p{color:var(--muted);margin:6px 0 18px;font-size:16px}
-.catbtn{margin:8px 8px 0;display:block;width:calc(100% - 16px);background:#3a2c12;border-color:var(--accent);color:var(--accent);font-weight:700;font-size:15px}
+.catbtn{display:block;width:100%;background:#3a2c12;border-color:var(--accent);color:var(--accent);font-weight:700;font-size:15px}
 #catalog{position:fixed;inset:3vh 3vw;background:var(--panel);border:1px solid var(--line);border-radius:18px;z-index:25;display:none;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px #000a}
 #catalog.open{display:flex}
 #catalog .top{padding:16px 18px 10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
@@ -107,9 +129,10 @@ input[type=range]{accent-color:var(--accent)}
 .lvl{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);margin-right:6px;color:var(--muted);white-space:nowrap}
 .lvl.l1{border-color:#2ec27e;color:#7fe0ad} .lvl.l2{border-color:#e0b100;color:#ffd84d} .lvl.l3{border-color:#e5484d;color:#ff8f92}
 .song .lvl{margin:0;font-size:10px;padding:0 6px}
+.song .src{font-size:11px}
 #catLvlSeg button{padding:7px 11px}
 #toast{position:fixed;left:50%;bottom:30vh;transform:translateX(-50%);background:#000c;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:40;max-width:80vw;text-align:center}
-@media (max-width:760px){aside{width:200px}#nowNotes{font-size:28px}}
+@media (max-width:760px){aside{width:230px}#nowNotes{font-size:28px}}
 </style>
 </head>
 <body>
@@ -121,13 +144,22 @@ input[type=range]{accent-color:var(--accent)}
 
 <div id="main">
   <aside>
-    <h3>Wbudowane</h3>
-    <div id="libBuiltin"></div>
-    <h3>Moje utwory (MIDI)</h3>
-    <div id="lib"></div>
-    <button class="catbtn" id="openCatalog">🔎 Katalog utworów</button>
-    <label class="addfile">＋ Dodaj plik MIDI<input id="file" type="file" multiple hidden></label>
-    <p class="hint">W katalogu wyszukasz utwory w internetowych bibliotekach MIDI i pobierzesz je jednym kliknięciem. Własne pliki .mid dodasz przyciskiem powyżej.</p>
+    <div class="libtop"><button class="catbtn" id="openCatalog">🔎 Katalog utworów</button></div>
+    <div id="libScroll">
+      <div class="libhead"><h3 id="libHead">Moje utwory</h3><button id="libEdit" type="button">Edytuj</button></div>
+      <div id="libTools" hidden>
+        <input id="libQ" type="search" placeholder="Szukaj w moich utworach" autocomplete="off" enterkeyhint="search">
+        <div class="seg" id="libLvlSeg">
+          <button type="button" data-lvl="0">Każdy</button>
+          <button type="button" data-lvl="1" class="l1">Łatwe</button>
+          <button type="button" data-lvl="2" class="l2">Średnie</button>
+          <button type="button" data-lvl="3" class="l3">Trudne</button>
+        </div>
+      </div>
+      <div id="lib"></div>
+      <button class="libhead fold" id="builtinToggle" type="button"><h3>Wbudowane</h3><span class="arr">▾</span></button>
+      <div id="libBuiltin"></div>
+    </div>
   </aside>
 
   <section id="player">
@@ -261,7 +293,7 @@ function toast(msg, ms = 2800) {
 }
 
 /* ---------------- ustawienia ---------------- */
-const DEF = {low: 36, offset: 0, color: 1, transpose: 0, speed: 100, mode: 'wait', sound: false, outId: '', inId: '', catLvl: 0};
+const DEF = {low: 36, offset: 0, color: 1, transpose: 0, speed: 100, mode: 'wait', sound: false, outId: '', inId: '', catLvl: 0, libLvl: 0, builtinOpen: null};
 const S = Object.assign({}, DEF);
 try { Object.assign(S, JSON.parse(localStorage.getItem('sk_settings') || '{}')); } catch (e) {}
 function saveS() { try { localStorage.setItem('sk_settings', JSON.stringify(S)); } catch (e) {} }
@@ -864,25 +896,89 @@ function levelOldSongs() {
   userSongs.forEach(u => { if (u.lvl === undefined) { try { const lv = songLevel(getUserSong(u)); u.lvl = lv ? lv.lvl : 0; } catch (e) { u.lvl = 0; } changed = true; } });
   if (changed) { saveUser(); renderLib(); }
 }
+/* Lewy panel: na górze przycisk Katalogu, niżej jedna przewijana lista:
+   „Moje utwory” (z wyszukiwaniem i filtrem poziomu, gdy jest ich dużo) i zwijane „Wbudowane”.
+   Wiersz ma dwie linie: tytuł (do 2 linii) oraz wykonawca · poziom · źródło.
+   Usuwanie tylko w trybie „Edytuj”, żeby nie skasować utworu przypadkowym stuknięciem. */
+const LIB_TOOLS_MIN = 10;          // od tylu utworów pokazujemy wyszukiwanie i filtr poziomu
+const LIB_SRC = {commons: 'Wikimedia', bitmidi: 'BitMidi', lakh: 'Lakh'};
+let libEditing = false;
+// (catClean zamienia pusty tekst na „bez tytułu”, więc pusty sprawdzamy osobno)
+const libNorm = s => { s = String(s).trim(); return s ? catNorm(s.replace(/ł/g, 'l').replace(/Ł/g, 'L')) : ''; };
+// Lakh zapisuje tytuł jako „Wykonawca – Tytuł”: wykonawcę przenosimy do drugiej linii.
+function songParts(u) {
+  const srcName = u.src ? LIB_SRC[u.src.split(':')[0]] || '' : 'własny plik';
+  let title = u.title, artist = '';
+  if (u.src && u.src.startsWith('lakh:')) {
+    const k = title.indexOf(' – ');
+    if (k > 0) { artist = title.slice(0, k); title = title.slice(k + 3); }
+  }
+  return {title, artist, srcName};
+}
 function songRow(s, onDel) {
   const d = document.createElement('div');
-  d.className = 'song' + (song && song.id === s.id ? ' on' : '');
-  d.innerHTML = `<span class="t">${esc(s.title)}</span>${lvlBadge(s.lvl)}`;
-  d.onclick = () => s.load();
-  if (onDel) { const x = document.createElement('button'); x.className = 'del'; x.textContent = '×'; x.onclick = e => { e.stopPropagation(); onDel(); }; d.appendChild(x); }
+  d.className = 'song' + (song && song.id === s.id ? ' on' : '') + (onDel && libEditing ? ' editing' : '');
+  const sub = [s.artist ? `<span>${esc(s.artist)}</span>` : '', lvlBadge(s.lvl), s.srcName ? `<span class="src">${esc(s.srcName)}</span>` : '']
+    .filter(Boolean).join('');
+  d.innerHTML = `<div class="t"><span class="tt">${esc(s.title)}</span><div class="sub">${sub}</div></div>`;
+  d.title = s.full || s.title;
+  d.onclick = () => { if (!(onDel && libEditing)) s.load(); };
+  if (onDel && libEditing) {
+    const x = document.createElement('button'); x.className = 'del'; x.textContent = 'Usuń';
+    x.onclick = e => { e.stopPropagation(); onDel(); }; d.appendChild(x);
+  }
   return d;
 }
+function builtinOpen() { return S.builtinOpen === null || S.builtinOpen === undefined ? !userSongs.length : !!S.builtinOpen; }
+function removeUserSong(u) {
+  if (song && song.id === u.id) { stop(); song = null; $('#songTitle').textContent = 'Wybierz utwór z listy'; $('#tracks').innerHTML = ''; refreshView(); }
+  const i = userSongs.indexOf(u); if (i >= 0) userSongs.splice(i, 1);
+  delete cache[u.id]; saveUser();
+  if (!userSongs.length) libEditing = false;
+  toast('Usunięto: ' + u.title);
+  renderLib();
+}
 function renderLib() {
-  const b = $('#libBuiltin'); b.innerHTML = '';
+  // wbudowane (zwijane)
+  const open = builtinOpen();
+  $('#builtinToggle').classList.toggle('shut', !open);
+  const b = $('#libBuiltin'); b.innerHTML = ''; b.hidden = !open;
   BUILTIN.forEach(s => b.appendChild(songRow({id: s.id, title: s.title, lvl: s.lvl, load: () => selectSong(s)})));
+
+  // moje utwory
+  const n = userSongs.length, tools = n >= LIB_TOOLS_MIN;
+  $('#libHead').textContent = 'Moje utwory' + (n ? ' (' + n + ')' : '');
+  const eb = $('#libEdit'); eb.hidden = !n; eb.textContent = libEditing ? 'Gotowe' : 'Edytuj'; eb.classList.toggle('on', libEditing);
+  $('#libTools').hidden = !tools;
+  document.querySelectorAll('#libLvlSeg button').forEach(x => x.classList.toggle('on', +x.dataset.lvl === (S.libLvl || 0)));
+  const q = tools ? libNorm($('#libQ').value) : '', lvl = tools ? S.libLvl || 0 : 0;
+  // najnowsze na górze
+  const shown = userSongs.slice().reverse().filter(u => (!lvl || u.lvl === lvl) && (!q || libNorm(u.title).includes(q)));
   const l = $('#lib'); l.innerHTML = '';
-  if (!userSongs.length) l.innerHTML = '<p class="hint" style="margin:6px">Jeszcze nic – dodaj plik .mid poniżej.</p>';
-  userSongs.forEach((u, i) => l.appendChild(songRow({id: u.id, title: u.title, lvl: u.lvl, load: () => {
-    try { selectSong(getUserSong(u)); } catch (e) { toast('Nie mogę otworzyć: ' + e.message); }
-  }}, () => {
-    if (song && song.id === u.id) { stop(); song = null; $('#songTitle').textContent = 'Wybierz utwór z listy'; $('#tracks').innerHTML = ''; refreshView(); }
-    userSongs.splice(i, 1); delete cache[u.id]; saveUser(); renderLib();
-  })));
+  if (!n) l.innerHTML = '<p class="libempty">Jeszcze nic. Stuknij <b>🔎 Katalog utworów</b> na górze, wyszukaj utwór i pobierz go jednym kliknięciem.</p>';
+  else if (!shown.length) l.innerHTML = '<p class="libempty">Żaden utwór nie pasuje' + (q ? ' do „' + esc($('#libQ').value.trim()) + '”' : '') +
+    (lvl ? ' na poziomie „' + LEVELS[lvl] + '”' : '') + '.</p>';
+  shown.forEach(u => {
+    const p = songParts(u);
+    l.appendChild(songRow({id: u.id, title: p.title, full: u.title, artist: p.artist, srcName: p.srcName, lvl: u.lvl, load: () => {
+      try { selectSong(getUserSong(u)); } catch (e) { toast('Nie mogę otworzyć: ' + e.message); }
+    }}, () => removeUserSong(u)));
+  });
+}
+$('#libEdit').onclick = () => { libEditing = !libEditing; renderLib(); };
+$('#builtinToggle').onclick = () => { S.builtinOpen = !builtinOpen(); saveS(); renderLib(); };
+$('#libQ').oninput = renderLib;
+$('#libQ').onkeydown = e => { if (e.key === 'Enter') $('#libQ').blur(); };
+document.querySelectorAll('#libLvlSeg button').forEach(x => x.onclick = () => { S.libLvl = +x.dataset.lvl; saveS(); renderLib(); });
+// Dodaje plik MIDI do „Moje utwory” (używa tego Katalog). Zwraca rozpoznany utwór.
+function addUserSong(buf, title, src) {
+  const parsed = parseMidi(buf, title);
+  const id = 'u' + Date.now() + Math.random().toString(36).slice(2, 6);
+  parsed.id = id; cache[id] = parsed;
+  const lv = songLevel(parsed), u = {id, title, b64: toB64(buf), lvl: lv ? lv.lvl : 0};
+  if (src) u.src = src;
+  userSongs.push(u); saveUser(); renderLib();
+  return parsed;
 }
 function selectSong(s) {
   stop(); song = s;
@@ -914,21 +1010,6 @@ function renderTracks() {
   });
   if (song.melody >= 0) box.insertAdjacentHTML('beforeend', '<span class="lbl" style="flex-basis:100%">⭐ = melodia, wybrana automatycznie. Stuknij inne ścieżki, żeby je dołączyć (np. bas na lewą rękę).</span>');
 }
-$('#file').onchange = async e => {
-  for (const f of e.target.files) {
-    try {
-      const buf = await f.arrayBuffer();
-      const title = f.name.replace(/\.(mid|midi|kar)$/i, '');
-      const parsed = parseMidi(buf, title);
-      const id = 'u' + Date.now() + Math.random().toString(36).slice(2, 6);
-      parsed.id = id; cache[id] = parsed;
-      const lv = songLevel(parsed);
-      userSongs.push({id, title, b64: toB64(buf), lvl: lv ? lv.lvl : 0}); saveUser(); renderLib(); selectSong(parsed);
-      toast('Dodano: ' + title);
-    } catch (err) { toast('Nie udało się wczytać „' + f.name + '”: ' + err.message, 4000); }
-  }
-  e.target.value = '';
-};
 
 /* ---------------- katalog utworów z internetu ----------------
    Dwie biblioteki, które pozwalają na pobieranie prosto z przeglądarki (CORS):
@@ -1223,11 +1304,8 @@ async function catDownload(it) {
   try {
     const buf = catA.buf.get(it.src) || await catFetch(it.url, 'buf');
     if (buf.byteLength > CAT_MAX_BYTES) throw new Error('plik jest za duży');
-    const parsed = parseMidi(buf, it.title);
-    const id = 'u' + Date.now() + Math.random().toString(36).slice(2, 6);
-    parsed.id = id; cache[id] = parsed; catA.buf.delete(it.src);
-    const lv = songLevel(parsed);
-    userSongs.push({id, title: it.title, b64: toB64(buf), src: it.src, lvl: lv ? lv.lvl : 0}); saveUser(); renderLib();
+    const parsed = addUserSong(buf, it.title, it.src);
+    catA.buf.delete(it.src);
     log('KATALOG: pobrano „' + it.title + '” (' + buf.byteLength + ' B, ' + parsed.notes.length + ' nut)');
     toast('Pobrano: ' + it.title);
   } catch (e) {

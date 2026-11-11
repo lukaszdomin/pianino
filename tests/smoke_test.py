@@ -135,6 +135,74 @@ async def mock_catalog(page, bitmidi_ok=True):
     await page.route('https://raw.githubusercontent.com/**', midi_pop)
 
 
+async def add_song(page, data, title, src=None, select=True):
+    """Dodaje plik MIDI do „Moje utwory” tak jak Katalog (ręczne wgrywanie zostało usunięte)."""
+    await page.evaluate("""([b, t, s, sel]) => { const p = addUserSong(new Uint8Array(b).buffer, t, s || undefined);
+                           if (sel) selectSong(p); }""", [list(data), title, src, select])
+
+
+LIB_TITLES = ['ABBA – Dancing Queen', 'Haddaway – What Is Love', 'Madonna – La Isla Bonita', 'Toto – Africa',
+              'Darude – Sandstorm', 'Daft Punk – One More Time', 'Corona – The Rhythm of the Night',
+              '2 Unlimited – No Limit', 'Eiffel 65 – Blue (Da Ba Dee)', 'Chopin – Nocturne Op. 9 No. 2 in E-flat major',
+              'Für Elise full version', 'Satie – Gymnopédie No. 1']
+
+
+async def library_tests(page, check):
+    """Lewy panel: lista widoczna w poziomie, zwijane wbudowane, dwie linie, Edytuj/Usuń, szukanie i filtr poziomu."""
+    for k, t in enumerate(LIB_TITLES):
+        src = ('lakh:x/%d' % k) if k < 9 else ('bitmidi:%d' % k) if k < 11 else None
+        await add_song(page, TINY_MIDI, t, src, select=False)
+    await page.evaluate("userSongs.forEach((u, i) => u.lvl = [1, 2, 3][i % 3]); saveUser(); renderLib()")
+    rows = await page.eval_on_selector_all('#lib .song', 'els => els.map(e => e.querySelector(".tt").textContent)')
+    check(len(rows) == 12 and rows[0] == 'Satie – Gymnopédie No. 1',
+          'Moje utwory: wszystkie, najnowsze na górze ' + str(rows[:2]))
+    box = await page.evaluate("""() => { const sc = document.querySelector('#libScroll').getBoundingClientRect();
+        const r = [...document.querySelectorAll('#lib .song')].filter(e => { const b = e.getBoundingClientRect(); return b.top >= sc.top && b.bottom <= sc.bottom; });
+        return {h: sc.height, visible: r.length}; }""")
+    check(box['visible'] >= 5, 'w poziomie (1180×820) widać co najmniej 5 pobranych utworów ' + str(box))
+    check(await page.evaluate("document.querySelector('#libBuiltin').hidden"), 'wbudowane zwinięte, gdy są pobrane utwory')
+    await page.click('#builtinToggle')
+    check(not await page.evaluate("document.querySelector('#libBuiltin').hidden") and await page.evaluate("S.builtinOpen") is True,
+          'wbudowane można rozwinąć (zapamiętane)')
+    await page.click('#builtinToggle')
+    abba = await page.evaluate("""() => { const r = [...document.querySelectorAll('#lib .song')].find(e => e.querySelector('.tt').textContent === 'Dancing Queen');
+        return r ? r.querySelector('.sub').textContent : null; }""")
+    check(abba is not None and 'ABBA' in abba and 'Lakh' in abba and 'Łatwe' in abba, 'Lakh: tytuł w 1. linii, wykonawca·poziom·źródło w 2. ' + str(abba))
+    own = await page.evaluate("document.querySelector('#lib .song .sub').textContent")
+    check('własny plik' in own, 'plik bez źródła opisany jako „własny plik” ' + own)
+    check(await page.eval_on_selector_all('#lib .del', 'e => e.length') == 0, 'bez „Edytuj” nie ma przycisków usuwania')
+
+    # wyszukiwanie i filtr poziomu (od 10 utworów)
+    check(not await page.evaluate("document.querySelector('#libTools').hidden"), 'przy 12 utworach jest wyszukiwanie i filtr')
+    await page.fill('#libQ', 'abba')
+    check(await page.eval_on_selector_all('#lib .song', 'e => e.length') == 1, 'szukanie „abba” zostawia 1 utwór')
+    await page.fill('#libQ', 'gymnopedie')
+    check(await page.eval_on_selector_all('#lib .song', 'e => e.length') == 1, 'szukanie bez polskich/obcych znaków')
+    await page.fill('#libQ', 'xyzxyz')
+    check('Żaden utwór nie pasuje' in await page.text_content('#lib'), 'komunikat, gdy nic nie pasuje')
+    await page.fill('#libQ', '')
+    await page.click('#libLvlSeg >> text=Trudne')
+    lv = await page.eval_on_selector_all('#lib .song .lvl', 'els => els.map(e => e.textContent)')
+    check(len(lv) == 4 and set(lv) == {'Trudne'}, 'filtr poziomu „Trudne” ' + str(lv))
+    await page.click('#libLvlSeg >> text=Każdy')
+
+    # Edytuj → Usuń
+    await page.click('#libEdit')
+    check(await page.eval_on_selector_all('#lib .del', 'e => e.length') == 12 and await page.text_content('#libEdit') == 'Gotowe',
+          '„Edytuj” pokazuje „Usuń” przy każdym utworze')
+    await page.click('#lib .song >> nth=1')
+    check(await page.evaluate("!song || song.title !== 'Für Elise full version'"), 'w trybie edycji stuknięcie nie otwiera utworu')
+    for _ in range(3):
+        await page.click('#lib .song >> nth=0 >> .del')
+    check(await page.evaluate("userSongs.length") == 9, 'usuwanie działa')
+    check(await page.evaluate("document.querySelector('#libTools').hidden"), 'poniżej 10 utworów wyszukiwanie znika')
+    await page.click('#libEdit')
+    check(await page.eval_on_selector_all('#lib .del', 'e => e.length') == 0, '„Gotowe” chowa przyciski usuwania')
+    await page.evaluate("userSongs.length = 0; saveUser(); S.builtinOpen = null; renderLib()")
+    check(not await page.evaluate("document.querySelector('#libBuiltin').hidden") and 'Katalog' in await page.text_content('#lib'),
+          'pusta lista: wbudowane rozwinięte, podpowiedź o Katalogu')
+
+
 def chrome_path():
     for name in ('google-chrome', 'chromium', 'chromium-browser'):
         p = shutil.which(name)
@@ -193,7 +261,9 @@ async def main():
         await page.click('#closeRes')
 
         # Wybór ścieżek: piosenka → tylko melodia (⭐) z nazwą instrumentu; fortepian → obie ręce
-        await page.set_input_files('#file', files=[{'name': 'Piosenka.mid', 'mimeType': 'audio/midi', 'buffer': POP_MIDI}])
+        check(await page.query_selector('#file') is None and await page.query_selector('.addfile') is None,
+              'nie ma już ręcznego dodawania plików MIDI')
+        await add_song(page, POP_MIDI, 'Piosenka')
         await page.wait_for_function("song && song.title === 'Piosenka'")
         chips = await page.eval_on_selector_all('#tracks .chip', 'els => els.map(e => [e.textContent, e.classList.contains("on")])')
         on = [c[0] for c in chips if c[1]]
@@ -202,10 +272,12 @@ async def main():
         check(await page.evaluate('ns.every(n => n.m >= 71)'), 'odtwarzacz dostaje tylko nuty melodii')
         await page.click('#tracks .chip >> text=Bass')
         check(await page.evaluate('sel.size') == 2, 'można dołączyć bas')
-        await page.set_input_files('#file', files=[{'name': 'Fortepian.mid', 'mimeType': 'audio/midi', 'buffer': PIANO_MIDI}])
+        await add_song(page, PIANO_MIDI, 'Fortepian')
         await page.wait_for_function("song && song.title === 'Fortepian'")
         check(await page.evaluate('sel.size') == 2 and await page.evaluate('song.melody') == -1, 'fortepian na dwie ręce: obie ścieżki')
         await page.evaluate("userSongs.length = 0; saveUser(); renderLib()")
+
+        await library_tests(page, check)
 
         # Katalog utworów (odpowiedzi bibliotek są podstawione, bez internetu)
         await mock_catalog(page)

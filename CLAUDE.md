@@ -47,7 +47,7 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
 - `swiecace-klawisze.html` przekierowuje do `./` (stary adres z zakładek).
 - Hosting: **GitHub Pages** z gałęzi `main`, folder główny. Adres: https://lukaszdomin.github.io/pianino/
   Każdy push na `main` publikuje się w 1–2 minuty.
-- Dane użytkownika (wgrane pliki MIDI jako base64, ustawienia) trzymamy w `localStorage` (`sk_songs`, `sk_settings`).
+- Dane użytkownika (pobrane pliki MIDI jako base64, ustawienia) trzymamy w `localStorage` (`sk_songs`, `sk_settings`).
   Utwory z katalogu mają dodatkowe pole `src` (np. `commons:6596429`, `bitmidi:27978`), po którym poznajemy, że już je mamy.
   Każdy utwór ma pole `lvl` (1 łatwe, 2 średnie, 3 trudne, 0 nieznany). Poziomy wyników katalogu są zapamiętane w `sk_levels` (`src` → `{l, d}`).
 - Główne części `index.html`:
@@ -65,6 +65,13 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     pierwsze 30 s, melodia głośniej, tło max 6 dźwięków naraz, nuty planowane co 100 ms na 0,4 s do przodu; `tone()` przyjmuje czas, głośność i wyjście;
   - poziom trudności: `songLevel()` (punkty za tempo, akordy, rozpiętość, czarne klawisze, >4 ścieżki, długość; 0–2 łatwe, 3–5 średnie, 6+ trudne),
     w katalogu kolejka `catA` / `catPump()` pobiera pliki w tle (po 3 naraz) i liczy poziom; pobrany plik zostaje w pamięci dla „Pobierz”;
+  - lewy panel (biblioteka): `renderLib()`, `songRow()`, `songParts()`, `addUserSong()`, `removeUserSong()`.
+    Na górze przypięty przycisk Katalogu, pod nim **jedna przewijana lista** (`#libScroll`): „Moje utwory” (najnowsze na górze),
+    potem zwijane „Wbudowane” (`S.builtinOpen`; domyślnie zwinięte, gdy są pobrane utwory). Wiersz: tytuł (do 2 linii) +
+    druga linia wykonawca · poziom · źródło (z Lakh wykonawcę odcinamy z tytułu „Wykonawca – Tytuł”). Usuwanie tylko w trybie „Edytuj”.
+    Od `LIB_TOOLS_MIN` (10) utworów: wyszukiwanie (`#libQ`, `libNorm()`) i filtr poziomu (`S.libLvl`).
+    **Ręcznego wgrywania plików nie ma** (usunięte 11.11.2026) – utwory dodaje tylko Katalog przez `addUserSong()`;
+    smoke test też dodaje pliki przez `addUserSong()`;
   - diagnostyka: `log()`, `diag()`, sekcja Dziennik w Ustawieniach z przyciskiem „Kopiuj dziennik”.
 
 ## Jak pracujemy
@@ -86,7 +93,9 @@ Zasady:
 
 Gotowe i działa:
 - 6 wbudowanych utworów: Wlazł kotek, Panie Janie, Mrugaj gwiazdko, Oda do radości, Dla Elizy (początek, obie ręce), Gama C-dur.
-- Wgrywanie plików MIDI z wyborem ścieżek (rąk).
+- Utwory MIDI z Katalogu z wyborem ścieżek (rąk). Ręczne wgrywanie plików usunięte – wcześniej wgrane pliki dalej są w bibliotece („własny plik”).
+- Lewy panel: Katalog na górze, jedna przewijana lista (działa też w poziomie), zwijane wbudowane, tryb „Edytuj” do usuwania,
+  wyszukiwanie i filtr poziomu w „Moje utwory” od 10 utworów.
 - Tryby „Czekaj na mnie” i „W tempie” (25–150%), transpozycja, dźwięk z iPada, przewijanie, statystyki trafień.
 - Klawiatura na ekranie, test świateł, przesunięcie świateł, diagnostyka i dziennik.
 - Katalog utworów: wyszukiwanie w Wikimedia Commons, BitMidi i Lakh MIDI, pobieranie jednym kliknięciem, oznaczenie „Mam”, filtr „Tylko te, których nie mam”,
@@ -125,14 +134,19 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 ## Do zrobienia / pomysły
 
 (Łukasz decyduje o kolejności. Claude dopisuje tu pomysły, które padną w rozmowie.)
-- [ ] Poziom liczony też dla pojedynczej ścieżki (np. sama melodia z piosenki z BitMidi), filtr poziomu w „Moje utwory”.
+- [ ] Poziom liczony też dla pojedynczej ścieżki (np. sama melodia z piosenki z BitMidi). (Filtr poziomu w „Moje utwory” już jest – na razie po poziomie całego pliku).
       Ważne teraz, gdy jest Lakh: prawie każda piosenka wychodzi „Trudne”, choć sama melodia (⭐) bywa łatwa.
 - [ ] Sprawdzić na iPadzie odsłuch (przełącznik wyciszenia iPada wycisza Web Audio) i czy wybór melodii trafia na prawdziwych plikach.
 - [ ] Zapamiętywać wybór ścieżek dla utworu (teraz po ponownym otwarciu wraca wybór automatyczny).
 - [ ] Sprawdzić na iPadzie, czy BitMidi nie blokuje pobierania wielu plików naraz (kolejka poziomów pobiera wszystkie wyniki).
 - [ ] Katalog: więcej bibliotek, jeśli znajdziemy takie z CORS (np. zbiory MIDI na GitHubie przez raw.githubusercontent.com).
+- [ ] Sprawdzić nowy lewy panel na iPadzie w obu orientacjach (przewijanie palcem, tryb „Edytuj”, szukajka z klawiaturą ekranową).
 
 ## Dziennik zmian
+
+- 11.11.2026: wygląd: usunięte ręczne wgrywanie plików MIDI; nowy lewy panel (Katalog na górze, jedna przewijana lista – wcześniej
+  w poziomie „Moje utwory” miały 8 px i nic nie było widać; najnowsze na górze; dwie linie w wierszu; zwijane wbudowane; „Edytuj” → „Usuń”;
+  wyszukiwanie i filtr poziomu od 10 utworów); testy panelu w `smoke_test.py`.
 
 - 11.11.2026: piosenki pop: automatyczny wybór ścieżki z melodią i nazwy instrumentów przy ścieżkach; podpowiedzi pop/dance w katalogu;
   biblioteka Lakh MIDI (`lakh.json`, `tools/lakh_index.py`); odsłuch przed pobraniem; smoke test serwuje stronę przez lokalny HTTP.
