@@ -96,7 +96,33 @@ PIANO_MIDI = song_midi(
     track('Right', 0, 0, [72, 74, 76, 77] * 6, 96),
     track('Left', 0, 0, [48, 55] * 12, 96),
 )
-HITS = {'commons': 0, 'bitmidi': 0, 'lakh': 0}
+HITS = {'commons': 0, 'bitmidi': 0, 'lakh': 0, 'piano': 0}
+
+
+def fake_soundfont():
+    """Paczka próbek w formacie midi-js-soundfonts: 88 nut A0–C8, każda to 0,3 s sinusa w WAV (zamiast MP3)."""
+    import base64
+    import math
+    names = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
+    rate, n = 8000, 2400
+    out = []
+    for midi in range(21, 109):
+        f = 440 * 2 ** ((midi - 69) / 12)
+        pcm = b''.join(struct.pack('<h', int(3000 * math.sin(2 * math.pi * f * i / rate))) for i in range(n))
+        wav = (b'RIFF' + struct.pack('<I', 36 + len(pcm)) + b'WAVEfmt ' + struct.pack('<IHHIIHH', 16, 1, 1, rate, rate * 2, 2, 16) +
+               b'data' + struct.pack('<I', len(pcm)) + pcm)
+        out.append('"%s%d": "data:audio/wav;base64,%s"' % (names[midi % 12], midi // 12 - 1, base64.b64encode(wav).decode()))
+    return ("if (typeof(MIDI) === 'undefined') var MIDI = {};\nMIDI.Soundfont.acoustic_grand_piano = {\n" + ',\n'.join(out) + '\n}').encode()
+
+
+SOUNDFONT = fake_soundfont()
+
+
+async def route_piano(page):
+    async def piano(route):
+        HITS['piano'] += 1
+        await route.fulfill(status=200, headers=CORS, content_type='text/javascript', body=SOUNDFONT)
+    await page.route('https://raw.githubusercontent.com/gleitz/**', piano)
 CORS = {'Access-Control-Allow-Origin': '*'}
 COMMONS_JSON = {'query': {'pages': {'111': {'pageid': 111, 'index': 1, 'title': 'File:Chopin-nocturne-test.mid',
     'imageinfo': [{'url': 'https://upload.wikimedia.org/x/Chopin-nocturne-test.mid?utm=1', 'size': 1234,
@@ -133,6 +159,7 @@ async def mock_catalog(page, bitmidi_ok=True):
         HITS['lakh'] += 1
         await route.fulfill(status=200, headers=CORS, content_type='audio/midi', body=POP_MIDI)
     await page.route('https://raw.githubusercontent.com/**', midi_pop)
+    await route_piano(page)  # zarejestrowane później = ma pierwszeństwo przed midi_pop
 
 
 async def add_song(page, data, title, src=None, select=True):
@@ -313,6 +340,7 @@ async def main():
         errors = []
         page.on('pageerror', lambda e: errors.append(str(e)))
         await page.add_init_script(MOCK)
+        await route_piano(page)
         await page.goto(serve())
         await page.wait_for_timeout(400)
 
@@ -464,6 +492,36 @@ async def main():
         await page.wait_for_timeout(200)
         log = await page.input_value('#logBox')
         check('WYSŁANO: a2' in log, 'dziennik zapisuje wysłane wiadomości')
+
+        # Brzmienie fortepianu: pobrane raz przy pierwszym dźwięku, zapisane w IndexedDB, po przeładowaniu z pamięci
+        await page.wait_for_function("piano.state === 'ready' || piano.state === 'error'", timeout=10000)
+        check(await page.evaluate("piano.state") == 'ready', 'fortepian wczytany ' + str(await page.evaluate("piano.msg")))
+        check(await page.evaluate("Object.keys(piano.bufs).length") == 88, 'fortepian ma 88 nut')
+        check(await page.evaluate("Object.values(piano.bufs).every(b => b.numberOfChannels === 1 && b.duration <= PIANO_SEC + 0.01)"),
+              'próbki mono i przycięte')
+        check(HITS['piano'] == 1, 'próbki pobrane raz (zapytań: %d)' % HITS['piano'])
+        check(await page.evaluate("idbGet(PIANO_KEY).then(t => !!t && t.length > 1000)"), 'próbki zapisane w IndexedDB')
+        made = await page.evaluate("""() => { let made = 0; const o = actx.createBufferSource;
+            actx.createBufferSource = function () { made++; return o.call(this); };
+            tone(60, 0.3); tone(110, 0.3); tone(10, 0.3); return made; }""")
+        check(made == 3, 'tone() gra próbkami, też poza zakresem 21–108 (%d)' % made)
+        if not await page.evaluate("document.querySelector('#settings').classList.contains('open')"):
+            await page.click('#openSettings')
+        check('gotowy' in await page.text_content('#pianoStatus'), 'Ustawienia pokazują stan fortepianu')
+        await page.click('#voiceTestBtn')
+        await page.select_option('#voiceSel', 'synth')
+        check(await page.evaluate("S.voice") == 'synth' and 'prosty' in (await page.text_content('#pianoStatus')).lower(),
+              'można wybrać prosty dźwięk')
+        made = await page.evaluate("""() => { let made = 0; const o = actx.createOscillator;
+            actx.createOscillator = function () { made++; return o.call(this); }; tone(60, 0.3); return made; }""")
+        check(made == 1, 'prosty dźwięk gra syntezatorem')
+        await page.select_option('#voiceSel', 'piano')
+        await page.reload()
+        await page.wait_for_timeout(300)
+        await page.evaluate("ensureAudio()")
+        await page.wait_for_function("piano.state === 'ready'", timeout=10000)
+        check(await page.evaluate("piano.fromCache") and HITS['piano'] == 1,
+              'po przeładowaniu fortepian z pamięci, bez pobierania (zapytań: %d)' % HITS['piano'])
 
         check(not errors, 'brak błędów JS ' + (str(errors) if errors else ''))
         await browser.close()

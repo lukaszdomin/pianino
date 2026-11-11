@@ -244,6 +244,12 @@ input[type=range]{accent-color:var(--accent)}
     <button id="noteTestBtn">🔊 Zagraj C na keyboardzie</button>
   </div>
   <p class="hint" style="margin:8px 0">Ten test wysyła zwykłą nutę. Jeśli keyboard ją zagra, połączenie iPad → keyboard działa.</p>
+  <h4>Dźwięk z iPada</h4>
+  <div class="field">Brzmienie <select id="voiceSel"><option value="piano">🎹 Fortepian (nagrane próbki)</option><option value="synth">Prosty dźwięk (syntezator)</option></select></div>
+  <p class="hint" id="pianoStatus" style="margin:4px 0"></p>
+  <div class="btns"><button id="voiceTestBtn">🔊 Posłuchaj brzmienia</button></div>
+  <p class="hint" style="margin:8px 0">Dotyczy odsłuchu w Katalogu i opcji „Dźwięk z iPada”. Próbki fortepianu pobierają się raz (2,6 MB) i zostają na iPadzie.
+    Źródło: FluidR3 GM (Frank Wen, licencja CC-BY 3.0) z paczki midi-js-soundfonts (Benjamin Gleitzman).</p>
   <h4>Dziennik</h4>
   <textarea id="logBox" readonly style="width:100%;height:180px;background:#0d0f14;color:#b9c0cf;border:1px solid var(--line);border-radius:8px;font:11px/1.4 ui-monospace,Menlo,monospace;padding:8px;-webkit-user-select:text;user-select:text"></textarea>
   <div class="btns">
@@ -329,7 +335,7 @@ function toast(msg, ms = 2800) {
 }
 
 /* ---------------- ustawienia ---------------- */
-const DEF = {low: 36, offset: 0, color: 1, transpose: 0, speed: 100, mode: 'wait', sound: false, outId: '', inId: '', catLvl: 0, libLvl: 0, builtinOpen: null, view: 'staff'};
+const DEF = {low: 36, offset: 0, color: 1, transpose: 0, speed: 100, mode: 'wait', sound: false, outId: '', inId: '', catLvl: 0, libLvl: 0, builtinOpen: null, view: 'staff', voice: 'piano'};
 const S = Object.assign({}, DEF);
 try { Object.assign(S, JSON.parse(localStorage.getItem('sk_settings') || '{}')); } catch (e) {}
 function saveS() { try { localStorage.setItem('sk_settings', JSON.stringify(S)); } catch (e) {} }
@@ -769,21 +775,142 @@ function ensureAudio() {
   if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { log('DŹWIĘK: brak AudioContext: ' + e.message); } }
   if (actx && actx.state !== 'running') { try { const r = actx.resume(); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
   if (!audioLogged && actx) { audioLogged = true; setTimeout(audioInfo, 400); }
+  if (actx && S.voice === 'piano' && (piano.state === 'none' || piano.state === 'error' && !piano.retried)) { if (piano.state === 'error') piano.retried = true; pianoLoad(); }
 }
 function audioInfo() {
   log('DŹWIĘK: AudioContext ' + (actx ? actx.state + ', ' + actx.sampleRate + ' Hz' : 'brak') +
       ', audioSession: ' + (navigator.audioSession ? navigator.audioSession.type : 'brak') +
-      ', ciche <audio>: ' + (unlockEl ? (unlockEl.paused ? 'zatrzymane' : 'gra') : 'brak'));
+      ', ciche <audio>: ' + (unlockEl ? (unlockEl.paused ? 'zatrzymane' : 'gra') : 'brak') +
+      ', brzmienie: ' + (S.voice === 'piano' ? 'fortepian (' + piano.state + ')' : 'prosty'));
 }
-// at – kiedy zagrać (czas actx, domyślnie teraz), vol – głośność, dest – dokąd podłączyć (domyślnie głośnik)
+/* Brzmienie fortepianu z nagranych próbek: FluidR3 GM (Frank Wen, CC-BY 3.0) z paczki midi-js-soundfonts
+   (B. Gleitzman, MIT). Jeden plik z 88 nutami (A0–C8) w MP3, ok. 2,6 MB. Pobieramy go RAZ i zapisujemy w IndexedDB
+   (GitHub każe przeglądarce trzymać go tylko 5 minut), potem dekodujemy przy każdym uruchomieniu (1–2 s).
+   Dopóki próbki nie są gotowe albo gdy coś nie wyjdzie – gra prosty dźwięk (trójkąt), jak wcześniej. */
+const PIANO_URL = 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/044fab8e1456bfafc5776e86dfd6bb8697149aef/FluidR3_GM/acoustic_grand_piano-mp3.js';
+const PIANO_KEY = 'piano-fluidr3-044fab8', PIANO_GAIN = 12, PIANO_SEC = 2.2; // próbki są ciche (szczyt ~0,09) – wyrównujemy do prostego dźwięku
+const piano = {state: 'none', pct: 0, msg: '', bufs: {}, fromCache: false};
+let master = null;
+// wspólne wyjście z kompresorem, żeby gęste akordy nie przesterowały
+function audioOut() {
+  if (!actx) return null;
+  if (!master) {
+    try {
+      master = actx.createDynamicsCompressor();
+      master.threshold.value = -12; master.knee.value = 12; master.ratio.value = 6; master.attack.value = 0.003; master.release.value = 0.25;
+      master.connect(actx.destination);
+    } catch (e) { master = actx.destination; }
+  }
+  return master;
+}
+function idbOpen() {
+  return new Promise((res, rej) => {
+    if (!window.indexedDB) { rej(new Error('brak IndexedDB')); return; }
+    const r = indexedDB.open('swiecace-klawisze', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('files');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error || new Error('IndexedDB'));
+  });
+}
+async function idbGet(key) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => { const q = db.transaction('files').objectStore('files').get(key); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+}
+async function idbSet(key, val) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => { const tx = db.transaction('files', 'readwrite'); tx.objectStore('files').put(val, key); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
+}
+async function fetchText(url, onPct) {
+  let ctl = null, timer = null;
+  try { ctl = new AbortController(); timer = setTimeout(() => ctl.abort(), 90000); } catch (e) {}
+  try {
+    const r = await fetch(url, ctl ? {signal: ctl.signal} : undefined);
+    if (!r.ok) throw new Error('błąd serwera ' + r.status);
+    const total = +r.headers.get('content-length') || 0;
+    if (!r.body || !r.body.getReader || !total) return await r.text();
+    const rd = r.body.getReader(), parts = []; let got = 0;
+    for (;;) { const {done, value} = await rd.read(); if (done) break; parts.push(value); got += value.length; onPct(Math.min(99, Math.round(got / total * 100))); }
+    const all = new Uint8Array(got); let o = 0; parts.forEach(p => { all.set(p, o); o += p.length; });
+    return new TextDecoder('utf-8').decode(all);
+  } catch (e) { throw new Error(e.name === 'AbortError' ? 'za długo trwa pobieranie' : (e.message || 'brak połączenia')); }
+  finally { if (timer) clearTimeout(timer); }
+}
+const PC = {C: 0, Db: 1, D: 2, Eb: 3, E: 4, F: 5, Gb: 6, G: 7, Ab: 8, A: 9, Bb: 10, B: 11};
+async function pianoLoad() {
+  if (!actx || piano.state === 'loading' || piano.state === 'decoding' || piano.state === 'ready') return;
+  piano.state = 'loading'; piano.pct = 0; piano.msg = ''; pianoUI();
+  try {
+    let text = null;
+    try { text = await idbGet(PIANO_KEY); } catch (e) { log('FORTEPIAN: pamięć iPada niedostępna (' + e.message + ')'); }
+    piano.fromCache = !!text;
+    if (!text) {
+      log('FORTEPIAN: pobieram próbki ' + PIANO_URL);
+      toast('Pobieram brzmienie fortepianu (2,6 MB) – tylko ten jeden raz…', 3500);
+      text = await fetchText(PIANO_URL, p => { piano.pct = p; pianoUI(); });
+      idbSet(PIANO_KEY, text).then(() => log('FORTEPIAN: zapisane na iPadzie'), e => log('FORTEPIAN: nie udało się zapisać (' + (e && e.message) + ') – następnym razem pobierze się znowu'));
+    }
+    const re = /"([A-G]b?)(\d)":\s*"data:audio\/[a-z0-9]+;base64,([^"]+)"/g, found = [];
+    let m; while ((m = re.exec(text))) found.push({midi: 12 * (+m[2] + 1) + PC[m[1]], b64: m[3]});
+    if (found.length < 80) throw new Error('plik próbek jest niepełny (' + found.length + ' nut)');
+    piano.state = 'decoding'; pianoUI();
+    const t0 = performance.now(), bufs = {};
+    // po 4 naraz, każdą próbkę zamieniamy na mono i przycinamy do PIANO_SEC (pełne stereo 88 nut to ~100 MB pamięci)
+    const decode = f => new Promise(res => {
+      try {
+        actx.decodeAudioData(fromB64(f.b64), b => {
+          try {
+            const len = Math.min(b.length, Math.round(b.sampleRate * PIANO_SEC)), mono = actx.createBuffer(1, len, b.sampleRate), out = mono.getChannelData(0);
+            for (let c = 0; c < b.numberOfChannels; c++) { const d = b.getChannelData(c); for (let i = 0; i < len; i++) out[i] += d[i] / b.numberOfChannels; }
+            const fade = Math.min(len, Math.round(b.sampleRate * 0.25)); // łagodne wyciszenie końcówki
+            for (let i = 0; i < fade; i++) out[len - 1 - i] *= i / fade;
+            bufs[f.midi] = mono;
+          } catch (e) {}
+          res();
+        }, () => res());
+      } catch (e) { res(); }
+    });
+    for (let i = 0; i < found.length; i += 4) await Promise.all(found.slice(i, i + 4).map(decode));
+    const n = Object.keys(bufs).length;
+    if (n < 80) throw new Error('iPad nie odczytał próbek (' + n + ' z ' + found.length + ')');
+    piano.bufs = bufs; piano.state = 'ready';
+    log('FORTEPIAN: gotowy – ' + n + ' nut, ' + (piano.fromCache ? 'z pamięci iPada' : 'pobrane z internetu') + ', dekodowanie ' + Math.round(performance.now() - t0) + ' ms');
+    if (!piano.fromCache) toast('Fortepian gotowy 🎹');
+  } catch (e) {
+    piano.state = 'error'; piano.msg = e.message;
+    log('FORTEPIAN błąd: ' + e.message + ' – gra prosty dźwięk');
+    toast('Nie udało się wczytać fortepianu (' + e.message + '). Gra prosty dźwięk.', 4000);
+  }
+  pianoUI();
+}
+function pianoUI() {
+  const el = $('#pianoStatus'); if (!el) return;
+  el.textContent = S.voice !== 'piano' ? 'Gra prosty dźwięk (syntezator).' :
+    piano.state === 'ready' ? 'Fortepian gotowy ✓ ' + (piano.fromCache ? '(zapisany na iPadzie)' : '(pobrany i zapisany na iPadzie)') :
+    piano.state === 'loading' ? 'Pobieram próbki fortepianu… ' + (piano.pct ? piano.pct + '%' : '') :
+    piano.state === 'decoding' ? 'Przygotowuję próbki fortepianu…' :
+    piano.state === 'error' ? 'Błąd: ' + piano.msg + '. Na razie gra prosty dźwięk.' :
+    'Próbki wczytają się przy pierwszym dźwięku (pierwszy raz pobierają się z internetu, 2,6 MB).';
+}
+function pianoNote(n, dur, t, v, dest) {
+  const k = Math.max(21, Math.min(108, n)), buf = piano.bufs[k];
+  if (!buf) return false;
+  const src = actx.createBufferSource(), g = actx.createGain(), end = t + Math.max(dur, 0.08);
+  src.buffer = buf; if (k !== n) src.playbackRate.value = Math.pow(2, (n - k) / 12);
+  // nuta brzmi naturalnie (próbka sama wybrzmiewa, przycięta do PIANO_SEC), a po puszczeniu klawisza szybko cichnie jak po opadnięciu tłumika
+  g.gain.setValueAtTime(v * PIANO_GAIN, t); g.gain.setValueAtTime(v * PIANO_GAIN, end); g.gain.exponentialRampToValueAtTime(0.0001, end + 0.35);
+  src.connect(g); g.connect(dest || audioOut()); src.start(t); src.stop(end + 0.4);
+  return true;
+}
+// at – kiedy zagrać (czas actx, domyślnie teraz), vol – głośność, dest – dokąd podłączyć (domyślnie wspólne wyjście)
 function tone(n, dur, at, vol, dest) {
   if (!actx) return;
-  const t = Math.max(actx.currentTime, at || 0), v = vol || 0.25, o = actx.createOscillator(), g = actx.createGain();
+  const t = Math.max(actx.currentTime, at || 0), v = vol || 0.25;
+  if (S.voice === 'piano' && piano.state === 'ready' && pianoNote(n, dur, t, v, dest)) return;
+  const o = actx.createOscillator(), g = actx.createGain();
   o.type = 'triangle'; o.frequency.value = 440 * Math.pow(2, (n - 69) / 12);
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + 0.01);
   g.gain.exponentialRampToValueAtTime(v * 0.32, t + Math.min(dur, 0.4));
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.25);
-  o.connect(g).connect(dest || actx.destination); o.start(t); o.stop(t + dur + 0.3);
+  o.connect(g); g.connect(dest || audioOut()); o.start(t); o.stop(t + dur + 0.3);
 }
 
 /* ---------------- odtwarzacz ---------------- */
@@ -1452,7 +1579,7 @@ async function catPreview(it) {
     pv.mel = new Set(defaultTracks(s));
     pv.notes = s.notes.slice().sort((a, b) => a.start - b.start);
     pv.start = pv.notes[0].start; pv.idx = 0;
-    pv.out = actx.createGain(); pv.out.gain.value = 0.8; pv.out.connect(actx.destination);
+    pv.out = actx.createGain(); pv.out.gain.value = 0.8; pv.out.connect(audioOut());
     pv.at0 = actx.currentTime + 0.15; pv.loading = ''; pv.src = it.src;
     audioInfo();
     log('ODSŁUCH: „' + it.title + '” (' + s.notes.length + ' nut, melodia: ' + [...pv.mel].map(i => s.tracks[i]).join(', ') + ')');
@@ -1673,6 +1800,15 @@ function renderTr() { $('#trTxt').textContent = (S.transpose > 0 ? '+' : '') + S
 $('#trDown').onclick = () => { S.transpose = Math.max(-12, S.transpose - 1); saveS(); renderTr(); prepare(); };
 $('#trUp').onclick = () => { S.transpose = Math.min(12, S.transpose + 1); saveS(); renderTr(); prepare(); };
 $('#sound').checked = S.sound;
+$('#voiceSel').value = S.voice === 'synth' ? 'synth' : 'piano'; pianoUI();
+$('#voiceSel').onchange = e => { S.voice = e.target.value; saveS(); log('DŹWIĘK: brzmienie ' + S.voice); ensureAudio(); pianoUI(); };
+$('#voiceTestBtn').onclick = () => {
+  ensureAudio(); if (!actx) { toast('Ta przeglądarka nie umie odtwarzać dźwięku'); return; }
+  const t = actx.currentTime + 0.05;
+  [60, 64, 67, 72].forEach((n, i) => tone(n, 0.45, t + i * 0.28, 0.25));
+  tone(48, 1.4, t + 1.15, 0.2); [60, 64, 67, 72].forEach(n => tone(n, 1.4, t + 1.15, 0.16));
+  if (S.voice === 'piano' && piano.state !== 'ready') toast('Fortepian jeszcze się wczytuje – na razie słychać prosty dźwięk');
+};
 $('#sound').onchange = e => { S.sound = e.target.checked; saveS(); renderOpts(); if (S.sound) ensureAudio(); };
 $('#againBtn').onclick = () => { $('#result').classList.remove('open'); reset(); play(); };
 $('#closeRes').onclick = () => { $('#result').classList.remove('open'); };
