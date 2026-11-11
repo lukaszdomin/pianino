@@ -52,7 +52,7 @@ button.fold.shut .arr{transform:rotate(-90deg)}
 .hint{font-size:12px;color:var(--muted);margin:0 14px 12px;line-height:1.4}
 .libempty{font-size:13px;color:var(--muted);margin:2px 6px 8px;line-height:1.45}
 #right{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
-#player{flex:1;padding:16px 22px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0}
+#player{flex:0 1 auto;padding:16px 22px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0}
 #songTitle{margin:0;font-size:24px}
 #tracks{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 #tracks .lbl{font-size:13px;color:var(--muted);margin-right:4px}
@@ -67,9 +67,20 @@ button.fold.shut .arr{transform:rotate(-90deg)}
 .ctl b{color:var(--text);min-width:44px;text-align:center}
 input[type=range]{accent-color:var(--accent)}
 #speed{width:160px}
-.transport{display:flex;gap:10px;align-items:center}
-.transport button{font-size:18px;padding:10px 18px}
-#playBtn{min-width:150px}
+.transport{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.transport button{font-size:18px;padding:10px 16px}
+#optsBtn{margin-left:auto;font-size:15px;padding:11px 14px;white-space:nowrap}
+#optsBtn small{color:var(--muted);font-size:14px;margin:0 2px}
+#optsBtn[aria-expanded=true]{border-color:var(--accent);color:var(--accent)}
+@media (max-width:1000px){.transport .wide{display:none}}
+.pop{position:fixed;z-index:15;width:min(420px,94vw);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 16px 14px;box-shadow:0 14px 44px #000b;display:flex;flex-direction:column;gap:6px;overflow-y:auto}
+.pop[hidden]{display:none}
+.opt{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;font-size:15px}
+.opt.col{flex-direction:column;align-items:stretch;gap:6px;min-height:0;padding-top:4px}
+.opt .lab{color:var(--muted)} .opt .lab small{font-size:12px}
+.opt .seg{display:flex} .opt .seg button{flex:1;padding:9px 6px}
+.opt input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
+#playBtn{min-width:130px}
 #posWrap{display:flex;align-items:center;gap:10px}
 #pos{flex:1} #posTxt{font-size:13px;color:var(--muted);min-width:110px;text-align:right;font-variant-numeric:tabular-nums}
 #now{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
@@ -93,6 +104,7 @@ input[type=range]{accent-color:var(--accent)}
 #view{position:relative;height:24vh;min-height:120px;border-top:1px solid var(--line)}
 #view.staff{background:#f7f3e8} #view.fall{background:#0b0c10}
 #view[hidden]{display:none}
+#right>#view{flex:1 1 auto;height:auto;min-height:22vh}  /* pięciolinia zajmuje całe wolne miejsce pod przyciskami */
 #viewCv{position:absolute;inset:0;width:100%;height:100%;display:block}
 /* w poziomie z widokiem nut: niższa klawiatura i węższe pole „Zagraj”, żeby wszystko się zmieściło */
 @media (orientation:landscape){
@@ -178,26 +190,12 @@ input[type=range]{accent-color:var(--accent)}
     <h2 id="songTitle">Wybierz utwór z listy</h2>
     <div id="tracks"></div>
 
-    <div class="row">
-      <div class="seg" id="modeSeg">
-        <button data-mode="wait">⏳ Czekaj na mnie</button>
-        <button data-mode="tempo">⏱ W tempie</button>
-      </div>
-      <div class="ctl">Tempo <input id="speed" type="range" min="25" max="150" step="5"><b id="speedTxt">100%</b></div>
-      <div class="ctl">Transpozycja <button id="trDown">−</button><b id="trTxt">0</b><button id="trUp">+</button></div>
-      <label class="ctl"><input id="sound" type="checkbox"> Dźwięk z iPada</label>
-      <div class="seg" id="viewSeg" title="Co pokazać nad klawiaturą">
-        <button data-view="off">Bez nut</button>
-        <button data-view="staff">🎼 Nuty</button>
-        <button data-view="fall">🌧 Wodospad</button>
-      </div>
-    </div>
-
     <div class="transport">
       <button id="prevBtn" title="Cofnij">⏮</button>
       <button id="playBtn" class="primary">▶ Start</button>
       <button id="nextBtn" title="Dalej">⏭</button>
-      <button id="restartBtn">↺ Od początku</button>
+      <button id="restartBtn" title="Od początku">↺<span class="wide"> Od początku</span></button>
+      <button id="optsBtn" type="button" aria-expanded="false">🎚 Opcje <small id="optsSum"></small> ▾</button>
     </div>
 
     <div id="posWrap"><input id="pos" type="range" min="0" max="1000" value="0"><span id="posTxt">–</span></div>
@@ -213,6 +211,25 @@ input[type=range]{accent-color:var(--accent)}
 </div>
 
 <div id="kbd"></div>
+
+<div id="opts" class="pop" hidden>
+  <div class="opt col"><span class="lab">Tryb</span>
+    <div class="seg" id="modeSeg">
+      <button data-mode="wait">⏳ Czekaj na mnie</button>
+      <button data-mode="tempo">⏱ W tempie</button>
+    </div>
+  </div>
+  <div class="opt"><span class="lab">Tempo <small>(tryb „W tempie”)</small></span><span class="ctl"><input id="speed" type="range" min="25" max="150" step="5"><b id="speedTxt">100%</b></span></div>
+  <div class="opt"><span class="lab">Transpozycja</span><span class="ctl"><button id="trDown">−</button><b id="trTxt">0</b><button id="trUp">+</button></span></div>
+  <label class="opt"><span class="lab">Dźwięk z iPada</span><input id="sound" type="checkbox"></label>
+  <div class="opt col"><span class="lab">Nad klawiaturą</span>
+    <div class="seg" id="viewSeg">
+      <button data-view="off">Bez nut</button>
+      <button data-view="staff">🎼 Nuty</button>
+      <button data-view="fall">🌧 Wodospad</button>
+    </div>
+  </div>
+</div>
 
 <div class="drawer" id="settings">
   <h2>Ustawienia <button id="closeSettings">✕</button></h2>
@@ -958,6 +975,7 @@ function renderView() {
   if (S.view === 'fall') { if (v.parentNode !== document.body) document.body.insertBefore(v, $('#kbd')); }
   else if (v.parentNode !== $('#right')) $('#right').appendChild(v);
   document.body.classList.toggle('withView', S.view !== 'off');
+  if ($('#optsSum')) renderOpts();
   vw.pos = null; drawView();
 }
 function viewCtx() {
@@ -1031,7 +1049,7 @@ function drawStaff({c, w, h}, pos) {
     for (const st of steps) for (const m of st.notes) { const d = dia(m).d; vw.dmin = Math.min(vw.dmin, d); vw.dmax = Math.max(vw.dmax, d); }
   }
   const dTop = Math.max(vw.dmax, 39) + 1.6, dBot = Math.min(vw.dmin, 17) - 1.6;
-  const half = Math.min(9, (h - 10) / (dTop - dBot));
+  const half = Math.min(12, (h - 10) / (dTop - dBot));
   const y0 = (h - (dTop - dBot) * half) / 2, yOf = d => y0 + (dTop - d) * half;
   const clefW = half * 7, colW = Math.max(half * 6, 36), cx = clefW + Math.max(50, w * 0.2);
   const cur = S.mode === 'wait' ? stepIdx : Math.floor(pos + 1e-6);
@@ -1615,7 +1633,32 @@ document.querySelectorAll('#viewSeg button').forEach(b => b.onclick = () => {
   S.view = b.dataset.view; saveS(); renderView();
 });
 window.addEventListener('resize', () => { vw.pos = null; drawView(); });
-function renderMode() { document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.mode === S.mode)); }
+/* menu „Opcje”: tryb, tempo, transpozycja, dźwięk, widok. Na przycisku krótkie podsumowanie ikonami. */
+function renderOpts() {
+  const p = [S.mode === 'wait' ? '⏳' : '⏱ ' + S.speed + '%'];
+  if (S.transpose) p.push((S.transpose > 0 ? '+' : '') + S.transpose);
+  if (S.sound) p.push('🔊');
+  if (S.view !== 'off') p.push(S.view === 'staff' ? '🎼' : '🌧');
+  $('#optsSum').textContent = p.join(' · ');
+  $('#optsBtn').title = (S.mode === 'wait' ? 'Czekaj na mnie' : 'W tempie ' + S.speed + '%') +
+    (S.transpose ? ', transpozycja ' + S.transpose : '') + (S.sound ? ', dźwięk z iPada' : '') +
+    ', ' + {off: 'bez nut', staff: 'nuty', fall: 'wodospad'}[S.view];
+}
+const optsOpen = () => !$('#opts').hidden;
+function openOpts() {
+  const pop = $('#opts'), r = $('#optsBtn').getBoundingClientRect();
+  pop.hidden = false;
+  pop.style.top = (r.bottom + 6) + 'px';
+  pop.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
+  pop.style.maxHeight = Math.max(160, window.innerHeight - r.bottom - 14) + 'px';
+  $('#optsBtn').setAttribute('aria-expanded', 'true');
+}
+function closeOpts() { $('#opts').hidden = true; $('#optsBtn').setAttribute('aria-expanded', 'false'); }
+$('#optsBtn').onclick = () => optsOpen() ? closeOpts() : openOpts();
+document.addEventListener('pointerdown', e => { if (optsOpen() && !e.target.closest('#opts,#optsBtn')) closeOpts(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && optsOpen()) closeOpts(); });
+window.addEventListener('resize', () => { if (optsOpen()) closeOpts(); });
+function renderMode() { document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.mode === S.mode)); renderOpts(); }
 document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => {
   if (S.mode === b.dataset.mode) return;
   stop(); S.mode = b.dataset.mode; saveS(); renderMode(); reset();
@@ -1624,13 +1667,13 @@ $('#speed').value = S.speed; $('#speedTxt').textContent = S.speed + '%';
 $('#speed').oninput = e => {
   const t = curT(); S.speed = +e.target.value; $('#speedTxt').textContent = S.speed + '%';
   if (playing && S.mode === 'tempo') t0 = performance.now() - t / (S.speed / 100) * 1000;
-  saveS();
+  saveS(); renderOpts();
 };
-function renderTr() { $('#trTxt').textContent = (S.transpose > 0 ? '+' : '') + S.transpose; }
+function renderTr() { $('#trTxt').textContent = (S.transpose > 0 ? '+' : '') + S.transpose; renderOpts(); }
 $('#trDown').onclick = () => { S.transpose = Math.max(-12, S.transpose - 1); saveS(); renderTr(); prepare(); };
 $('#trUp').onclick = () => { S.transpose = Math.min(12, S.transpose + 1); saveS(); renderTr(); prepare(); };
 $('#sound').checked = S.sound;
-$('#sound').onchange = e => { S.sound = e.target.checked; saveS(); if (S.sound) ensureAudio(); };
+$('#sound').onchange = e => { S.sound = e.target.checked; saveS(); renderOpts(); if (S.sound) ensureAudio(); };
 $('#againBtn').onclick = () => { $('#result').classList.remove('open'); reset(); play(); };
 $('#closeRes').onclick = () => { $('#result').classList.remove('open'); };
 

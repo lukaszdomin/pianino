@@ -84,6 +84,11 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     szerokość (element `#view` przenoszony przed `#kbd`), położenie klawiszy z `keyGeom()` – to samo co klawiatura na ekranie.
     Kolory: przyszłe czarne / pomarańczowe, aktualne pomarańczowe (jak światła), trafione zielone, pomyłka (`wrongHeld`) czerwona, minione szare.
     W poziomie z widokiem klawiatura i widok mają po 22vh, a pole „Zagraj” jest węższe (`body.withView`).
+    Pięciolinia w `#right` rośnie i zajmuje całe wolne miejsce pod przyciskami (`#right>#view{flex:1}`, główki do `half` = 12 px);
+  - pasek odtwarzacza: na wierzchu tylko ⏮ Start/Pauza ⏭ ↺ (napis „Od początku” chowa się poniżej 1000 px szerokości), suwak i przycisk
+    **🎚 Opcje** (`#optsBtn`) z podsumowaniem ikonami (`renderOpts()`: ⏳/⏱ tempo, transpozycja, 🔊, 🎼/🌧).
+    Menu `#opts` to pływający panel (`position:fixed`, `openOpts()` / `closeOpts()`): tryb, tempo, transpozycja, dźwięk z iPada, widok nut.
+    Zamyka się stuknięciem obok, Escape i przy obrocie ekranu. Smoke test klika w menu przez `opt(page, selektor)`.
 
 ## Jak pracujemy
 
@@ -109,6 +114,7 @@ Gotowe i działa:
   wyszukiwanie i filtr poziomu w „Moje utwory” od 10 utworów.
 - Tryby „Czekaj na mnie” i „W tempie” (25–150%), transpozycja, dźwięk z iPada, przewijanie, statystyki trafień.
 - Klawiatura na ekranie, test świateł, przesunięcie świateł, diagnostyka i dziennik.
+- Zwarty pasek odtwarzacza: Start/Pauza, cofnij/dalej, od początku, suwak kroków; reszta opcji w menu „🎚 Opcje”.
 - Widok nut nad klawiaturą do wyboru: „Bez nut”, „🎼 Nuty” (uproszczona pięciolinia z podświetleniem aktualnych nut,
   trafień i pomyłek) albo „🌧 Wodospad” (paski spadające na klawisze). Domyślnie „Nuty”. Działa w obu trybach.
 - Katalog utworów: wyszukiwanie w Wikimedia Commons, BitMidi i Lakh MIDI, pobieranie jednym kliknięciem, oznaczenie „Mam”, filtr „Tylko te, których nie mam”,
@@ -162,6 +168,9 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 - [ ] Sprawdzić nowy lewy panel na iPadzie w obu orientacjach (przewijanie palcem, tryb „Edytuj”, szukajka z klawiaturą ekranową).
 
 ## Dziennik zmian
+
+- 11.11.2026: zwarty pasek odtwarzacza – tryb, tempo, transpozycja, dźwięk z iPada i widok nut przeniesione do menu „🎚 Opcje”
+  (na przycisku podsumowanie ikonami); pięciolinia zajmuje zwolnione miejsce; testy menu w `smoke_test.py`.
 
 - 11.11.2026: widok nut nad klawiaturą – do wyboru pięciolinia (aktualne nuty na pomarańczowo, trafione na zielono,
   pomyłki na czerwono) albo wodospad (paski spadające na klawisze); przełącznik „Bez nut / Nuty / Wodospad”; testy w `smoke_test.py`.

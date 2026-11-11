@@ -157,6 +157,35 @@ COUNT_PX = """([r, g, b]) => {
 ORANGE, LIGHT_ORANGE, RED, GREEN = [255, 159, 28], [255, 194, 102], [229, 72, 77], [46, 194, 126]
 
 
+async def opt(page, selector):
+    """Kliknięcie w menu „Opcje” (tryb, tempo, transpozycja, dźwięk, widok) – otwiera je, gdy jest zamknięte."""
+    if await page.evaluate("document.querySelector('#opts').hidden"):
+        await page.click('#optsBtn')
+    await page.click(selector)
+
+
+async def options_menu_tests(page, check):
+    """Pasek odtwarzacza: na wierzchu tylko Start/cofnij/dalej/od początku/suwak, reszta w menu „Opcje”."""
+    check(not await page.is_visible('#modeSeg') and not await page.is_visible('#speed') and not await page.is_visible('#viewSeg'),
+          'tryb, tempo i widok schowane w menu „Opcje”')
+    for sel in ('#playBtn', '#restartBtn', '#prevBtn', '#nextBtn', '#pos', '#optsBtn'):
+        check(await page.is_visible(sel), 'na wierzchu: ' + sel)
+    await page.click('#optsBtn')
+    check(await page.is_visible('#modeSeg') and await page.is_visible('#speed') and await page.is_visible('#trUp')
+          and await page.is_visible('#sound') and await page.is_visible('#viewSeg'), 'menu „Opcje” pokazuje wszystkie opcje')
+    sum0 = await page.text_content('#optsSum')
+    await page.click('#trUp')
+    check('+1' in await page.text_content('#optsSum'), 'podsumowanie na przycisku pokazuje transpozycję (%s)' % await page.text_content('#optsSum'))
+    await page.click('#trDown')
+    check(await page.text_content('#optsSum') == sum0, 'transpozycja wraca do 0')
+    await page.mouse.click(700, 160)  # stuknięcie obok menu
+    check(not await page.is_visible('#opts'), 'stuknięcie obok zamyka menu')
+    # w poziomie z pięciolinią mieści się pole „Zagraj” (bez przewijania)
+    fits = await page.evaluate("""() => { const n = document.querySelector('#now').getBoundingClientRect(),
+        p = document.querySelector('#player').getBoundingClientRect(); return n.bottom <= p.bottom + 1; }""")
+    check(fits, 'w poziomie (1180×820) z nutami pole „Zagraj” mieści się bez przewijania')
+
+
 async def view_tests(page, check):
     """Widok nut nad klawiaturą: pięciolinia, wodospad, wyłączony. Oda do radości gra, krok 2, Cis4 wciśnięte jako pomyłka."""
     px = lambda col: page.evaluate(COUNT_PX, col)
@@ -175,7 +204,7 @@ async def view_tests(page, check):
     await page.wait_for_timeout(500)
     check(await page.evaluate('vw.pos') == pos_before + 1, 'po trafieniu pięciolinia przesuwa się o krok')
 
-    await page.click('#viewSeg >> text=Wodospad')
+    await opt(page, '#viewSeg >> text=Wodospad')
     await page.wait_for_timeout(200)
     check(await page.evaluate("JSON.parse(localStorage.getItem('sk_settings')).view") == 'fall', 'wybór widoku zapamiętany')
     check(await page.evaluate("document.querySelector('#view').className") == 'fall', 'wodospad włączony')
@@ -189,18 +218,18 @@ async def view_tests(page, check):
     check(await px(RED) > 10, 'wodospad: pomyłka zaznaczona na dole toru')
     await page.evaluate('__in.fire([0x80,37,0])')
 
-    await page.click('#viewSeg >> text=Bez nut')
+    await opt(page, '#viewSeg >> text=Bez nut')
     check(not await page.is_visible('#view') and not await page.evaluate("document.body.classList.contains('withView')"), 'bez nut: widok schowany')
 
     # tryb „W tempie”: pięciolinia przesuwa się płynnie z czasem
-    await page.click('#viewSeg >> text=Nuty')
-    await page.click('#modeSeg >> text=W tempie')
+    await opt(page, '#viewSeg >> text=Nuty')
+    await opt(page, '#modeSeg >> text=W tempie')
     await page.click('#playBtn')
     await page.wait_for_timeout(900)
     p = await page.evaluate('vw.pos')
     check(0 < p < 3 and p != int(p), 'w tempie pięciolinia przesuwa się płynnie (pozycja %.2f)' % p)
     await page.click('#playBtn')
-    await page.click('#modeSeg >> text=Czekaj na mnie')
+    await opt(page, '#modeSeg >> text=Czekaj na mnie')
     await page.click('#playBtn')
 
 
@@ -304,6 +333,7 @@ async def main():
         check('✗ 1' in await page.text_content('#stats'), 'liczy pomyłkę')
 
         await view_tests(page, check)
+        await options_menu_tests(page, check)
 
         # Cały utwór na dwie ręce (akordy)
         await page.click('text=Gama C-dur (obie ręce)')
