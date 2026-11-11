@@ -168,6 +168,17 @@ async def add_song(page, data, title, src=None, select=True):
                            if (sel) selectSong(p); }""", [list(data), title, src, select])
 
 
+async def go_home(page):
+    """Wraca do biblioteki (osobny ekran), jeśli jesteśmy na ekranie grania."""
+    if await page.is_visible('#backBtn'):
+        await page.click('#backBtn')
+
+
+async def open_catalog(page):
+    await go_home(page)
+    await page.click('#openCatalog')
+
+
 LIB_TITLES = ['ABBA – Dancing Queen', 'Haddaway – What Is Love', 'Madonna – La Isla Bonita', 'Toto – Africa',
               'Darude – Sandstorm', 'Daft Punk – One More Time', 'Corona – The Rhythm of the Night',
               '2 Unlimited – No Limit', 'Eiffel 65 – Blue (Da Ba Dee)', 'Chopin – Nocturne Op. 9 No. 2 in E-flat major',
@@ -268,17 +279,11 @@ async def view_tests(page, check):
     check(await px(LED) > 30, 'wodospad: nuta do zagrania przy klawiaturze na czerwono')
     check(await px(CREAM) > 30 and await px(SKY) == 0, 'wodospad: melodia (prawa ręka) kremowa, bez lewej ręki')
     lay = await page.evaluate("""() => { const t = document.querySelector('#transport'), v = document.querySelector('#view').getBoundingClientRect(),
-        a = document.querySelector('aside').getBoundingClientRect(), k = document.querySelector('#kbd').getBoundingClientRect();
-        return {inView: t.parentNode.id === 'view', top: t.getBoundingClientRect().top - v.top, asideHidden: a.right <= 0,
+        k = document.querySelector('#kbd').getBoundingClientRect();
+        return {inView: t.parentNode.id === 'view', top: t.getBoundingClientRect().top - v.top, full: v.width >= innerWidth - 1,
                 tall: v.height / (k.top - document.querySelector('header').getBoundingClientRect().bottom)}; }""")
-    check(lay['inView'] and lay['top'] < 30 and lay['asideHidden'] and lay['tall'] > 0.55,
-          'wodospad: odtwarzacz u góry wodospadu, lista utworów schowana, wodospad zajmuje większość ekranu ' + str(lay))
-    await page.click('#libBtn')
-    await page.wait_for_timeout(300)
-    check(await page.evaluate("document.querySelector('aside').getBoundingClientRect().left >= 0"), 'wodospad: „Utwory” wysuwa listę utworów')
-    await page.mouse.click(900, 400)
-    await page.wait_for_timeout(300)
-    check(await page.evaluate("document.querySelector('aside').getBoundingClientRect().right <= 0"), 'stuknięcie obok chowa listę utworów')
+    check(lay['inView'] and lay['top'] < 30 and lay['full'] and lay['tall'] > 0.65,
+          'wodospad: odtwarzacz u góry wodospadu, wodospad zajmuje większość ekranu ' + str(lay))
     check(await page.evaluate("document.querySelectorAll('#felt i').length") >= 1, 'filc świeci nad zapalonym klawiszem')
     n0 = (await page.evaluate('steps[stepIdx].notes'))[0]
     check(await page.evaluate(f"""(() => {{ const g = kGeom.get({n0}), cv = document.querySelector('#viewCv');
@@ -305,59 +310,62 @@ async def view_tests(page, check):
 
 
 async def library_tests(page, check):
-    """Lewy panel: lista widoczna w poziomie, zwijane wbudowane, dwie linie, Edytuj/Usuń, szukanie i filtr poziomu."""
+    """Biblioteka (osobny ekran): karty, najnowsze na górze, wbudowane na końcu, Edytuj/Usuń, szukanie, filtr poziomu, katalog."""
     for k, t in enumerate(LIB_TITLES):
         src = ('lakh:x/%d' % k) if k < 9 else ('bitmidi:%d' % k) if k < 11 else None
         await add_song(page, TINY_MIDI, t, src, select=False)
     await page.evaluate("userSongs.forEach((u, i) => u.lvl = [1, 2, 3][i % 3]); saveUser(); renderLib()")
-    rows = await page.eval_on_selector_all('#lib .song', 'els => els.map(e => e.querySelector(".tt").textContent)')
+    await go_home(page)
+    rows = await page.eval_on_selector_all('#lib .song.user', 'els => els.map(e => e.querySelector(".tt").textContent)')
     check(len(rows) == 12 and rows[0] == 'Satie – Gymnopédie No. 1',
-          'Moje utwory: wszystkie, najnowsze na górze ' + str(rows[:2]))
-    box = await page.evaluate("""() => { const sc = document.querySelector('#libScroll').getBoundingClientRect();
+          'Twoje utwory: wszystkie, najnowsze na górze ' + str(rows[:2]))
+    order = await page.eval_on_selector_all('#lib .song', 'els => els.map(e => e.classList.contains("builtin"))')
+    check(order == [False] * 12 + [True] * 6, 'wbudowane na końcu listy')
+    box = await page.evaluate("""() => { const sc = document.querySelector('#home').getBoundingClientRect();
         const r = [...document.querySelectorAll('#lib .song')].filter(e => { const b = e.getBoundingClientRect(); return b.top >= sc.top && b.bottom <= sc.bottom; });
         return {h: sc.height, visible: r.length}; }""")
-    check(box['visible'] >= 5, 'w poziomie (1180×820) widać co najmniej 5 pobranych utworów ' + str(box))
-    check(await page.evaluate("document.querySelector('#libBuiltin').hidden"), 'wbudowane zwinięte, gdy są pobrane utwory')
-    await page.click('#builtinToggle')
-    check(not await page.evaluate("document.querySelector('#libBuiltin').hidden") and await page.evaluate("S.builtinOpen") is True,
-          'wbudowane można rozwinąć (zapamiętane)')
-    await page.click('#builtinToggle')
+    check(box['visible'] >= 8, 'w poziomie (1180×820) widać co najmniej 8 kart ' + str(box))
     abba = await page.evaluate("""() => { const r = [...document.querySelectorAll('#lib .song')].find(e => e.querySelector('.tt').textContent === 'Dancing Queen');
         return r ? r.querySelector('.sub').textContent : null; }""")
-    check(abba is not None and 'ABBA' in abba and 'Lakh' in abba and 'Łatwe' in abba, 'Lakh: tytuł w 1. linii, wykonawca·poziom·źródło w 2. ' + str(abba))
+    check(abba is not None and 'ABBA' in abba and 'Lakh' in abba and 'Łatwe' in abba, 'Lakh: tytuł, pod nim wykonawca, poziom i źródło ' + str(abba))
+    check(await page.evaluate("document.querySelectorAll('#lib .song .bars i.on').length") > 12, 'poziom pokazany kreskami')
     own = await page.evaluate("document.querySelector('#lib .song .sub').textContent")
     check('własny plik' in own, 'plik bez źródła opisany jako „własny plik” ' + own)
     check(await page.eval_on_selector_all('#lib .del', 'e => e.length') == 0, 'bez „Edytuj” nie ma przycisków usuwania')
+    check(await page.evaluate("userSongs.every(u => Array.isArray(u.roll))"), 'pobrane utwory mają zapisaną miniaturę melodii')
 
-    # wyszukiwanie i filtr poziomu (od 10 utworów)
-    check(not await page.evaluate("document.querySelector('#libTools').hidden"), 'przy 12 utworach jest wyszukiwanie i filtr')
+    # wyszukiwanie (od razu, także we wbudowanych) i filtr poziomu
     await page.fill('#libQ', 'abba')
     check(await page.eval_on_selector_all('#lib .song', 'e => e.length') == 1, 'szukanie „abba” zostawia 1 utwór')
     await page.fill('#libQ', 'gymnopedie')
     check(await page.eval_on_selector_all('#lib .song', 'e => e.length') == 1, 'szukanie bez polskich/obcych znaków')
+    await page.fill('#libQ', 'kotek')
+    check(await page.eval_on_selector_all('#lib .song.builtin', 'e => e.length') == 1, 'szukanie obejmuje wbudowane')
     await page.fill('#libQ', 'xyzxyz')
     check('Żaden utwór nie pasuje' in await page.text_content('#lib'), 'komunikat, gdy nic nie pasuje')
+    check('xyzxyz' in await page.text_content('#libFind'), 'przycisk „Szukaj … w katalogu”')
     await page.fill('#libQ', '')
+    check(await page.text_content('#libFind') == '', 'bez zapytania nie ma przycisku katalogu')
     await page.click('#libLvlSeg >> text=Trudne')
     lv = await page.eval_on_selector_all('#lib .song .lvl', 'els => els.map(e => e.textContent)')
     check(len(lv) == 4 and set(lv) == {'Trudne'}, 'filtr poziomu „Trudne” ' + str(lv))
-    await page.click('#libLvlSeg >> text=Każdy')
+    await page.click('#libLvlSeg >> text=Wszystkie')
 
-    # Edytuj → Usuń
+    # Edytuj → Usuń (tylko pobrane)
     await page.click('#libEdit')
     check(await page.eval_on_selector_all('#lib .del', 'e => e.length') == 12 and await page.text_content('#libEdit') == 'Gotowe',
-          '„Edytuj” pokazuje „Usuń” przy każdym utworze')
+          '„Edytuj” pokazuje „Usuń” przy każdym pobranym utworze')
     await page.click('#lib .song >> nth=1')
-    check(await page.evaluate("!song || song.title !== 'Für Elise full version'"), 'w trybie edycji stuknięcie nie otwiera utworu')
+    check(await page.evaluate("document.body.classList.contains('home')") and await page.evaluate("!song || song.title !== 'Für Elise full version'"),
+          'w trybie edycji stuknięcie nie otwiera utworu')
     for _ in range(3):
         await page.click('#lib .song >> nth=0 >> .del')
     check(await page.evaluate("userSongs.length") == 9, 'usuwanie działa')
-    check(await page.evaluate("document.querySelector('#libTools').hidden"), 'poniżej 10 utworów wyszukiwanie znika')
     await page.click('#libEdit')
     check(await page.eval_on_selector_all('#lib .del', 'e => e.length') == 0, '„Gotowe” chowa przyciski usuwania')
-    await page.evaluate("userSongs.length = 0; saveUser(); S.builtinOpen = null; renderLib()")
-    check(not await page.evaluate("document.querySelector('#libBuiltin').hidden") and 'Katalog' in await page.text_content('#lib'),
-          'pusta lista: wbudowane rozwinięte, podpowiedź o Katalogu')
+    await page.evaluate("userSongs.length = 0; saveUser(); renderLib()")
+    check(await page.eval_on_selector_all('#lib .song.builtin', 'e => e.length') == 6 and 'katalog' in (await page.text_content('#lib')).lower()
+          and not await page.is_visible('#libEdit'), 'pusta lista: wbudowane, podpowiedź o katalogu, bez „Edytuj”')
 
 
 def chrome_path():
@@ -389,11 +397,17 @@ async def main():
         await page.wait_for_timeout(400)
 
         check('połączony' in await page.text_content('#status') and 'Bluetooth Session 1' in await page.get_attribute('#status', 'title'), 'wykrywa keyboard')
-        lib = await page.eval_on_selector_all('#libBuiltin .song', 'els => els.map(e => e.textContent)')
-        check('Wlazł kotek na płotekŁatwe' in lib and 'Dla Elizy – początekŚrednie' in lib, 'wbudowane utwory mają poziom ' + str(lib))
+        check(await page.evaluate("document.body.classList.contains('home')") and not await page.is_visible('#kbd'),
+              'start: ekran biblioteki (bez klawiatury)')
+        lib = await page.eval_on_selector_all('#lib .song.builtin', 'els => els.map(e => e.querySelector(".tt").textContent + "|" + e.querySelector(".lvl").textContent)')
+        check('Wlazł kotek na płotek|Łatwe' in lib and 'Dla Elizy – początek|Średnie' in lib, 'wbudowane utwory mają poziom ' + str(lib))
+        check(await page.eval_on_selector_all('#lib .song.builtin .roll rect', 'e => e.length') > 30, 'karty mają miniaturę melodii')
+        check(not await page.is_visible('#resume'), 'bez historii nie ma kafelka „Graj dalej”')
 
         # Tryb „Czekaj na mnie”: Oda do radości zaczyna się od E4 (MIDI 64 -> światło 43)
         await page.click('text=Oda do radości – Beethoven')
+        check(not await page.evaluate("document.body.classList.contains('home')") and await page.is_visible('#kbd')
+              and await page.is_visible('#backBtn') and not await page.is_visible('#home'), 'stuknięcie w kartę otwiera ekran grania')
         await page.click('#playBtn')
         await page.wait_for_timeout(100)
         sent = await page.evaluate('__sent')
@@ -407,6 +421,16 @@ async def main():
         await hands_tests(page, check)
         await view_tests(page, check)
         await options_menu_tests(page, check)
+
+        # Powrót do biblioteki: zapamiętane miejsce i „Graj dalej”
+        step = await page.evaluate('stepIdx')
+        await page.click('#backBtn')
+        check(await page.evaluate("document.body.classList.contains('home')") and await page.evaluate('!playing'), '„Biblioteka” wraca do listy i zatrzymuje granie')
+        check(await page.is_visible('#resume') and 'Oda do radości' in await page.text_content('#resume'), 'kafelek „Graj dalej” z ostatnim utworem')
+        await page.click('#resumeBtn')
+        check(await page.evaluate('song.title') == 'Oda do radości – Beethoven' and await page.evaluate('stepIdx') == step,
+              '„Graj dalej” wraca do tego samego kroku (%s)' % step)
+        await go_home(page)
 
         # Cały utwór na dwie ręce (akordy)
         await page.click('text=Gama C-dur (obie ręce)')
@@ -429,7 +453,9 @@ async def main():
         await page.wait_for_function("song && song.title === 'Piosenka'")
         chips = await page.eval_on_selector_all('#tracks .chip', 'els => els.map(e => [e.textContent, e.classList.contains("on")])')
         on = [c[0] for c in chips if c[1]]
-        check(len(chips) == 3 and len(on) == 1 and on[0].startswith('⭐ Synth'), 'piosenka: zaznaczona tylko melodia ' + str(chips))
+        star = await page.eval_on_selector_all('#tracks .chip', 'els => els.map(e => !!e.querySelector(".star"))')
+        check(len(chips) == 3 and len(on) == 1 and on[0].startswith('Synth') and star.count(True) == 1 and star[chips.index([on[0], True])],
+              'piosenka: zaznaczona tylko melodia (z gwiazdką) ' + str(chips))
         check('Lead 2 (sawtooth)' in on[0] and any('Electric Bass (finger)' in c[0] for c in chips), 'ścieżki pokazują instrument')
         check(await page.evaluate('ns.every(n => n.m >= 71)'), 'odtwarzacz dostaje tylko nuty melodii')
         await page.click('#tracks .chip >> text=Bass')
@@ -443,12 +469,16 @@ async def main():
 
         # Katalog utworów (odpowiedzi bibliotek są podstawione, bez internetu)
         await mock_catalog(page)
-        await page.click('#openCatalog')
+        # jedna wyszukiwarka: Enter w bibliotece, gdy nic nie pasuje, szuka w katalogu
+        await go_home(page)
+        await page.fill('#libQ', 'chopin testowy')  # Lakh tego nie zna, więc wyniki są tylko z podstawionych bibliotek
+        await page.press('#libQ', 'Enter')
+        await page.wait_for_selector('.cat', timeout=3000)
+        check(await page.evaluate("document.querySelector('#catalog').classList.contains('open') && document.querySelector('#catQ').value === 'chopin testowy'"),
+              'Enter w wyszukiwarce biblioteki (nic nie pasuje) szuka w katalogu')
+        await page.evaluate("document.querySelector('#libQ').value = ''; renderLib()")
         sugg = await page.eval_on_selector_all('#catSugg .sgroup', 'els => els.map(e => e.textContent)')
         check(len(sugg) >= 3 and any('Better Off Alone' in g for g in sugg) and any('ABBA' in g for g in sugg), 'podpowiedzi pop i dance ' + str(sugg))
-        await page.fill('#catQ', 'chopin testowy')  # Lakh tego nie zna, więc wyniki są tylko z podstawionych bibliotek
-        await page.press('#catQ', 'Enter')
-        await page.wait_for_selector('.cat', timeout=3000)
         titles = await page.eval_on_selector_all('.cat .t b', 'els => els.map(e => e.textContent)')
         check(titles == ['Chopin nocturne test', 'Chopin Waltz Test'], 'katalog pokazuje wyniki z obu bibliotek ' + str(titles))
 
@@ -484,7 +514,7 @@ async def main():
         check(await page.text_content('#songTitle') == 'Chopin nocturne test', '„Mam – graj” otwiera utwór')
 
         # Lakh: spis z lakh.json (prawdziwy plik), pliki z raw.githubusercontent.com (podstawione)
-        await page.click('#openCatalog')
+        await open_catalog(page)
         await page.click('#catSrcSeg >> text=Lakh')
         await page.fill('#catQ', 'dancing queen')
         await page.press('#catQ', 'Enter')
@@ -521,7 +551,7 @@ async def main():
         check(await page.evaluate("pv.src") == '', 'zamknięcie katalogu zatrzymuje odsłuch')
 
         # Hity (Billboard): spis z bimmuda.json (prawdziwy plik), pliki z raw.githubusercontent.com (podstawione)
-        await page.click('#openCatalog')
+        await open_catalog(page)
         sugg = await page.eval_on_selector_all('#catSugg .sgroup', 'els => els.map(e => e.textContent)')
         check(any('Nowe hity' in g and 'Ed Sheeran' in g and 'Justin Bieber' in g for g in sugg), 'podpowiedzi „Nowe hity” ' + str(sugg))
         await page.click('#catSrcSeg >> text=Billboard')
@@ -552,12 +582,12 @@ async def main():
               'Billboard: tytuł w 1. linii, wykonawca·źródło w 2. ' + str(row))
 
         await page.evaluate("userSongs.length = 0; saveUser(); renderLib()")
-        await page.click('#openCatalog')
+        await open_catalog(page)
         await page.click('#catSrcSeg >> text=Wszystkie')
         await page.click('#closeCatalog')
 
         await mock_catalog(page, bitmidi_ok=False)
-        await page.click('#openCatalog')
+        await open_catalog(page)
         await page.fill('#catQ', 'nokturn')
         await page.press('#catQ', 'Enter')
         await page.wait_for_selector('#catMsg:has-text("BitMidi")', timeout=3000)

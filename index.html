@@ -22,53 +22,82 @@ button.primary{background:var(--accent);border-color:var(--accent);color:var(--b
 button:focus-visible{outline:2px solid var(--text);outline-offset:2px}
 .ico{display:block;flex:none}
 select,input[type=number]{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 8px}
-header{display:flex;align-items:center;gap:12px;padding:8px 12px 8px 18px;background:var(--bg);border-bottom:1px solid var(--line)}
+header{display:flex;align-items:center;gap:14px;height:62px;flex:none;box-sizing:border-box;padding:0 12px 0 18px;background:var(--bg);border-bottom:1px solid var(--line)}
+body:not(.home) header{padding-left:8px}
 header h1{font-family:var(--disp);font-size:20px;margin:0;font-weight:700;letter-spacing:-.3px}
 #status{margin-left:auto;font-size:14px;height:40px;display:flex;align-items:center;gap:8px;padding:0 14px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45vw}
 #status::before{content:"";width:8px;height:8px;border-radius:50%;flex:none;background:var(--muted)}
 #status.ok::before{background:var(--ok)} #status.err{color:var(--bad)} #status.err::before{background:var(--bad)}
 button.iconbtn{width:44px;height:44px;padding:0;display:flex;align-items:center;justify-content:center;background:none;color:#c9c1d2;border-radius:12px}
 #main{flex:1;display:flex;min-height:0}
-aside{width:280px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
-aside h3{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700}
-.libtop{padding:8px 8px 8px;border-bottom:1px solid var(--line)}
-#libScroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 8px 16px}
-.libhead{display:flex;align-items:center;gap:8px;padding:14px 6px 6px;min-height:44px}
-.libhead h3{flex:1;white-space:nowrap;letter-spacing:.6px}
-.libhead button{padding:4px 10px;font-size:13px;border-radius:8px}
-.libhead button.on{border-color:var(--accent);color:var(--accent)}
-button.fold{width:100%;background:none;border:none;border-radius:8px;text-align:left;margin-top:6px}
-button.fold:active{transform:none}
-button.fold .arr{color:var(--muted);font-size:13px;transition:transform .15s}
-button.fold.shut .arr{transform:rotate(-90deg)}
-#libTools{display:flex;flex-direction:column;gap:6px;padding:0 2px 6px}
-#libTools[hidden]{display:none}
-#libQ{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:14px;-webkit-user-select:text;user-select:text;-webkit-appearance:none}
-#libLvlSeg{display:flex}
-#libLvlSeg button{flex:1;padding:6px 0;font-size:12px;min-width:0}
-#libLvlSeg button.l1{color:#7fe0ad} #libLvlSeg button.l2{color:#ffd84d} #libLvlSeg button.l3{color:#ff8f92}
-#libLvlSeg button.on{color:var(--bg)}
-.song{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;cursor:pointer;font-size:15px;min-height:44px}
-.song:hover{background:var(--panel2)} .song.on{background:#362e3d}
-.song .t{flex:1;min-width:0}
-.song .tt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.25;overflow-wrap:anywhere}
-.song.on .tt{font-weight:700}
-.song .sub{display:flex;align-items:center;flex-wrap:wrap;gap:2px 6px;margin-top:3px;font-size:12px;color:var(--muted);line-height:1.3}
-.song .sub:empty{display:none}
-.song .del{background:#3a1719;border:1px solid var(--bad);color:#ff8f92;padding:5px 10px;font-size:13px;border-radius:8px;white-space:nowrap}
+/* dwa ekrany: biblioteka (body.home) i granie */
+body.home #main,body.home #view,body.home #kbd{display:none}
+body:not(.home) #home{display:none}
+body.home .backbtn,body.home header .ptop{display:none}
+body:not(.home) .brand,body:not(.home) .hsearch{display:none}
+.backbtn{height:44px;flex:none;display:flex;align-items:center;gap:4px;padding:0 14px 0 6px;background:none;border:none;color:#c9c1d2;font-size:16px}
+header .ptop{flex:1;min-width:0}
+.hsearch{flex:1;max-width:520px;margin:0 auto;height:46px;display:flex;align-items:center;gap:10px;padding:0 16px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;color:var(--muted)}
+#libQ{flex:1;min-width:0;height:100%;background:none;border:none;outline:none;font-size:16px;color:var(--text);-webkit-user-select:text;user-select:text;-webkit-appearance:none;padding:0}
+#libQ::placeholder{color:#8f879a}
+/* biblioteka */
+#home{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.homein{max-width:1240px;margin:0 auto;padding:18px 24px 40px}
+#resume{display:flex;height:168px;background:var(--panel2);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+#resume[hidden]{display:none}
+#resume .rroll{width:40%;max-width:440px;flex:none;box-sizing:border-box;padding:28px;background:#1b1720;border-right:1px solid var(--line)}
+#resume .rtxt{flex:1;min-width:0;padding:22px 26px;display:flex;flex-direction:column}
+#resume small{font-size:14px;color:var(--muted)}
+#resume h2{margin:4px 0 0;font-family:var(--disp);font-size:32px;line-height:1.15;letter-spacing:-.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#resume .ra{font-size:16px;color:#c9c1d2;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#resume .rbot{margin-top:auto;display:flex;align-items:center;gap:18px}
+#resume .rprog{flex:1;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+#resume .rbar{height:4px;border-radius:2px;background:var(--line)} #resume .rbar i{display:block;height:4px;border-radius:2px;background:var(--text)}
+#resumeBtn{height:48px;padding:0 22px;border-radius:999px;display:flex;align-items:center;gap:10px;font-size:16px;flex:none}
+.libbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:28px 0 16px}
+#resume[hidden]+.libbar{margin-top:6px}
+#libHead{margin:0 10px 0 0;font-family:var(--disp);font-size:22px;font-weight:700;letter-spacing:-.3px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips button{height:40px;padding:0 16px;border-radius:999px;background:none;color:#c9c1d2;font-size:15px}
+.chips button.on{background:var(--text);border-color:var(--text);color:var(--bg);font-weight:700}
+#libEdit{height:40px;border-radius:999px;background:none;margin-left:auto}
+#libEdit.on{background:var(--text);border-color:var(--text);color:var(--bg);font-weight:700}
+#libEdit[hidden]{display:none}
+#libEdit[hidden]+.catbtn{margin-left:auto}
+#lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
+.song{position:relative;display:flex;flex-direction:column;min-height:206px;background:var(--panel2);border:1px solid var(--line);border-radius:16px;overflow:hidden;cursor:pointer;text-align:left}
+.song.on{border-color:#7a6e85}
+.song .roll{height:92px;flex:none;box-sizing:border-box;padding:16px;background:#1b1720;border-bottom:1px solid var(--line)}
+.roll svg{display:block;width:100%;height:100%}
+.song .t{flex:1;min-width:0;display:flex;flex-direction:column;padding:12px 14px}
+.song .tt{font-size:16px;font-weight:700;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.song .sub{flex:1;display:flex;flex-direction:column;gap:6px;margin-top:2px;font-size:14px;color:var(--muted)}
+.song .art{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.song .meta{margin-top:auto;display:flex;align-items:flex-end;gap:8px;font-size:13px;color:#c9c1d2}
+.song .lvl{border:none;padding:0;margin:0;font-size:13px;color:#c9c1d2;border-radius:0}
+.song .src{margin-left:auto;color:#8f879a;white-space:nowrap}
+.song .lvl.l1,.song .lvl.l2,.song .lvl.l3{color:#c9c1d2}  /* poziom pokazują kreski; czerwony zostaje dla nut do zagrania */
+#libQ::-webkit-search-cancel-button,#catQ::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
+.bars{display:inline-flex;align-items:flex-end;gap:2px;height:14px;flex:none}
+.bars i{width:4px;border-radius:1px;background:#4a4252}
+.bars i:nth-child(1){height:6px} .bars i:nth-child(2){height:10px} .bars i:nth-child(3){height:14px}
+.bars i.on{background:var(--text)}
+.song .del{position:absolute;top:8px;right:8px;z-index:2;background:#3a1719;border:1px solid var(--bad);color:#ff8f92;padding:7px 12px;font-size:14px;border-radius:999px;white-space:nowrap}
 .song.editing{cursor:default}
-.song.editing:hover{background:none}
 .hint{font-size:12px;color:var(--muted);margin:0 14px 12px;line-height:1.4}
-.libempty{font-size:13px;color:var(--muted);margin:2px 6px 8px;line-height:1.45}
+.libempty{grid-column:1/-1;margin:0 0 4px;font-size:15px;color:var(--muted);line-height:1.5}
+#libFind:empty{display:none}
+#libFind{margin-top:18px;display:flex;justify-content:center}
+#libFind button{height:48px;padding:0 20px;border-radius:999px;display:flex;align-items:center;gap:10px;font-size:16px}
 #right{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;position:relative}
 #player{flex:0 1 auto;padding:14px 22px 6px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0}
 .ptop{display:flex;align-items:baseline;gap:16px}
-#songTitle{margin:0;font-family:var(--disp);font-size:24px;font-weight:700;letter-spacing:-.3px;flex:1;min-width:0}
+#songTitle{margin:0;font-family:var(--disp);font-size:22px;font-weight:700;letter-spacing:-.3px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #tracks{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 #tracks .lbl{font-size:13px;color:var(--muted);margin-right:4px}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:14px;cursor:pointer}
 .chip.on{border-color:var(--accent);color:var(--accent)}
-.chip small{color:var(--muted)} .chip input{display:none} .chip small.inst{font-style:italic}
+.chip small{color:var(--muted)} .chip .star{color:#ffd25c} .chip input{display:none} .chip small.inst{font-style:italic}
 .row{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .seg button{border:none;border-radius:0;background:var(--panel2)}
@@ -130,14 +159,10 @@ body.withView #now{display:none}
 #felt i{position:absolute;top:0;bottom:0;margin:0 -7px;border-radius:3px;background:var(--led);box-shadow:0 0 22px 5px rgba(255,77,61,.8)}
 #felt i.ok{background:var(--ok);box-shadow:0 0 16px 3px rgba(95,211,154,.7)}
 /* wodospad: na całą wysokość nad klawiaturą; lista utworów jako wysuwany panel; odtwarzacz u góry wodospadu */
-.libbtn{display:none}
-body.fall .libbtn{display:flex;align-items:center;gap:6px;height:40px;padding:0 14px 0 10px;border-radius:999px;font-size:15px;flex:none;align-self:center}
 body.fall #main{flex:none}
 body.fall #player{padding-bottom:10px}
 body.fall #view{flex:1;height:auto;min-height:140px}
 body.fall.withView #kbd{height:25vh}
-body.fall aside{position:fixed;top:0;left:0;bottom:0;width:min(320px,86vw);z-index:22;transform:translateX(-105%);transition:transform .2s;box-shadow:0 0 50px rgba(0,0,0,.6)}
-body.fall.libOpen aside{transform:none}
 #view>.transport{top:12px;bottom:auto}
 body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół */
 #view[hidden]{display:none}
@@ -150,8 +175,8 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
 }
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,92vw);background:var(--panel);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .2s;z-index:20;overflow-y:auto;padding:18px}
 .drawer.open{transform:none}
-.drawer h2{margin:0 0 12px;font-size:20px;display:flex;justify-content:space-between;align-items:center}
-.drawer h4{margin:18px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+.drawer h2{margin:0 0 12px;font-size:22px;font-family:var(--disp);display:flex;justify-content:space-between;align-items:center}
+.drawer h4{margin:22px 0 8px;font-size:16px;font-weight:700;color:var(--text)}
 .field{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:8px 0;font-size:15px}
 .field select{max-width:230px}
 .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
@@ -162,11 +187,11 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
 .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 30px;text-align:center;min-width:300px}
 .card h2{margin:0 0 6px;font-size:28px;font-family:var(--disp)}
 .card p{color:var(--muted);margin:6px 0 18px;font-size:16px}
-.catbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;background:none;border-color:#5a5063;color:var(--text);font-weight:700;font-size:15px}
+.catbtn{display:flex;align-items:center;gap:8px;height:44px;padding:0 16px;border-radius:999px;background:none;border-color:#5a5063;color:var(--text);font-size:15px;font-weight:700}
 #catalog{position:fixed;inset:3vh 3vw;background:var(--panel);border:1px solid var(--line);border-radius:18px;z-index:25;display:none;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px #000a}
 #catalog.open{display:flex}
 #catalog .top{padding:16px 18px 10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
-#catalog h2{margin:0;font-size:20px;display:flex;justify-content:space-between;align-items:center}
+#catalog h2{margin:0;font-size:22px;font-family:var(--disp);display:flex;justify-content:space-between;align-items:center}
 #catForm{display:flex;gap:8px}
 #catQ{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;-webkit-user-select:text;user-select:text;-webkit-appearance:none}
 #catSugg{display:flex;flex-direction:column;gap:6px}
@@ -180,7 +205,8 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
 .cat button{white-space:nowrap;min-width:110px}
 .cat button.have{background:#173826;border-color:var(--ok);color:var(--ok)}
 .cat .btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.cat button.pv{min-width:0}
+.cat button.pv{min-width:0;display:inline-flex;align-items:center;gap:6px}
+#catLvlSeg button.l1{color:#7fe0ad} #catLvlSeg button.l2{color:#ffd84d} #catLvlSeg button.l3{color:#ff8f92} #catLvlSeg button.on{color:var(--bg)}
 .cat button.pv.on{border-color:var(--accent);color:var(--accent)}
 .badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);margin-right:6px;color:var(--text)}
 .badge.commons{border-color:#3d6fd1;color:#8fb2ff} .badge.bitmidi{border-color:#8a5cd6;color:#c3a6ff} .badge.lakh{border-color:#d1813d;color:#ffbf8f} .badge.billboard{border-color:#2f9e6e;color:#8fe0b9}
@@ -191,39 +217,42 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
 .song .src{font-size:11px}
 #catLvlSeg button{padding:7px 11px}
 #toast{position:fixed;left:50%;top:68px;transform:translateX(-50%);background:#000c;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:40;max-width:80vw;text-align:center}
-@media (max-width:760px){aside{width:230px}#nowNotes{font-size:48px}}
+@media (max-width:760px){#nowNotes{font-size:48px}}
 </style>
 </head>
 <body>
 <header>
-  <h1>Świecące Klawisze</h1>
+  <button id="backBtn" class="backbtn" type="button" aria-label="Wróć do biblioteki"><svg class="ico" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Biblioteka</button>
+  <h1 class="brand">Świecące Klawisze</h1>
+  <div class="ptop"><h2 id="songTitle">Wybierz utwór</h2><span id="stats"></span></div>
+  <label class="hsearch"><svg class="ico" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg><input id="libQ" type="search" placeholder="Szukaj w swoich utworach i w katalogu" autocomplete="off" enterkeyhint="search" aria-label="Szukaj utworu"></label>
   <div id="status" title="Ustawienia połączenia">Brak keyboardu</div>
   <button id="openSettings" class="iconbtn" aria-label="Ustawienia" title="Ustawienia"><svg class="ico" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
 </header>
 
-<div id="main">
-  <aside>
-    <div class="libtop"><button class="catbtn" id="openCatalog"><svg class="ico" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>Katalog utworów</button></div>
-    <div id="libScroll">
-      <div class="libhead"><h3 id="libHead">Moje utwory</h3><button id="libEdit" type="button">Edytuj</button></div>
-      <div id="libTools" hidden>
-        <input id="libQ" type="search" placeholder="Szukaj w moich utworach" autocomplete="off" enterkeyhint="search">
-        <div class="seg" id="libLvlSeg">
-          <button type="button" data-lvl="0">Każdy</button>
-          <button type="button" data-lvl="1" class="l1">Łatwe</button>
-          <button type="button" data-lvl="2" class="l2">Średnie</button>
-          <button type="button" data-lvl="3" class="l3">Trudne</button>
-        </div>
+<section id="home">
+  <div class="homein">
+    <div id="resume" hidden></div>
+    <div class="libbar">
+      <h2 id="libHead">Twoje utwory</h2>
+      <div id="libLvlSeg" class="chips" role="group" aria-label="Poziom trudności">
+        <button type="button" data-lvl="0">Wszystkie</button>
+        <button type="button" data-lvl="1">Łatwe</button>
+        <button type="button" data-lvl="2">Średnie</button>
+        <button type="button" data-lvl="3">Trudne</button>
       </div>
-      <div id="lib"></div>
-      <button class="libhead fold" id="builtinToggle" type="button"><h3>Wbudowane</h3><span class="arr">▾</span></button>
-      <div id="libBuiltin"></div>
+      <button id="libEdit" type="button">Edytuj</button>
+      <button class="catbtn" id="openCatalog" type="button"><svg class="ico" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nowe utwory z katalogu</button>
     </div>
-  </aside>
+    <div id="lib"></div>
+    <div id="libFind"></div>
+  </div>
+</section>
+
+<div id="main">
 
   <div id="right">
   <section id="player">
-    <div class="ptop"><button id="libBtn" class="libbtn" type="button" aria-label="Lista utworów"><svg class="ico" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>Utwory</button><h2 id="songTitle">Wybierz utwór z listy</h2><span id="stats"></span></div>
     <div id="tracks"></div>
     <div id="posWrap"><input id="pos" type="range" min="0" max="1000" value="0" aria-label="Miejsce w utworze"><span id="posTxt">–</span></div>
 
@@ -266,7 +295,7 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
 </div>
 
 <div class="drawer" id="settings">
-  <h2>Ustawienia <button id="closeSettings">✕</button></h2>
+  <h2>Ustawienia <button id="closeSettings" class="iconbtn" aria-label="Zamknij"><svg class="ico" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
 
   <h4>Połączenie</h4>
   <div class="field">Wyjście (światła) <select id="outSel"></select></div>
@@ -275,19 +304,19 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
   <h4>Diagnostyka</h4>
   <div id="diag" class="hint" style="margin:0;font-size:13px;line-height:1.6"></div>
   <div class="btns">
-    <button id="noteTestBtn">🔊 Zagraj C na keyboardzie</button>
+    <button id="noteTestBtn">Zagraj C na keyboardzie</button>
   </div>
   <p class="hint" style="margin:8px 0">Ten test wysyła zwykłą nutę. Jeśli keyboard ją zagra, połączenie iPad → keyboard działa.</p>
   <h4>Dźwięk z iPada</h4>
-  <div class="field">Brzmienie <select id="voiceSel"><option value="piano">🎹 Fortepian (nagrane próbki)</option><option value="synth">Prosty dźwięk (syntezator)</option></select></div>
+  <div class="field">Brzmienie <select id="voiceSel"><option value="piano">Fortepian (nagrane próbki)</option><option value="synth">Prosty dźwięk (syntezator)</option></select></div>
   <p class="hint" id="pianoStatus" style="margin:4px 0"></p>
-  <div class="btns"><button id="voiceTestBtn">🔊 Posłuchaj brzmienia</button></div>
+  <div class="btns"><button id="voiceTestBtn">Posłuchaj brzmienia</button></div>
   <p class="hint" style="margin:8px 0">Dotyczy odsłuchu w Katalogu i opcji „Dźwięk z iPada”. Próbki fortepianu pobierają się raz (2,6 MB) i zostają na iPadzie.
     Źródło: FluidR3 GM (Frank Wen, licencja CC-BY 3.0) z paczki midi-js-soundfonts (Benjamin Gleitzman).</p>
   <h4>Dziennik</h4>
   <textarea id="logBox" readonly style="width:100%;height:180px;background:#0d0f14;color:#b9c0cf;border:1px solid var(--line);border-radius:8px;font:11px/1.4 ui-monospace,Menlo,monospace;padding:8px;-webkit-user-select:text;user-select:text"></textarea>
   <div class="btns">
-    <button id="copyLogBtn" class="primary">📋 Kopiuj dziennik</button>
+    <button id="copyLogBtn" class="primary">Kopiuj dziennik</button>
     <button id="clearLogBtn">Wyczyść</button>
   </div>
   <p class="hint" style="margin:8px 0">Skopiuj i wklej dziennik w rozmowie z Claude – zobaczę dokładnie, co się dzieje.</p>
@@ -297,7 +326,7 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
   <div class="field">Przesunięcie świateł <span><button id="offDown">−</button> <b id="offTxt">0</b> <button id="offUp">+</button></span></div>
   <div class="field">Kolor świateł <select id="colorSel"><option value="1">czerwony</option><option value="2">niebieski</option></select></div>
   <div class="btns">
-    <button id="testBtn">✨ Test świateł</button>
+    <button id="testBtn">Test świateł</button>
     <button id="offBtn">Zgaś wszystkie</button>
     <button id="initBtn">Wyślij start sesji</button>
   </div>
@@ -327,7 +356,7 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
 </div>
 <div id="catalog">
   <div class="top">
-    <h2>🔎 Katalog utworów <button id="closeCatalog">✕</button></h2>
+    <h2>Katalog utworów <button id="closeCatalog" class="iconbtn" aria-label="Zamknij"><svg class="ico" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
     <form id="catForm" autocomplete="off">
       <input id="catQ" type="search" placeholder="Tytuł albo wykonawca, np. Chopin, ABBA, Ed Sheeran" enterkeyhint="search">
       <button class="primary" type="submit">Szukaj</button>
@@ -342,9 +371,9 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
       </div>
       <div class="seg" id="catLvlSeg">
         <button type="button" data-lvl="0">Każdy poziom</button>
-        <button type="button" data-lvl="1">🟢 Łatwe</button>
-        <button type="button" data-lvl="2">🟡 Średnie</button>
-        <button type="button" data-lvl="3">🔴 Trudne</button>
+        <button type="button" data-lvl="1" class="l1">Łatwe</button>
+        <button type="button" data-lvl="2" class="l2">Średnie</button>
+        <button type="button" data-lvl="3" class="l3">Trudne</button>
       </div>
       <label class="ctl"><input id="catMissing" type="checkbox"> Tylko te, których nie mam</label>
     </div>
@@ -370,7 +399,7 @@ function toast(msg, ms = 2800) {
 }
 
 /* ---------------- ustawienia ---------------- */
-const DEF = {low: 36, offset: 0, color: 1, transpose: 0, speed: 100, mode: 'wait', sound: false, outId: '', inId: '', catLvl: 0, libLvl: 0, builtinOpen: null, view: 'staff', voice: 'piano'};
+const DEF = {low: 36, offset: 0, color: 1, transpose: 0, speed: 100, mode: 'wait', sound: false, outId: '', inId: '', catLvl: 0, libLvl: 0, last: null, view: 'staff', voice: 'piano'};
 const S = Object.assign({}, DEF);
 try { Object.assign(S, JSON.parse(localStorage.getItem('sk_settings') || '{}')); } catch (e) {}
 function saveS() { try { localStorage.setItem('sk_settings', JSON.stringify(S)); } catch (e) {} }
@@ -959,6 +988,10 @@ const LEAD = 0.08;
 /* przycisk Start/Pauza: sama ikona (napis w aria-label i podpowiedzi) */
 const ICO_PLAY = '<svg class="ico" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
 const ICO_PAUSE = '<svg class="ico" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+const ICO_SEARCH = '<svg class="ico" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>';
+const ICO_SPK = '<svg class="ico" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
+const ICO_STOP = '<svg class="ico" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>';
+const ICO_STAR = '<svg class="ico star" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>';
 function playUI(on) { const b = $('#playBtn'); b.innerHTML = on ? ICO_PAUSE : ICO_PLAY; b.setAttribute('aria-label', on ? 'Pauza' : 'Start'); b.title = on ? 'Pauza' : 'Start'; }
 /* Która ręka gra nutę (kolor paska w wodospadzie): 'L' lub 'R'.
    1) nazwa ścieżki („Lewa ręka”, „Left”, „LH”, „Bass” → lewa; „Prawa”, „Right”, „RH” → prawa);
@@ -1190,7 +1223,6 @@ function renderView() {
   else { if (v.parentNode !== $('#right')) $('#right').appendChild(v); if (tr.parentNode !== $('#right')) $('#right').insertBefore(tr, $('#player').nextSibling); }
   document.body.classList.toggle('withView', S.view !== 'off');
   document.body.classList.toggle('fall', S.view === 'fall');
-  if (S.view !== 'fall') document.body.classList.remove('libOpen');
   if ($('#optsSum')) renderOpts();
   vw.pos = null; drawView();
 }
@@ -1418,12 +1450,13 @@ function levelOldSongs() {
   userSongs.forEach(u => { if (u.lvl === undefined) { try { const lv = songLevel(getUserSong(u)); u.lvl = lv ? lv.lvl : 0; } catch (e) { u.lvl = 0; } changed = true; } });
   if (changed) { saveUser(); renderLib(); }
 }
-/* Lewy panel: na górze przycisk Katalogu, niżej jedna przewijana lista:
-   „Moje utwory” (z wyszukiwaniem i filtrem poziomu, gdy jest ich dużo) i zwijane „Wbudowane”.
-   Wiersz ma dwie linie: tytuł (do 2 linii) oraz wykonawca · poziom · źródło.
+/* Biblioteka – osobny ekran startowy (body.home): kafelek „Graj dalej”, filtr poziomu, siatka kart.
+   Karta: miniatura melodii (pierwsze kroki domyślnych ścieżek), tytuł, wykonawca, poziom kreskami, źródło.
+   Najpierw pobrane (najnowsze na górze), potem wbudowane. Wyszukiwarka w nagłówku filtruje od razu,
+   a „Szukaj w katalogu” / Enter (gdy nic nie pasuje) przenosi zapytanie do Katalogu.
    Usuwanie tylko w trybie „Edytuj”, żeby nie skasować utworu przypadkowym stuknięciem. */
-const LIB_TOOLS_MIN = 10;          // od tylu utworów pokazujemy wyszukiwanie i filtr poziomu
 const LIB_SRC = {commons: 'Wikimedia', bitmidi: 'BitMidi', lakh: 'Lakh', billboard: 'Billboard'};
+const ROLL_N = 28;                 // tyle kroków melodii w miniaturze
 let libEditing = false;
 // (catClean zamienia pusty tekst na „bez tytułu”, więc pusty sprawdzamy osobno)
 const libNorm = s => { s = String(s).trim(); return s ? catNorm(s.replace(/ł/g, 'l').replace(/Ł/g, 'L')) : ''; };
@@ -1437,67 +1470,119 @@ function songParts(u) {
   }
   return {title, artist, srcName};
 }
-function songRow(s, onDel) {
+/* miniatura melodii: najwyższa nuta z kolejnych kroków domyślnych ścieżek */
+function rollOf(s) {
+  const tr = new Set(defaultTracks(s)), ns2 = s.notes.filter(n => tr.has(n.track)).sort((a, b) => a.start - b.start), out = [];
+  let last = -1;
+  for (const n of ns2) {
+    if (out.length && n.start - last < 0.045) { out[out.length - 1] = Math.max(out[out.length - 1], n.note); continue; }
+    if (out.length >= ROLL_N) break;
+    out.push(n.note); last = n.start;
+  }
+  return out;
+}
+function rollSvg(r, played) {
+  if (!r || !r.length) return '';
+  const lo = Math.min(...r), hi = Math.max(...r), span = Math.max(1, hi - lo), n = r.length, W = 100, H = 40, bh = 5;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">` + r.map((m, i) =>
+    `<rect x="${(i * W / n + 0.4).toFixed(2)}" y="${((hi - m) / span * (H - bh)).toFixed(2)}" width="${Math.max(0.6, W / n - 1.2).toFixed(2)}" height="${bh}" rx="1.5" fill="#f2ede3" fill-opacity="${played === undefined ? 0.8 : i < played ? 1 : 0.32}"/>`).join('') + '</svg>';
+}
+const bars = l => `<span class="bars" aria-hidden="true"><i${l >= 1 ? ' class="on"' : ''}></i><i${l >= 2 ? ' class="on"' : ''}></i><i${l >= 3 ? ' class="on"' : ''}></i></span>`;
+BUILTIN.forEach(s => { s.roll = rollOf(s); });
+// Miniatury utworów pobranych przed etapem 3: liczymy raz (po kilka naraz, żeby nie zamrozić ekranu) i zapisujemy.
+function rollOldSongs() {
+  const todo = userSongs.filter(u => !u.roll).slice(0, 4);
+  if (!todo.length) return;
+  todo.forEach(u => { try { u.roll = rollOf(getUserSong(u)); } catch (e) { u.roll = []; } });
+  saveUser(); renderLib(); setTimeout(rollOldSongs, 60);
+}
+function songCard(s, onDel) {
   const d = document.createElement('div');
-  d.className = 'song' + (song && song.id === s.id ? ' on' : '') + (onDel && libEditing ? ' editing' : '');
-  const sub = [s.artist ? `<span>${esc(s.artist)}</span>` : '', lvlBadge(s.lvl), s.srcName ? `<span class="src">${esc(s.srcName)}</span>` : '']
-    .filter(Boolean).join('');
-  d.innerHTML = `<div class="t"><span class="tt">${esc(s.title)}</span><div class="sub">${sub}</div></div>`;
+  d.className = 'song ' + (onDel ? 'user' : 'builtin') + (song && song.id === s.id ? ' on' : '') + (onDel && libEditing ? ' editing' : '');
+  d.tabIndex = 0; d.setAttribute('role', 'button');
+  const meta = (s.lvl ? bars(s.lvl) + lvlBadge(s.lvl) : '') + (s.srcName ? `<span class="src">${esc(s.srcName)}</span>` : '');
+  d.innerHTML = `<div class="roll">${rollSvg(s.roll)}</div><div class="t"><span class="tt">${esc(s.title)}</span>` +
+    `<div class="sub">${s.artist ? `<span class="art">${esc(s.artist)}</span>` : ''}<div class="meta">${meta}</div></div></div>`;
   d.title = s.full || s.title;
   d.onclick = () => { if (!(onDel && libEditing)) s.load(); };
+  d.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); d.onclick(); } };
   if (onDel && libEditing) {
     const x = document.createElement('button'); x.className = 'del'; x.textContent = 'Usuń';
     x.onclick = e => { e.stopPropagation(); onDel(); }; d.appendChild(x);
   }
   return d;
 }
-function builtinOpen() { return S.builtinOpen === null || S.builtinOpen === undefined ? !userSongs.length : !!S.builtinOpen; }
 function removeUserSong(u) {
-  if (song && song.id === u.id) { stop(); song = null; $('#songTitle').textContent = 'Wybierz utwór z listy'; $('#tracks').innerHTML = ''; refreshView(); }
+  if (song && song.id === u.id) { stop(); song = null; $('#songTitle').textContent = 'Wybierz utwór'; $('#tracks').innerHTML = ''; refreshView(); }
   const i = userSongs.indexOf(u); if (i >= 0) userSongs.splice(i, 1);
   delete cache[u.id]; saveUser();
   if (!userSongs.length) libEditing = false;
   toast('Usunięto: ' + u.title);
   renderLib();
 }
-function renderLib() {
-  // wbudowane (zwijane)
-  const open = builtinOpen();
-  $('#builtinToggle').classList.toggle('shut', !open);
-  const b = $('#libBuiltin'); b.innerHTML = ''; b.hidden = !open;
-  BUILTIN.forEach(s => b.appendChild(songRow({id: s.id, title: s.title, lvl: s.lvl, load: () => selectSong(s)})));
-
-  // moje utwory
-  const n = userSongs.length, tools = n >= LIB_TOOLS_MIN;
-  $('#libHead').textContent = 'Moje utwory' + (n ? ' (' + n + ')' : '');
-  const eb = $('#libEdit'); eb.hidden = !n; eb.textContent = libEditing ? 'Gotowe' : 'Edytuj'; eb.classList.toggle('on', libEditing);
-  $('#libTools').hidden = !tools;
-  document.querySelectorAll('#libLvlSeg button').forEach(x => x.classList.toggle('on', +x.dataset.lvl === (S.libLvl || 0)));
-  const q = tools ? libNorm($('#libQ').value) : '', lvl = tools ? S.libLvl || 0 : 0;
-  // najnowsze na górze
-  const shown = userSongs.slice().reverse().filter(u => (!lvl || u.lvl === lvl) && (!q || libNorm(u.title).includes(q)));
-  const l = $('#lib'); l.innerHTML = '';
-  if (!n) l.innerHTML = '<p class="libempty">Jeszcze nic. Stuknij <b>Katalog utworów</b> na górze, wyszukaj utwór i pobierz go jednym kliknięciem.</p>';
-  else if (!shown.length) l.innerHTML = '<p class="libempty">Żaden utwór nie pasuje' + (q ? ' do „' + esc($('#libQ').value.trim()) + '”' : '') +
-    (lvl ? ' na poziomie „' + LEVELS[lvl] + '”' : '') + '.</p>';
-  shown.forEach(u => {
-    const p = songParts(u);
-    l.appendChild(songRow({id: u.id, title: p.title, full: u.title, artist: p.artist, srcName: p.srcName, lvl: u.lvl, load: () => {
-      try { selectSong(getUserSong(u)); } catch (e) { toast('Nie mogę otworzyć: ' + e.message); }
-    }}, () => removeUserSong(u)));
-  });
+const openUser = u => { try { selectSong(getUserSong(u)); } catch (e) { toast('Nie mogę otworzyć: ' + e.message); } };
+function findSong(id) {
+  const b = BUILTIN.find(x => x.id === id); if (b) return {song: b, title: b.title, artist: '', roll: b.roll, open: () => selectSong(b)};
+  const u = userSongs.find(x => x.id === id); if (!u) return null;
+  const p = songParts(u); return {title: p.title, artist: p.artist, roll: u.roll, open: () => openUser(u)};
 }
+/* kafelek „Graj dalej”: ostatnio grany utwór (S.last = {id, step, total}) */
+function renderResume() {
+  const box = $('#resume'), L = S.last, f = L && findSong(L.id);
+  if (!f) { box.hidden = true; box.innerHTML = ''; return; }
+  const total = L.total || 0, step = Math.min(L.step || 0, total), done = !total || step <= 0 || step >= total;
+  box.hidden = false;
+  box.innerHTML = `<div class="rroll roll">${rollSvg(f.roll, total ? Math.round(step / total * (f.roll || []).length) : 0)}</div>` +
+    `<div class="rtxt"><small>Ostatnio grane</small><h2>${esc(f.title)}</h2><span class="ra">${esc(f.artist || '')}</span>` +
+    `<div class="rbot"><div class="rprog"><div class="rbar"><i style="width:${total ? Math.round(step / total * 100) : 0}%"></i></div>` +
+    `<span>${done ? (step >= total && total ? 'Ukończone' : 'Od początku') : 'Krok ' + (step + 1) + ' z ' + total}</span></div>` +
+    `<button id="resumeBtn" class="primary">${ICO_PLAY}${done ? 'Zagraj od początku' : 'Graj dalej'}</button></div></div>`;
+  $('#resumeBtn').onclick = () => {
+    f.open();
+    if (!done && S.mode === 'wait' && steps.length) { stepIdx = Math.min(step, steps.length - 1); refreshView(); }
+  };
+}
+function renderLib() {
+  renderResume();
+  const n = userSongs.length, raw = $('#libQ').value.trim(), q = libNorm(raw), lvl = S.libLvl || 0;
+  const eb = $('#libEdit'); eb.hidden = !n; eb.textContent = libEditing ? 'Gotowe' : 'Edytuj'; eb.classList.toggle('on', libEditing);
+  document.querySelectorAll('#libLvlSeg button').forEach(x => x.classList.toggle('on', +x.dataset.lvl === lvl));
+  const ok = (title, l) => (!lvl || l === lvl) && (!q || libNorm(title).includes(q));
+  const users = userSongs.slice().reverse().filter(u => ok(u.title, u.lvl));   // najnowsze na górze
+  const built = BUILTIN.filter(b => ok(b.title, b.lvl));
+  const l = $('#lib'); l.innerHTML = '';
+  if (!n && !q && !lvl) l.innerHTML = '<p class="libempty">Nie masz jeszcze pobranych utworów. Wpisz tytuł albo wykonawcę w polu u góry ' +
+    'albo otwórz <b>Katalog</b> przyciskiem „Nowe utwory z katalogu”. Na początek możesz zagrać utwory poniżej.</p>';
+  else if (!users.length && !built.length) l.innerHTML = '<p class="libempty">Żaden utwór nie pasuje' + (q ? ' do „' + esc(raw) + '”' : '') +
+    (lvl ? ' na poziomie „' + LEVELS[lvl] + '”' : '') + '.</p>';
+  users.forEach(u => {
+    const p = songParts(u);
+    l.appendChild(songCard({id: u.id, title: p.title, full: u.title, artist: p.artist, srcName: p.srcName, lvl: u.lvl, roll: u.roll,
+      load: () => openUser(u)}, () => removeUserSong(u)));
+  });
+  built.forEach(b => l.appendChild(songCard({id: b.id, title: b.title, lvl: b.lvl, roll: b.roll, srcName: 'wbudowany', load: () => selectSong(b)})));
+  const f = $('#libFind'); f.innerHTML = '';
+  if (q) {
+    const b = document.createElement('button'); b.innerHTML = ICO_SEARCH + 'Szukaj „' + esc(raw) + '” w katalogu';
+    b.onclick = () => catFrom(raw); f.appendChild(b);
+  }
+}
+/* zapytanie z wyszukiwarki biblioteki → Katalog */
+function catFrom(q) { openCatalog(); $('#catQ').value = q; cat.q = q; $('#catQ').blur(); catSearch(false); }
 $('#libEdit').onclick = () => { libEditing = !libEditing; renderLib(); };
-$('#builtinToggle').onclick = () => { S.builtinOpen = !builtinOpen(); saveS(); renderLib(); };
 $('#libQ').oninput = renderLib;
-$('#libQ').onkeydown = e => { if (e.key === 'Enter') $('#libQ').blur(); };
+$('#libQ').onkeydown = e => {
+  if (e.key !== 'Enter') return;
+  const q = $('#libQ').value.trim(); $('#libQ').blur();
+  if (q && !document.querySelector('#lib .song')) catFrom(q);
+};
 document.querySelectorAll('#libLvlSeg button').forEach(x => x.onclick = () => { S.libLvl = +x.dataset.lvl; saveS(); renderLib(); });
 // Dodaje plik MIDI do „Moje utwory” (używa tego Katalog). Zwraca rozpoznany utwór.
 function addUserSong(buf, title, src) {
   const parsed = parseMidi(buf, title);
   const id = 'u' + Date.now() + Math.random().toString(36).slice(2, 6);
   parsed.id = id; cache[id] = parsed;
-  const lv = songLevel(parsed), u = {id, title, b64: toB64(buf), lvl: lv ? lv.lvl : 0};
+  const lv = songLevel(parsed), u = {id, title, b64: toB64(buf), lvl: lv ? lv.lvl : 0, roll: rollOf(parsed)};
   if (src) u.src = src;
   userSongs.push(u); saveUser(); renderLib();
   return parsed;
@@ -1507,8 +1592,7 @@ function selectSong(s) {
   sel = new Set(defaultTracks(s));
   if (s.melody >= 0) log('ŚCIEŻKI: wybrana melodia „' + s.tracks[s.melody] + '”' + (instName(s, s.melody) ? ' (' + instName(s, s.melody) + ')' : ''));
   $('#songTitle').textContent = s.title;
-  document.body.classList.remove('libOpen');
-  renderTracks(); prepare(); renderLib();
+  renderTracks(); prepare(); showPlay();
 }
 function renderTracks() {
   const box = $('#tracks'); box.innerHTML = '';
@@ -1521,7 +1605,7 @@ function renderTracks() {
     lab.className = 'chip' + (sel.has(i) ? ' on' : '');
     // nazwa instrumentu tylko wtedy, gdy nie powtarza nazwy ścieżki
     const showInst = inst && !catNorm(name).includes(catNorm(inst));
-    lab.innerHTML = `<input type="checkbox" ${sel.has(i) ? 'checked' : ''}>${i === song.melody ? '⭐ ' : ''}${esc(name)}` +
+    lab.innerHTML = `<input type="checkbox" ${sel.has(i) ? 'checked' : ''}>${i === song.melody ? ICO_STAR : ''}${esc(name)}` +
       (showInst ? ` <small class="inst">${esc(inst)}</small>` : '') + ` <small>${cnt}</small>`;
     if (i === song.melody) lab.title = 'Melodia – wybrana automatycznie';
     lab.querySelector('input').onchange = e => {
@@ -1531,7 +1615,7 @@ function renderTracks() {
     };
     box.appendChild(lab);
   });
-  if (song.melody >= 0) box.insertAdjacentHTML('beforeend', '<span class="lbl" style="flex-basis:100%">⭐ = melodia, wybrana automatycznie. Stuknij inne ścieżki, żeby je dołączyć (np. bas na lewą rękę).</span>');
+  if (song.melody >= 0) box.insertAdjacentHTML('beforeend', '<span class="lbl" style="flex-basis:100%">Gwiazdka = melodia, wybrana automatycznie. Stuknij inne ścieżki, żeby je dołączyć (np. bas na lewą rękę).</span>');
 }
 
 /* ---------------- katalog utworów z internetu ----------------
@@ -1787,7 +1871,7 @@ async function catSearch(more) {
 
 function catMeta(it) {
   const l = catLevel(it), r = catA.res[it.src];
-  const badges = (l ? lvlBadge(l) : '<span class="lvl">' + (l === 0 ? 'poziom ?' : '⏳ poziom…') + '</span>') +
+  const badges = (l ? lvlBadge(l) : '<span class="lvl">' + (l === 0 ? 'poziom ?' : 'poziom…') + '</span>') +
     '<span class="badge ' + it.source + '">' + CAT_NAMES[it.source] + '</span>';
   const m = [], dur = it.dur || (r && r.d);
   if (it.year) m.push('hit ' + it.year);
@@ -1821,12 +1905,12 @@ function renderCatalog() {
     const row = document.createElement('div'); row.className = 'cat';
     row.innerHTML = `<div class="t"><b>${esc(it.title)}</b><small>${catMeta(it)}</small></div>`;
     const b = document.createElement('button');
-    if (cat.loading[it.src]) { b.textContent = '⏳ Pobieram…'; b.disabled = true; }
-    else if (owned) { b.textContent = '▶ Mam – graj'; b.className = 'have'; b.onclick = () => { closeCatalog(); try { selectSong(getUserSong(owned)); } catch (e) { toast('Nie mogę otworzyć: ' + e.message); } }; }
-    else { b.textContent = '⬇ Pobierz'; b.className = 'primary'; b.onclick = () => catDownload(it); }
+    if (cat.loading[it.src]) { b.textContent = 'Pobieram…'; b.disabled = true; }
+    else if (owned) { b.textContent = 'Mam – graj'; b.className = 'have'; b.onclick = () => { closeCatalog(); try { selectSong(getUserSong(owned)); } catch (e) { toast('Nie mogę otworzyć: ' + e.message); } }; }
+    else { b.textContent = 'Pobierz'; b.className = 'primary'; b.onclick = () => catDownload(it); }
     const pb = document.createElement('button');
     pb.className = 'pv' + (pv.src === it.src ? ' on' : '');
-    pb.textContent = pv.loading === it.src ? '⏳' : pv.src === it.src ? '■ Stop' : '🔊 Posłuchaj';
+    pb.innerHTML = pv.loading === it.src ? '…' : pv.src === it.src ? ICO_STOP + 'Stop' : ICO_SPK + 'Posłuchaj';
     pb.title = 'Posłuchaj początku (do ' + PV_LEN + ' s) bez pobierania';
     pb.onclick = () => catPreview(it);
     const btns = document.createElement('div'); btns.className = 'btns';
@@ -1839,7 +1923,7 @@ function renderCatalog() {
     '<b>Wikimedia Commons</b> – pliki na wolnych licencjach, głównie muzyka klasyczna.<br><b>BitMidi</b> – ponad 100 tys. plików wgranych przez internautów, także piosenki (licencje nie zawsze są jasne – do własnej nauki).' +
     '<br><b>Lakh</b> – ok. 17 tys. piosenek pop, rock i dance (ABBA, Queen, Beatles, 2 Unlimited…) z <a href="https://colinraffel.com/projects/lmd/" target="_blank" rel="noopener">Lakh MIDI Dataset</a> Colina Raffela (CC-BY 4.0); pliki zebrane z internetu – do własnej nauki. Szukaj po wykonawcy albo tytule po angielsku. Najnowsze piosenki są tu z ok. 2010 roku.' +
     '<br><b>Hity (Billboard)</b> – melodie 5 największych przebojów każdego roku 1950–2024 (Ed Sheeran, Justin Bieber, The Weeknd, Dua Lipa, Taylor Swift…) z <a href="https://github.com/madelinehamilton/BiMMuDa" target="_blank" rel="noopener">Billboard Melodic Music Dataset</a>. To sama melodia na jedną rękę, bez akompaniamentu – zwykle łatwa.' +
-    '<br><br>Przy każdym wyniku jest <b>🔊 Posłuchaj</b> – zagra początek utworu (melodię głośniej) bez pobierania. Jeśli nic nie słychać, podgłośnij iPada przyciskami głośności; gdy dalej cisza – Ustawienia → „Kopiuj dziennik”.';
+    '<br><br>Przy każdym wyniku jest <b>Posłuchaj</b> – zagra początek utworu (melodię głośniej) bez pobierania. Jeśli nic nie słychać, podgłośnij iPada przyciskami głośności; gdy dalej cisza – Ustawienia → „Kopiuj dziennik”.';
   else if (pending) msg.textContent = 'Sprawdzam poziom trudności… (zostało ' + pending + ')';
   else if (!shown.length && !cat.msg) msg.textContent = !cat.items.length ? 'Nic nie znaleziono. Spróbuj innej pisowni albo nazwy po angielsku.' :
     base.length ? 'Wśród ' + base.length + ' znalezionych nie ma utworów na poziomie „' + LEVELS[S.catLvl] + '”. Pokaż więcej wyników albo wybierz inny poziom.' :
@@ -1872,7 +1956,7 @@ async function catDownload(it) {
   }
   delete cat.loading[it.src]; renderCatalog();
 }
-function openCatalog() { document.body.classList.remove('libOpen'); $('#catalog').classList.add('open'); renderCatalog(); if (!cat.q) setTimeout(() => $('#catQ').focus(), 50); }
+function openCatalog() { $('#catalog').classList.add('open'); renderCatalog(); if (!cat.q) setTimeout(() => $('#catQ').focus(), 50); }
 function closeCatalog() { pvStop(true); $('#catalog').classList.remove('open'); $('#catQ').blur(); }
 $('#openCatalog').onclick = openCatalog;
 $('#closeCatalog').onclick = closeCatalog;
@@ -1899,10 +1983,17 @@ function jump(delta) {
     if (playing) { t0 = performance.now() - t / (S.speed / 100) * 1000; seekAudio(t); } else { pauseT = t; refreshView(); }
   }
 }
-$('#libBtn').onclick = () => document.body.classList.toggle('libOpen');
-document.addEventListener('pointerdown', e => {
-  if (document.body.classList.contains('libOpen') && !e.target.closest('aside,#libBtn,#catalog')) document.body.classList.remove('libOpen');
-});
+/* przełączanie ekranów: biblioteka ↔ granie */
+function showPlay() {
+  document.body.classList.remove('home'); closeOpts();
+  vw.pos = null; requestAnimationFrame(() => { vw.pos = null; drawView(); });
+}
+function goHome() {
+  if (song) { S.last = {id: song.id, step: S.mode === 'wait' ? stepIdx : 0, total: steps.length}; saveS(); }
+  stop(); closeOpts(); libEditing = false;
+  document.body.classList.add('home'); renderLib();
+}
+$('#backBtn').onclick = goHome;
 $('#prevBtn').onclick = () => jump(-1);
 $('#nextBtn').onclick = () => jump(1);
 $('#pos').oninput = e => {
@@ -2036,8 +2127,9 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { sto
 window.addEventListener('pagehide', allOff);
 
 /* start */
+document.body.classList.add('home');
 playUI(false); renderMode(); renderView(); renderTr(); renderOff(); buildKbd(); renderLib(); refreshView(); initMidi();
-setTimeout(levelOldSongs, 300);
+setTimeout(levelOldSongs, 300); setTimeout(rollOldSongs, 500);
 </script>
 </body>
 </html>

@@ -69,13 +69,21 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     pierwsze 30 s, melodia głośniej, tło max 6 dźwięków naraz, nuty planowane co 100 ms na 0,4 s do przodu; `tone()` przyjmuje czas, głośność i wyjście;
   - poziom trudności: `songLevel()` (punkty za tempo, akordy, rozpiętość, czarne klawisze, >4 ścieżki, długość; 0–2 łatwe, 3–5 średnie, 6+ trudne),
     w katalogu kolejka `catA` / `catPump()` pobiera pliki w tle (po 3 naraz) i liczy poziom; pobrany plik zostaje w pamięci dla „Pobierz”;
-  - lewy panel (biblioteka): `renderLib()`, `songRow()`, `songParts()`, `addUserSong()`, `removeUserSong()`.
-    Na górze przypięty przycisk Katalogu, pod nim **jedna przewijana lista** (`#libScroll`): „Moje utwory” (najnowsze na górze),
-    potem zwijane „Wbudowane” (`S.builtinOpen`; domyślnie zwinięte, gdy są pobrane utwory). Wiersz: tytuł (do 2 linii) +
-    druga linia wykonawca · poziom · źródło (z Lakh i Billboard wykonawcę odcinamy z tytułu „Wykonawca – Tytuł”). Usuwanie tylko w trybie „Edytuj”.
-    Od `LIB_TOOLS_MIN` (10) utworów: wyszukiwanie (`#libQ`, `libNorm()`) i filtr poziomu (`S.libLvl`).
+  - **dwa ekrany** (etap 3, 11.11.2026): **biblioteka** (`#home`, klasa `body.home`, ekran startowy, bez klawiatury)
+    i **granie** (`#main` + `#view` + `#kbd`). `selectSong()` → `showPlay()`; „‹ Biblioteka” (`#backBtn`) → `goHome()`: zatrzymuje granie,
+    zapisuje miejsce w `S.last = {id, step, total}`. Nagłówek wspólny: w bibliotece nazwa aplikacji + wyszukiwarka (`#libQ`),
+    przy graniu „‹ Biblioteka” + tytuł (`#songTitle`) + statystyki; status i ustawienia zawsze;
+  - biblioteka: `renderLib()`, `songCard()`, `songParts()`, `renderResume()`, `addUserSong()`, `removeUserSong()`.
+    Kafelek **„Graj dalej”** (`#resume`, ostatni utwór z `S.last`, postęp, `#resumeBtn` wraca do tego kroku w trybie „Czekaj”).
+    Pasek: „Twoje utwory”, filtr poziomu (`#libLvlSeg`, `S.libLvl`, zawsze widoczny), „Edytuj” (`#libEdit`, tylko gdy są pobrane),
+    „Nowe utwory z katalogu” (`#openCatalog`). **Siatka kart** `#lib`: najpierw pobrane (`.song.user`, najnowsze na górze), potem
+    wbudowane (`.song.builtin`). Karta: **miniatura melodii** (`rollOf()` – najwyższa nuta z pierwszych `ROLL_N` = 28 kroków domyślnych
+    ścieżek, `rollSvg()`; dla pobranych zapisana w `u.roll`, starsze uzupełnia `rollOldSongs()` po 4 naraz), tytuł, wykonawca
+    (z Lakh i Billboard odcięty z tytułu „Wykonawca – Tytuł”), **poziom kreskami** (`bars()`) i słowem, źródło. Usuwanie tylko w trybie „Edytuj”.
+    **Jedna wyszukiwarka**: `#libQ` filtruje od razu (pobrane i wbudowane, `libNorm()`); pod siatką przycisk „Szukaj „…” w katalogu”
+    (`#libFind`), a Enter, gdy nic nie pasuje, od razu przenosi zapytanie do Katalogu (`catFrom()`).
     **Ręcznego wgrywania plików nie ma** (usunięte 11.11.2026) – utwory dodaje tylko Katalog przez `addUserSong()`;
-    smoke test też dodaje pliki przez `addUserSong()`;
+    smoke test też dodaje pliki przez `addUserSong()` i wraca do biblioteki przez `go_home()` / `open_catalog()`;
   - brzmienie fortepianu: `pianoLoad()` / `pianoNote()` / `pianoUI()` – próbki FluidR3 GM (`acoustic_grand_piano-mp3.js` z gleitz/midi-js-soundfonts,
     adres przypięty do commita `044fab8`, 88 nut A0–C8, 2,6 MB). Pobierane raz przy pierwszym dźwięku i zapisane w **IndexedDB**
     (baza `swiecace-klawisze`, magazyn `files`, klucz `PIANO_KEY`), bo GitHub daje `max-age=300`. Przy każdym uruchomieniu dekodowane
@@ -89,7 +97,7 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     `renderView()` → `drawView()` (wołane z `renderKeys()` i z `loop()`; w trybie „Czekaj” płynne przesunięcie przez `vw.pos`).
     **Pięciolinia** `drawStaff()`: same główki nut w równych odstępach (kolumna = krok z `steps`), bez rytmu; obie pięciolinie
     na jednej skali (`dia()`: nuta → stopień, C4 na linii dodanej pośrodku), czarne klawisze jako krzyżyki; klucze 𝄞 𝄢 skalowane
-    do pięciolinii (`clef()`), a gdy czcionka ich nie ma – litery G/F. Leży tylko w prawej kolumnie (`#right`), więc biblioteka zostaje wysoka.
+    do pięciolinii (`clef()`), a gdy czcionka ich nie ma – litery G/F. Leży w `#right` (cała szerokość ekranu grania).
     **Wodospad** `drawFall()`: paski z `ns` spadają na klawisze, 3 s nad klawiaturą (`VIEW_SECS`, skalowane tempem); na całą
     szerokość (element `#view` przenoszony przed `#kbd`), położenie klawiszy z `keyGeom()` – to samo co klawiatura na ekranie.
     Kolory wodospadu (`FC`): **lewa ręka jasnoniebieska, prawa kremowa** (ciemniejsze odcienie na czarnych klawiszach), aktualne
@@ -98,8 +106,7 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     przy kilku ścieżkach najwyższa = prawa, średnia < C4 = lewa (gdy wszystkie wysoko – najniższa lewa), jedna ścieżka z nutami
     po obu stronach C4 (15–85% poniżej) – podział na C4; sama melodia – cała prawa.
     **Układ wodospadu** (`body.fall`): wodospad na całą wysokość między tytułem a klawiaturą, odtwarzacz `#transport` przeniesiony
-    do `#view` (u góry wodospadu), menu Opcje otwiera się wtedy w dół (`openOpts()` wybiera kierunek), lewy panel to wysuwany
-    panel otwierany przyciskiem **„Utwory”** (`#libBtn`, klasa `libOpen`; chowa się po wyborze utworu, otwarciu katalogu i stuknięciu obok).
+    do `#view` (u góry wodospadu), menu Opcje otwiera się wtedy w dół (`openOpts()` wybiera kierunek).
     **Filc świeci** (`#felt` w `#kbd`, budowany w `buildKbd()`, odświeżany w `renderKeys()`) nad zapalonymi klawiszami – we wszystkich widokach,
     na zielono po trafieniu.
     Kolory pięciolinii (`VC`, ciemna „scena”): przyszłe kość słoniowa (coraz bledsze), aktualne czerwone z poświatą (`VC.now` = `--led`)
@@ -107,11 +114,12 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     Pięciolinia zostawia miejsce na nazwę u góry i na pływający odtwarzacz u dołu (`STAFF_TOP` / `STAFF_BOT`).
     W poziomie z widokiem klawiatura i widok mają po 22vh. Pole „Zagraj / potem” (`#now`) widać tylko w trybie „Bez nut” (`body.withView #now{display:none}`).
     Pięciolinia w `#right` rośnie i zajmuje całe wolne miejsce (`#right>#view{flex:1}`, główki do `half` = 11 px);
-  - wygląd „Scena” (etap 1 z 3, 11.11.2026; makiety: https://claude.ai/artifact/PsCLH8WKuvSDmZbxqmCrvp): kolory lakieru pianina
+  - wygląd „Scena” (3 etapy, 11.11.2026; makiety: https://claude.ai/artifact/PsCLH8WKuvSDmZbxqmCrvp): kolory lakieru pianina
     (zmienne CSS `--bg`, `--panel`, `--text` = kość słoniowa, `--led` = czerwień diod, `--miss` = bursztyn, `--felt` = bordowy filc),
     czcionki z Google Fonts: **Bricolage Grotesque** (tytuły, `--disp`) i **Atkinson Hyperlegible** (reszta i nazwy nut, `--ui`; czytelna z daleka).
     Zasada: **czerwony tylko dla tego, co trzeba zagrać teraz** (jak diody w keyboardzie); przyciski główne w kolorze kości słoniowej.
-    Ikony to wbudowane SVG (`class="ico"`), bez emoji. Klawiatura z głębią (gradienty, „krawędź” klawisza), nad nią filcowy pasek,
+    Ikony to wbudowane SVG (`class="ico"`, w kodzie `ICO_PLAY`, `ICO_SEARCH`, `ICO_SPK`, `ICO_STOP`, `ICO_STAR`), **bez emoji** w całej aplikacji
+    (także katalog i ustawienia; melodia w ścieżkach oznaczona gwiazdką SVG), bez napisów wielkimi literami. Klawiatura z głębią (gradienty, „krawędź” klawisza), nad nią filcowy pasek,
     świecący klawisz czerwony z poświatą. Status: „Keyboard połączony” z kropką, nazwa urządzenia w `title`;
   - pasek odtwarzacza: pływająca „pigułka” `#transport` na dole prawej kolumny (`position:absolute` w `#right`): ⏮ Start/Pauza ⏭ ↺
     (same ikony, `playUI()` zmienia ikonę i `aria-label`) i przycisk **Opcje** (`#optsBtn`) z podsumowaniem słowami
@@ -140,16 +148,16 @@ Zasady:
 Gotowe i działa:
 - 6 wbudowanych utworów: Wlazł kotek, Panie Janie, Mrugaj gwiazdko, Oda do radości, Dla Elizy (początek, obie ręce), Gama C-dur.
 - Utwory MIDI z Katalogu z wyborem ścieżek (rąk). Ręczne wgrywanie plików usunięte – wcześniej wgrane pliki dalej są w bibliotece („własny plik”).
-- Lewy panel: Katalog na górze, jedna przewijana lista (działa też w poziomie), zwijane wbudowane, tryb „Edytuj” do usuwania,
-  wyszukiwanie i filtr poziomu w „Moje utwory” od 10 utworów.
+- Wygląd „Scena” (ciemny lakier pianina, czerwony = to, co zagrać). Osobny ekran biblioteki: „Graj dalej”, karty z miniaturą melodii
+  i poziomem, filtr poziomu, „Edytuj” do usuwania, jedna wyszukiwarka dla własnych utworów i katalogu.
 - Tryby „Czekaj na mnie” i „W tempie” (25–150%), transpozycja, dźwięk z iPada, przewijanie, statystyki trafień.
 - Brzmienie fortepianu z nagranych próbek (pobierane raz, zapisane na iPadzie); prosty dźwięk do wyboru w Ustawieniach.
 - Klawiatura na ekranie, test świateł, przesunięcie świateł, diagnostyka i dziennik.
-- Zwarty pasek odtwarzacza: Start/Pauza, cofnij/dalej, od początku, suwak kroków; reszta opcji w menu „🎚 Opcje”.
-- Widok nut nad klawiaturą do wyboru: „Bez nut”, „🎼 Nuty” (uproszczona pięciolinia z podświetleniem aktualnych nut,
-  trafień i pomyłek) albo „🌧 Wodospad” (paski spadające na klawisze). Domyślnie „Nuty”. Działa w obu trybach.
+- Pływający odtwarzacz: Start/Pauza, cofnij/dalej, od początku; suwak kroków pod tytułem; reszta opcji w menu „Opcje”.
+- Widok nut nad klawiaturą do wyboru: „Bez nut”, „Nuty” (uproszczona pięciolinia z dużą nazwą aktualnej nuty) albo
+  „Wodospad” (paski spadające na klawisze, kolory rąk). Domyślnie „Nuty”. Działa w obu trybach.
 - Katalog utworów: wyszukiwanie w Wikimedia Commons, BitMidi, Lakh MIDI i **Hity (Billboard)** – melodie przebojów 1950–2024 (Ed Sheeran, Bieber, Weeknd, Dua Lipa…), pobieranie jednym kliknięciem, oznaczenie „Mam”, filtr „Tylko te, których nie mam”,
-  podpowiedzi klasyczne i popowe, **🔊 Posłuchaj** przed pobraniem.
+  podpowiedzi klasyczne i popowe, **Posłuchaj** przed pobraniem.
 - Piosenki (wiele instrumentów): po otwarciu zaznaczona tylko melodia (⭐), przy ścieżkach nazwy instrumentów (np. „Lead 2 (sawtooth)”).
 - Poziom trudności (Łatwe / Średnie / Trudne): filtr w katalogu (zapamiętany w ustawieniach) i plakietki przy wszystkich utworach.
   Biblioteki nie podają poziomu, więc liczymy go z nut. Progi sprawdzone na plikach z korpusu music21:
@@ -194,12 +202,11 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 ## Do zrobienia / pomysły
 
 (Łukasz decyduje o kolejności. Claude dopisuje tu pomysły, które padną w rozmowie.)
-- [ ] **Nowy wygląd, etap 3:** osobny ekran biblioteki (karty z miniaturą melodii, poziom kreskami, „Graj dalej”, jedna wyszukiwarka
-      dla własnych utworów i katalogu); na ekranie grania zamiast lewego panelu przycisk „‹ Biblioteka”. Makieta „A. Scena – biblioteka”.
-      Wysuwany panel „Utwory” z wodospadu (etap 2) zastąpić wtedy powrotem do biblioteki.
-      Przy okazji: emoji w katalogu i ustawieniach na ikony, napisy wielkimi literami („MOJE UTWORY”) na zwykłe.
+- [ ] Sprawdzić etap 3 na iPadzie: przewijanie siatki palcem, „Graj dalej” po zamknięciu i ponownym otwarciu Web MIDI Browser,
+      szukanie z klawiaturą ekranową (Enter → katalog), czas pierwszego otwarcia przy wielu pobranych utworach (miniatury `rollOldSongs()`).
+- [ ] Pomysł: katalog też jako pełny ekran w stylu biblioteki (teraz okno nad biblioteką), karty wyników z miniaturą po odsłuchu.
 - [ ] Sprawdzić etap 2 na iPadzie: czy kolory rąk trafiają na prawdziwych plikach (fortepian w jednej ścieżce, piosenki z Lakh),
-      czy wodospad jest płynny na całej wysokości, wysuwany panel „Utwory” palcem.
+      czy wodospad jest płynny na całej wysokości.
 - [ ] Sprawdzić etap 1 na iPadzie: czy czcionki z Google Fonts się wczytują w Web MIDI Browser, czytelność dużej nazwy nuty z pulpitu,
       czy pływający odtwarzacz nie zasłania nut w pionie i w poziomie.
 - [ ] Poziom liczony też dla pojedynczej ścieżki (np. sama melodia z piosenki z BitMidi). (Filtr poziomu w „Moje utwory” już jest – na razie po poziomie całego pliku).
@@ -217,9 +224,13 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
       przy długich piosenkach i czy w poziomie wszystko się mieści (pole „Zagraj”, lista utworów).
 - [ ] Pomysły do widoku nut: nazwy nut na wszystkich główkach (nie tylko aktualnych), kreski taktowe, gdy plik ma metrum,
       bemole zamiast krzyżyków w tonacjach bemolowych, regulacja wysokości widoku / szybkości wodospadu.
-- [ ] Sprawdzić nowy lewy panel na iPadzie w obu orientacjach (przewijanie palcem, tryb „Edytuj”, szukajka z klawiaturą ekranową).
 
 ## Dziennik zmian
+
+- 11.11.2026: nowy wygląd „Scena”, etap 3 – osobny ekran biblioteki zamiast lewego panelu: „Graj dalej” (ostatni utwór i krok),
+  siatka kart z miniaturą melodii, poziomem kreskami i źródłem, filtr poziomu zawsze widoczny, jedna wyszukiwarka (biblioteka + „Szukaj w katalogu”),
+  ekran grania na całą szerokość z „‹ Biblioteka”; usunięty wysuwany panel z etapu 2; emoji w katalogu i ustawieniach zamienione na ikony SVG,
+  bez napisów wielkimi literami; testy biblioteki przepisane w `smoke_test.py`.
 
 - 11.11.2026: nowy wygląd „Scena”, etap 2 – wodospad: kolory rąk (lewa jasnoniebieska, prawa kremowa, `hands()`), aktualne paski czerwone
   ze świeceniem, wygaszanie u góry, wodospad na całą wysokość, odtwarzacz u góry wodospadu, lista utworów jako wysuwany panel „Utwory”,
