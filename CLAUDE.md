@@ -110,10 +110,17 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 | Mutopia Project | ❌ brak CORS | ❌ | |
 | piano-midi.de | ❌ brak CORS (i tylko http) | ❌ | |
 
+## Decyzje
 
 - Aplikacja webowa zamiast natywnej aplikacji iOS: nie wymaga Maca, Xcode ani konta deweloperskiego Apple.
 - Jeden plik HTML: prosto hostować i łatwo zmieniać z każdego urządzenia.
 - Brak serwera: diagnostyka przez dziennik kopiowany do czatu.
+- Lakh MIDI: spis nazw trzymamy u siebie (`lakh.json`), bo GitHub nie ma wyszukiwarki z CORS; samych plików nie kopiujemy –
+  pobieramy je z cudzego repozytorium przez raw.githubusercontent.com, adresem przypiętym do commita (stabilne linki).
+- Piosenki: domyślnie ćwiczymy samą melodię (wybraną automatycznie), resztę ścieżek dołącza się ręcznie.
+  Fortepian na dwie ręce i utwory wbudowane – nadal wszystkie ścieżki.
+- Nazwy instrumentów po angielsku (standard General MIDI), tak jak na stronach z plikami MIDI.
+- Odsłuch tym samym prostym dźwiękiem co „Dźwięk z iPada” (bez bibliotek z próbkami instrumentów) – wystarcza, żeby ocenić, czy plik jest dobry.
 
 ## Do zrobienia / pomysły
 
