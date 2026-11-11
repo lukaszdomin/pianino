@@ -35,7 +35,7 @@ aside h3{margin:14px 14px 6px;font-size:12px;text-transform:uppercase;letter-spa
 #tracks .lbl{font-size:13px;color:var(--muted);margin-right:4px}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:14px;cursor:pointer}
 .chip.on{border-color:var(--accent);color:var(--accent)}
-.chip small{color:var(--muted)} .chip input{display:none}
+.chip small{color:var(--muted)} .chip input{display:none} .chip small.inst{font-style:italic}
 .row{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .seg button{border:none;border-radius:0;background:var(--panel2)}
@@ -88,7 +88,9 @@ input[type=range]{accent-color:var(--accent)}
 #catalog h2{margin:0;font-size:20px;display:flex;justify-content:space-between;align-items:center}
 #catForm{display:flex;gap:8px}
 #catQ{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;-webkit-user-select:text;user-select:text;-webkit-appearance:none}
-#catSugg{display:flex;flex-wrap:wrap;gap:6px}
+#catSugg{display:flex;flex-direction:column;gap:6px}
+#catSugg .sgroup{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#catSugg .lbl{font-size:12px;color:var(--muted);min-width:118px}
 #catList{flex:1;overflow-y:auto;padding:8px 12px 12px;-webkit-overflow-scrolling:touch}
 .cat{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;border-bottom:1px solid #262a35}
 .cat .t{flex:1;min-width:0}
@@ -96,8 +98,11 @@ input[type=range]{accent-color:var(--accent)}
 .cat .t small{color:var(--muted);font-size:12px}
 .cat button{white-space:nowrap;min-width:110px}
 .cat button.have{background:#173826;border-color:var(--ok);color:var(--ok)}
+.cat .btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.cat button.pv{min-width:0}
+.cat button.pv.on{border-color:var(--accent);color:var(--accent)}
 .badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);margin-right:6px;color:var(--text)}
-.badge.commons{border-color:#3d6fd1;color:#8fb2ff} .badge.bitmidi{border-color:#8a5cd6;color:#c3a6ff}
+.badge.commons{border-color:#3d6fd1;color:#8fb2ff} .badge.bitmidi{border-color:#8a5cd6;color:#c3a6ff} .badge.lakh{border-color:#d1813d;color:#ffbf8f}
 #catMsg{color:var(--muted);font-size:14px;padding:14px 10px;text-align:center}
 .lvl{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);margin-right:6px;color:var(--muted);white-space:nowrap}
 .lvl.l1{border-color:#2ec27e;color:#7fe0ad} .lvl.l2{border-color:#e0b100;color:#ffd84d} .lvl.l3{border-color:#e5484d;color:#ff8f92}
@@ -216,7 +221,7 @@ input[type=range]{accent-color:var(--accent)}
   <div class="top">
     <h2>🔎 Katalog utworów <button id="closeCatalog">✕</button></h2>
     <form id="catForm" autocomplete="off">
-      <input id="catQ" type="search" placeholder="Tytuł albo kompozytor, np. Chopin, Für Elise, Jingle Bells" enterkeyhint="search">
+      <input id="catQ" type="search" placeholder="Tytuł albo wykonawca, np. Chopin, ABBA, Better Off Alone" enterkeyhint="search">
       <button class="primary" type="submit">Szukaj</button>
     </form>
     <div class="row" style="gap:10px">
@@ -224,6 +229,7 @@ input[type=range]{accent-color:var(--accent)}
         <button type="button" data-src="all">Wszystkie</button>
         <button type="button" data-src="commons">Wikimedia</button>
         <button type="button" data-src="bitmidi">BitMidi</button>
+        <button type="button" data-src="lakh">Lakh (pop)</button>
       </div>
       <div class="seg" id="catLvlSeg">
         <button type="button" data-lvl="0">Każdy poziom</button>
@@ -316,11 +322,11 @@ function parseMidi(buf, title) {
   if (str(4) !== 'MThd') throw new Error('to nie jest plik MIDI');
   const hl = u32(); const fmt = u16(), ntr = u16(), div = u16(); p += hl - 6;
   if (div & 0x8000) throw new Error('nieobsługiwany format czasu (SMPTE)');
-  const tempos = [], rawTracks = [];
+  const tempos = [], rawTracks = [], firstProg = {};
   for (let t = 0; t < ntr && p + 8 <= d.byteLength; t++) {
     const id = str(4), len = u32(), end = Math.min(p + len, d.byteLength);
     if (id !== 'MTrk') { p = end; continue; }
-    let tick = 0, rs = 0, name = ''; const open = {}, notes = [];
+    let tick = 0, rs = 0, name = ''; const open = {}, notes = [], prog = {};
     while (p < end) {
       tick += vlq();
       let st = d.getUint8(p);
@@ -336,13 +342,14 @@ function parseMidi(buf, title) {
         const hi = st & 0xF0, ch = st & 0x0F;
         const a = u8(); const b = (hi === 0xC0 || hi === 0xD0) ? 0 : u8();
         const k = ch * 128 + a;
-        if (hi === 0x90 && b > 0) (open[k] = open[k] || []).push(tick);
+        if (hi === 0xC0) { prog[ch] = a; if (firstProg[ch] === undefined) firstProg[ch] = a; }
+        else if (hi === 0x90 && b > 0) (open[k] = open[k] || []).push(tick);
         else if (hi === 0x80 || (hi === 0x90 && b === 0)) {
-          const arr = open[k]; if (arr && arr.length) notes.push({note: a, ch, s: arr.shift(), e: tick});
+          const arr = open[k]; if (arr && arr.length) notes.push({note: a, ch, s: arr.shift(), e: tick, pg: prog[ch]});
         }
       }
     }
-    for (const k in open) open[k].forEach(s => notes.push({note: k % 128, ch: Math.floor(k / 128), s, e: Math.max(tick, s + div / 2)}));
+    for (const k in open) { const ch = Math.floor(k / 128); open[k].forEach(s => notes.push({note: k % 128, ch, s, e: Math.max(tick, s + div / 2), pg: prog[ch]})); }
     rawTracks.push({name, notes}); p = end;
   }
   tempos.sort((a, b) => a.tick - b.tick);
@@ -359,15 +366,103 @@ function parseMidi(buf, title) {
     tr.notes.forEach(n => {
       if (n.ch === 9) return; // perkusja
       const key = fmt === 0 ? 'c' + n.ch : 't' + ti;
-      if (!parts.has(key)) parts.set(key, {idx: parts.size, name: fmt === 0 ? 'Kanał ' + (n.ch + 1) : (tr.name || 'Ścieżka ' + (ti + 1))});
+      if (!parts.has(key)) parts.set(key, {idx: parts.size, name: fmt === 0 ? 'Kanał ' + (n.ch + 1) : (tr.name || 'Ścieżka ' + (ti + 1)), pc: {}});
+      const part = parts.get(key), pg = n.pg !== undefined ? n.pg : (firstProg[n.ch] || 0);
+      part.pc[pg] = (part.pc[pg] || 0) + 1;
       const s = toSec(n.s), e = toSec(n.e);
-      notes.push({note: n.note, start: s, end: Math.max(s + 0.05, e - 0.02), track: parts.get(key).idx});
+      notes.push({note: n.note, start: s, end: Math.max(s + 0.05, e - 0.02), track: part.idx});
     });
   });
   if (!notes.length) throw new Error('w pliku nie ma nut');
-  const tracks = [...parts.values()].sort((a, b) => a.idx - b.idx).map(x => x.name);
-  return {title, tracks, notes};
+  const ps = [...parts.values()].sort((a, b) => a.idx - b.idx);
+  const tracks = ps.map(x => x.name);
+  // instrument ścieżki = najczęstszy program (General MIDI 0–127) wśród jej nut
+  const inst = ps.map(x => +Object.keys(x.pc).sort((a, b) => x.pc[b] - x.pc[a])[0]);
+  return {title, tracks, inst, notes};
 }
+/* ---------------- instrumenty i wybór melodii ----------------
+   Nazwy instrumentów General MIDI (program 0–127), jak na stronach z plikami MIDI. */
+const GM = ('Acoustic Grand Piano|Bright Acoustic Piano|Electric Grand Piano|Honky-tonk Piano|Electric Piano 1|Electric Piano 2|Harpsichord|Clavinet|' +
+  'Celesta|Glockenspiel|Music Box|Vibraphone|Marimba|Xylophone|Tubular Bells|Dulcimer|' +
+  'Drawbar Organ|Percussive Organ|Rock Organ|Church Organ|Reed Organ|Accordion|Harmonica|Tango Accordion|' +
+  'Acoustic Guitar (nylon)|Acoustic Guitar (steel)|Electric Guitar (jazz)|Electric Guitar (clean)|Electric Guitar (muted)|Overdriven Guitar|Distortion Guitar|Guitar Harmonics|' +
+  'Acoustic Bass|Electric Bass (finger)|Electric Bass (pick)|Fretless Bass|Slap Bass 1|Slap Bass 2|Synth Bass 1|Synth Bass 2|' +
+  'Violin|Viola|Cello|Contrabass|Tremolo Strings|Pizzicato Strings|Orchestral Harp|Timpani|' +
+  'String Ensemble 1|String Ensemble 2|Synth Strings 1|Synth Strings 2|Choir Aahs|Voice Oohs|Synth Voice|Orchestra Hit|' +
+  'Trumpet|Trombone|Tuba|Muted Trumpet|French Horn|Brass Section|Synth Brass 1|Synth Brass 2|' +
+  'Soprano Sax|Alto Sax|Tenor Sax|Baritone Sax|Oboe|English Horn|Bassoon|Clarinet|' +
+  'Piccolo|Flute|Recorder|Pan Flute|Blown Bottle|Shakuhachi|Whistle|Ocarina|' +
+  'Lead 1 (square)|Lead 2 (sawtooth)|Lead 3 (calliope)|Lead 4 (chiff)|Lead 5 (charang)|Lead 6 (voice)|Lead 7 (fifths)|Lead 8 (bass + lead)|' +
+  'Pad 1 (new age)|Pad 2 (warm)|Pad 3 (polysynth)|Pad 4 (choir)|Pad 5 (bowed)|Pad 6 (metallic)|Pad 7 (halo)|Pad 8 (sweep)|' +
+  'FX 1 (rain)|FX 2 (soundtrack)|FX 3 (crystal)|FX 4 (atmosphere)|FX 5 (brightness)|FX 6 (goblins)|FX 7 (echoes)|FX 8 (sci-fi)|' +
+  'Sitar|Banjo|Shamisen|Koto|Kalimba|Bagpipe|Fiddle|Shanai|' +
+  'Tinkle Bell|Agogo|Steel Drums|Woodblock|Taiko Drum|Melodic Tom|Synth Drum|Reverse Cymbal|' +
+  'Guitar Fret Noise|Breath Noise|Seashore|Bird Tweet|Telephone Ring|Helicopter|Applause|Gunshot').split('|');
+const instName = (s, i) => s.inst && s.inst[i] !== undefined && GM[s.inst[i]] ? GM[s.inst[i]] : '';
+const isPiano = p => p === undefined || p === null || p <= 7;
+
+/* Która ścieżka to melodia? Punkty za: wysokie dźwięki, pojedyncze nuty zamiast akordów,
+   granie przez cały utwór, instrument prowadzący (Lead, saksofon, flet…) i nazwę ścieżki
+   (najmocniej Melody/Vocal, słabiej Lead/Solo). Minus za bas, pady, smyczki w tle, efekty i perkusję melodyczną.
+   Zwraca indeks ścieżki albo -1, gdy nie ma z czego wybierać. */
+const MEL_YES = /melod|vocal|voice|vox|sing|śpiew|spiew/i, MEL_LEAD = /lead|solo|tema|theme|prawa|right/i;
+const MEL_NO = /bass|\bbas\b|drum|perc|pad|string|chord|accomp|akomp|harmon|backing|lewa|left|\blh\b/i;
+function progBonus(p) {
+  if (p === undefined || p === null) return 0;
+  if (p >= 80 && p <= 87) return 1.5;            // Lead 1–8
+  if (p >= 56 && p <= 79) return 0.6;            // dęte: trąbka, saksofon, flet…
+  if (p === 52 || p === 53 || p === 54) return 0.4; // głos
+  if (p <= 7) return 0.3;                        // fortepian
+  if (p >= 32 && p <= 39) return -3;             // bas
+  if (p >= 48 && p <= 51) return -1;             // smyczki i syntezatorowe smyczki w tle
+  if (p >= 88 && p <= 95) return -1.5;           // pady
+  if (p >= 96 && p <= 103) return -1;            // efekty
+  if (p >= 112) return -2.5;                     // perkusja melodyczna i odgłosy
+  return 0;
+}
+function trackStats(s) {
+  const by = new Map();
+  s.notes.forEach(n => { if (!by.has(n.track)) by.set(n.track, []); by.get(n.track).push(n); });
+  const all = s.notes.length;
+  let t0 = Infinity, t1 = 0; s.notes.forEach(n => { t0 = Math.min(t0, n.start); t1 = Math.max(t1, n.start); });
+  const songDur = Math.max(1, t1 - t0), out = [];
+  by.forEach((arr, i) => {
+    arr.sort((a, b) => a.start - b.start);
+    let onsets = 0, last = -1, sum = 0;
+    for (const n of arr) { if (!onsets || n.start - last >= 0.045) { onsets++; last = n.start; } sum += n.note; }
+    out.push({i, cnt: arr.length, onsets, poly: arr.length / onsets, pitch: sum / arr.length,
+              cover: (arr[arr.length - 1].start - arr[0].start) / songDur, share: arr.length / all});
+  });
+  return out;
+}
+function melodyTrack(s, st = trackStats(s)) {
+  if (st.length < 2) return -1;
+  const maxOn = Math.max(...st.map(x => x.onsets));
+  let best = -1, bestScore = -Infinity;
+  st.forEach(x => {
+    if (x.cnt < 16 || x.onsets < maxOn * 0.08) return; // za mało nut, to nie melodia
+    const name = s.tracks[x.i] || '';
+    const sc = Math.max(-1, Math.min(1.5, (x.pitch - 48) / 24)) * 2 - (x.poly - 1) * 1.5 + x.cover * 1.5 +
+      Math.min(1, x.onsets / maxOn) + progBonus(s.inst && s.inst[x.i]) +
+      (MEL_YES.test(name) ? 3.5 : MEL_LEAD.test(name) ? 1.5 : 0) - (MEL_NO.test(name) ? 1.5 : 0);
+    x.score = +sc.toFixed(2);
+    if (sc > bestScore) { bestScore = sc; best = x.i; }
+  });
+  return best;
+}
+/* Które ścieżki zaznaczyć po otwarciu utworu: utwory wbudowane i nagrania na fortepian
+   na dwie ręce (do 2 ścieżek fortepianu) – wszystkie; piosenki z wieloma instrumentami – tylko melodię. */
+function defaultTracks(s) {
+  const used = s.tracks.map((_, i) => i).filter(i => s.notes.some(n => n.track === i));
+  s.melody = -1;
+  if (s.builtin || used.length < 2) return used;
+  if (used.length === 2 && used.every(i => isPiano(s.inst && s.inst[i]))) return used;
+  const m = melodyTrack(s);
+  if (m < 0) return used;
+  s.melody = m;
+  return [m];
+}
+
 /* ---------------- poziom trudności ----------------
    Liczony z samych nut (biblioteki MIDI nie podają poziomu). Punkty za:
    tempo (kroki na sekundę), akordy (nuty na krok), rozpiętość klawiszy,
@@ -582,14 +677,15 @@ function ensureAudio() {
   if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
   if (actx && actx.state === 'suspended') actx.resume();
 }
-function tone(n, dur) {
+// at – kiedy zagrać (czas actx, domyślnie teraz), vol – głośność, dest – dokąd podłączyć (domyślnie głośnik)
+function tone(n, dur, at, vol, dest) {
   if (!actx) return;
-  const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+  const t = Math.max(actx.currentTime, at || 0), v = vol || 0.25, o = actx.createOscillator(), g = actx.createGain();
   o.type = 'triangle'; o.frequency.value = 440 * Math.pow(2, (n - 69) / 12);
-  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.25, t + 0.01);
-  g.gain.exponentialRampToValueAtTime(0.08, t + Math.min(dur, 0.4));
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(v * 0.32, t + Math.min(dur, 0.4));
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.25);
-  o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.3);
+  o.connect(g).connect(dest || actx.destination); o.start(t); o.stop(t + dur + 0.3);
 }
 
 /* ---------------- odtwarzacz ---------------- */
@@ -617,7 +713,7 @@ function reset() { stop(); stepIdx = 0; pauseT = 0; good = bad = 0; hit = new Se
 function curT() { return playing ? (performance.now() - t0) / 1000 * (S.speed / 100) : pauseT; }
 function play() {
   if (!song || !ns.length) { toast('Najpierw wybierz utwór'); return; }
-  ensureAudio(); requestWake();
+  pvStop(true); ensureAudio(); requestWake();
   playing = true; $('#playBtn').textContent = '⏸ Pauza';
   if (S.mode === 'wait') {
     if (stepIdx >= steps.length) { stepIdx = 0; good = bad = 0; }
@@ -790,7 +886,8 @@ function renderLib() {
 }
 function selectSong(s) {
   stop(); song = s;
-  sel = new Set(s.tracks.map((_, i) => i).filter(i => s.notes.some(n => n.track === i)));
+  sel = new Set(defaultTracks(s));
+  if (s.melody >= 0) log('ŚCIEŻKI: wybrana melodia „' + s.tracks[s.melody] + '”' + (instName(s, s.melody) ? ' (' + instName(s, s.melody) + ')' : ''));
   $('#songTitle').textContent = s.title;
   renderTracks(); prepare(); renderLib();
 }
@@ -801,9 +898,13 @@ function renderTracks() {
   if (used.length < 2) return;
   box.insertAdjacentHTML('beforeend', '<span class="lbl">Ćwiczę:</span>');
   used.forEach(({name, i, cnt}) => {
-    const lab = document.createElement('label');
+    const lab = document.createElement('label'), inst = instName(song, i);
     lab.className = 'chip' + (sel.has(i) ? ' on' : '');
-    lab.innerHTML = `<input type="checkbox" ${sel.has(i) ? 'checked' : ''}>${esc(name)} <small>${cnt}</small>`;
+    // nazwa instrumentu tylko wtedy, gdy nie powtarza nazwy ścieżki
+    const showInst = inst && !catNorm(name).includes(catNorm(inst));
+    lab.innerHTML = `<input type="checkbox" ${sel.has(i) ? 'checked' : ''}>${i === song.melody ? '⭐ ' : ''}${esc(name)}` +
+      (showInst ? ` <small class="inst">${esc(inst)}</small>` : '') + ` <small>${cnt}</small>`;
+    if (i === song.melody) lab.title = 'Melodia – wybrana automatycznie';
     lab.querySelector('input').onchange = e => {
       if (e.target.checked) sel.add(i); else sel.delete(i);
       if (!sel.size) { sel.add(i); e.target.checked = true; }
@@ -811,6 +912,7 @@ function renderTracks() {
     };
     box.appendChild(lab);
   });
+  if (song.melody >= 0) box.insertAdjacentHTML('beforeend', '<span class="lbl" style="flex-basis:100%">⭐ = melodia, wybrana automatycznie. Stuknij inne ścieżki, żeby je dołączyć (np. bas na lewą rękę).</span>');
 }
 $('#file').onchange = async e => {
   for (const f of e.target.files) {
@@ -832,8 +934,13 @@ $('#file').onchange = async e => {
    Dwie biblioteki, które pozwalają na pobieranie prosto z przeglądarki (CORS):
    - Wikimedia Commons: pliki na wolnych licencjach, głównie klasyka i muzyka ludowa;
    - BitMidi: ponad 100 tys. plików wgranych przez użytkowników, także muzyka rozrywkowa. */
-const CAT_NAMES = {commons: 'Wikimedia', bitmidi: 'BitMidi'};
-const CAT_SUGG = ['Für Elise', 'Chopin', 'Mozart', 'Bach', 'Satie', 'Canon in D', 'Turkish March', 'Jingle Bells', 'Silent Night', 'Twinkle'];
+const CAT_NAMES = {commons: 'Wikimedia', bitmidi: 'BitMidi', lakh: 'Lakh'};
+const CAT_SUGG = [
+  ['Klasyka', ['Für Elise', 'Chopin', 'Mozart', 'Bach', 'Satie', 'Canon in D', 'Turkish March']],
+  ['Pop i rock', ['ABBA', 'Queen', 'Beatles', 'Michael Jackson', 'Madonna', 'Elton John', 'Coldplay']],
+  ['Dance i techno', ['Better Off Alone', 'Eiffel 65', 'Darude', '2 Unlimited', 'Haddaway', 'Daft Punk', 'Jean Michel Jarre']],
+  ['Święta i dla dzieci', ['Jingle Bells', 'Silent Night', 'Twinkle']]
+];
 const CAT_MAX_BYTES = 1500000;
 const cat = {q: '', src: 'all', seq: 0, items: [], next: {}, busy: false, msg: '', loading: {}};
 
@@ -878,7 +985,51 @@ async function catBitmidi(q, page) {
     url: 'https://bitmidi.com' + (r.downloadUrl || '/uploads/' + r.id + '.mid'), plays: r.plays, info: 'https://bitmidi.com' + (r.url || '')}));
   return {items, next: page + 1 < (res.pageTotal || 0) ? page + 1 : null};
 }
-const CAT_FN = {commons: catCommons, bitmidi: catBitmidi};
+/* Lakh MIDI Dataset, zbiór „clean” (Colin Raffel, CC-BY 4.0): ok. 17 tys. piosenek pop i rock
+   ułożonych jako Wykonawca/Tytuł.mid w repozytorium na GitHubie. GitHub nie ma wyszukiwarki z CORS,
+   więc spis nazw trzymamy u siebie w lakh.json (buduje go tools/lakh_index.py) i szukamy w przeglądarce.
+   Pliki pobieramy z raw.githubusercontent.com, adresem przypiętym do commita z lakh.json. */
+const LAKH_PAGE = 20;
+const lakh = {data: null, list: null, loading: null};
+const lakhNorm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+function lakhLoad() {
+  if (lakh.list) return Promise.resolve(lakh.list);
+  if (!lakh.loading) lakh.loading = catFetch('lakh.json').then(d => {
+    const list = [];
+    d.a.forEach(([artist, titles]) => titles.forEach(file => {
+      const m = file.match(/^(.*)\.(\d+)$/), base = m ? m[1] : file, ver = m ? +m[2] + 1 : 1;
+      const a = catClean(artist), t = catClean(base);
+      list.push({artist, file, a, t, ver, na: lakhNorm(a), nt: lakhNorm(t)});
+    }));
+    lakh.data = d; lakh.list = list;
+    log('KATALOG: spis Lakh – ' + list.length + ' plików');
+    return list;
+  }).catch(e => { lakh.loading = null; throw e; });
+  return lakh.loading;
+}
+function lakhItem(e) {
+  const d = lakh.data, enc = x => encodeURIComponent(x);
+  const path = enc(e.artist) + '/' + enc(e.file + '.mid');
+  return {src: 'lakh:' + e.artist + '/' + e.file, source: 'lakh', title: e.a + ' – ' + e.t + (e.ver > 1 ? ' (wersja ' + e.ver + ')' : ''),
+          url: 'https://raw.githubusercontent.com/' + d.repo + '/' + d.sha + '/' + path,
+          info: 'https://github.com/' + d.repo + '/blob/' + d.sha + '/' + path};
+}
+async function catLakh(q, page) {
+  const list = await lakhLoad(), nq = lakhNorm(q), words = nq.split(' ').filter(Boolean);
+  if (!words.length) return {items: [], next: null};
+  const hits = [];
+  for (const e of list) {
+    const hay = e.na + ' ' + e.nt;
+    if (!words.every(w => hay.includes(w))) continue;
+    // najpierw dokładny tytuł, potem dokładny wykonawca, potem tytuł zaczynający się od zapytania
+    const rank = e.nt === nq ? 0 : e.na === nq || e.na === 'the ' + nq ? 1 : e.nt.startsWith(nq) ? 2 : 3;
+    hits.push({e, rank});
+  }
+  hits.sort((x, y) => x.rank - y.rank || x.e.na.localeCompare(y.e.na) || x.e.nt.localeCompare(y.e.nt) || x.e.ver - y.e.ver);
+  const items = hits.slice(page * LAKH_PAGE, (page + 1) * LAKH_PAGE).map(h => lakhItem(h.e));
+  return {items, next: (page + 1) * LAKH_PAGE < hits.length ? page + 1 : null};
+}
+const CAT_FN = {commons: catCommons, bitmidi: catBitmidi, lakh: catLakh};
 
 /* Poziom trudności wyników: pliki pobieramy w tle (po 3 naraz), liczymy poziom
    i zapamiętujemy go w localStorage (sk_levels), żeby kolejne wyszukiwania były od razu.
@@ -914,11 +1065,70 @@ function catPump() {
 }
 function catRenderSoon() { clearTimeout(catA.timer); catA.timer = setTimeout(() => { if ($('#catalog').classList.contains('open')) renderCatalog(); }, 120); }
 
+/* Odsłuch przed pobraniem: plik trafia tylko do pamięci (catA.buf), nic nie zapisujemy.
+   Gramy pierwsze PV_LEN sekund wszystkich instrumentów (bez perkusji), melodię głośniej,
+   tym samym prostym dźwiękiem co „Dźwięk z iPada”. Nuty planujemy po kawałku (co 100 ms na 0,4 s
+   do przodu), żeby na iPadzie nie tworzyć tysięcy oscylatorów naraz. */
+const PV_LEN = 30;
+const pv = {src: '', loading: '', timer: 0, notes: [], idx: 0, at0: 0, start: 0, out: null, mel: new Set()};
+function pvStop(quiet) {
+  clearInterval(pv.timer); pv.timer = 0;
+  if (pv.out) { try { pv.out.gain.setTargetAtTime(0, actx.currentTime, 0.03); const o = pv.out; setTimeout(() => o.disconnect(), 300); } catch (e) {} pv.out = null; }
+  const had = pv.src || pv.loading; pv.src = ''; pv.loading = '';
+  if (had && !quiet) catRenderSoon();
+}
+async function catPreview(it) {
+  if (pv.src === it.src || pv.loading === it.src) { pvStop(); return; }
+  pvStop(true); if (playing) stop();
+  ensureAudio();
+  if (!actx) { toast('Ta przeglądarka nie umie odtwarzać dźwięku'); return; }
+  pv.loading = it.src; renderCatalog();
+  try {
+    const buf = catA.buf.get(it.src) || await catFetch(it.url, 'buf');
+    if (pv.loading !== it.src) return; // w międzyczasie kliknięto coś innego
+    if (buf.byteLength > CAT_MAX_BYTES) throw new Error('plik jest za duży');
+    const s = parseMidi(buf, it.title);
+    catA.buf.set(it.src, buf);
+    if (!catA.res[it.src]) { const lv = songLevel(s); catA.res[it.src] = lv ? {l: lv.lvl, d: Math.round(lv.dur)} : {l: 0}; catSaveLevels(); }
+    pv.mel = new Set(defaultTracks(s));
+    pv.notes = s.notes.slice().sort((a, b) => a.start - b.start);
+    pv.start = pv.notes[0].start; pv.idx = 0;
+    pv.out = actx.createGain(); pv.out.gain.value = 0.8; pv.out.connect(actx.destination);
+    pv.at0 = actx.currentTime + 0.15; pv.loading = ''; pv.src = it.src;
+    log('ODSŁUCH: „' + it.title + '” (' + s.notes.length + ' nut, melodia: ' + [...pv.mel].map(i => s.tracks[i]).join(', ') + ')');
+    pvTick(); pv.timer = setInterval(pvTick, 100);
+  } catch (e) {
+    if (pv.loading === it.src) { pv.loading = ''; toast('Nie mogę odtworzyć: ' + e.message, 3500); log('ODSŁUCH błąd: ' + e.message); }
+  }
+  renderCatalog();
+}
+function pvTick() {
+  if (!pv.src || !actx) return;
+  const now = actx.currentTime - pv.at0, until = now + 0.4;
+  let burst = 0, lastT = -1;
+  while (pv.idx < pv.notes.length) {
+    const n = pv.notes[pv.idx], t = n.start - pv.start;
+    if (t > until || t > PV_LEN) break;
+    pv.idx++;
+    if (t < now - 0.05) continue; // spóźniona nuta – pomijamy
+    if (Math.abs(t - lastT) > 0.02) { burst = 0; lastT = t; }
+    const mel = pv.mel.has(n.track);
+    if (!mel && ++burst > 6) continue; // gęste akordy tła ograniczamy do 6 dźwięków
+    tone(n.note, Math.min(n.end - n.start, mel ? 3 : 1.5), pv.at0 + t, mel ? 0.22 : 0.06, pv.out);
+  }
+  const last = pv.notes.length ? pv.notes[pv.notes.length - 1].start - pv.start : 0;
+  if (now > Math.min(PV_LEN, last) + 1) pvStop();
+  else {
+    const b = document.querySelector('.cat button.pv.on');
+    if (b) b.textContent = '■ ' + fmtTime(Math.max(0, now));
+  }
+}
+
 async function catSearch(more) {
   const q = cat.q.trim();
   if (!q) { cat.items = []; cat.next = {}; cat.msg = ''; renderCatalog(); return; }
   const seq = more ? cat.seq : ++cat.seq;
-  if (!more) { cat.items = []; cat.next = {commons: 0, bitmidi: 0}; catA.queue = []; }
+  if (!more) { pvStop(true); cat.items = []; cat.next = {commons: 0, bitmidi: 0, lakh: 0}; catA.queue = []; }
   const srcs = Object.keys(CAT_FN).filter(s => (cat.src === 'all' || cat.src === s) && cat.next[s] != null);
   if (!srcs.length) return;
   cat.busy = true; cat.msg = ''; renderCatalog();
@@ -953,10 +1163,15 @@ function renderCatalog() {
   document.querySelectorAll('#catSrcSeg button').forEach(b => b.classList.toggle('on', b.dataset.src === cat.src));
   document.querySelectorAll('#catLvlSeg button').forEach(b => b.classList.toggle('on', +b.dataset.lvl === S.catLvl));
   const sg = $('#catSugg'); sg.innerHTML = '';
-  CAT_SUGG.forEach(s => {
-    const c = document.createElement('span'); c.className = 'chip' + (cat.q === s ? ' on' : ''); c.textContent = s;
-    c.onclick = () => { cat.q = s; $('#catQ').value = s; catSearch(false); };
-    sg.appendChild(c);
+  CAT_SUGG.forEach(([group, list]) => {
+    const g = document.createElement('div'); g.className = 'sgroup';
+    g.innerHTML = '<span class="lbl">' + esc(group) + ':</span>';
+    list.forEach(s => {
+      const c = document.createElement('span'); c.className = 'chip' + (cat.q === s ? ' on' : ''); c.textContent = s;
+      c.onclick = () => { cat.q = s; $('#catQ').value = s; catSearch(false); };
+      g.appendChild(c);
+    });
+    sg.appendChild(g);
   });
   const list = $('#catList'), scroll = list.scrollTop; list.innerHTML = '';
   const onlyMissing = $('#catMissing').checked;
@@ -971,12 +1186,21 @@ function renderCatalog() {
     if (cat.loading[it.src]) { b.textContent = '⏳ Pobieram…'; b.disabled = true; }
     else if (owned) { b.textContent = '▶ Mam – graj'; b.className = 'have'; b.onclick = () => { closeCatalog(); try { selectSong(getUserSong(owned)); } catch (e) { toast('Nie mogę otworzyć: ' + e.message); } }; }
     else { b.textContent = '⬇ Pobierz'; b.className = 'primary'; b.onclick = () => catDownload(it); }
-    row.appendChild(b); list.appendChild(row);
+    const pb = document.createElement('button');
+    pb.className = 'pv' + (pv.src === it.src ? ' on' : '');
+    pb.textContent = pv.loading === it.src ? '⏳' : pv.src === it.src ? '■ Stop' : '🔊 Posłuchaj';
+    pb.title = 'Posłuchaj początku (do ' + PV_LEN + ' s) bez pobierania';
+    pb.onclick = () => catPreview(it);
+    const btns = document.createElement('div'); btns.className = 'btns';
+    btns.appendChild(pb); btns.appendChild(b);
+    row.appendChild(btns); list.appendChild(row);
   });
   const msg = document.createElement('div'); msg.id = 'catMsg';
   if (cat.busy) msg.textContent = 'Szukam…';
   else if (!cat.q.trim()) msg.innerHTML = 'Wpisz tytuł albo kompozytora i naciśnij „Szukaj”, albo wybierz podpowiedź powyżej.<br><br>' +
-    '<b>Wikimedia Commons</b> – pliki na wolnych licencjach, głównie muzyka klasyczna.<br><b>BitMidi</b> – ponad 100 tys. plików wgranych przez internautów, także piosenki (licencje nie zawsze są jasne – do własnej nauki).';
+    '<b>Wikimedia Commons</b> – pliki na wolnych licencjach, głównie muzyka klasyczna.<br><b>BitMidi</b> – ponad 100 tys. plików wgranych przez internautów, także piosenki (licencje nie zawsze są jasne – do własnej nauki).' +
+    '<br><b>Lakh</b> – ok. 17 tys. piosenek pop, rock i dance (ABBA, Queen, Beatles, 2 Unlimited…) z <a href="https://colinraffel.com/projects/lmd/" target="_blank" rel="noopener">Lakh MIDI Dataset</a> Colina Raffela (CC-BY 4.0); pliki zebrane z internetu – do własnej nauki. Szukaj po wykonawcy albo tytule po angielsku.' +
+    '<br><br>Przy każdym wyniku jest <b>🔊 Posłuchaj</b> – zagra początek utworu (melodię głośniej) bez pobierania. Jeśli nic nie słychać, sprawdź przełącznik wyciszenia iPada.';
   else if (pending) msg.textContent = 'Sprawdzam poziom trudności… (zostało ' + pending + ')';
   else if (!shown.length && !cat.msg) msg.textContent = !cat.items.length ? 'Nic nie znaleziono. Spróbuj innej pisowni albo nazwy po angielsku.' :
     base.length ? 'Wśród ' + base.length + ' znalezionych nie ma utworów na poziomie „' + LEVELS[S.catLvl] + '”. Pokaż więcej wyników albo wybierz inny poziom.' :
@@ -1013,7 +1237,7 @@ async function catDownload(it) {
   delete cat.loading[it.src]; renderCatalog();
 }
 function openCatalog() { $('#catalog').classList.add('open'); renderCatalog(); if (!cat.q) setTimeout(() => $('#catQ').focus(), 50); }
-function closeCatalog() { $('#catalog').classList.remove('open'); $('#catQ').blur(); }
+function closeCatalog() { pvStop(true); $('#catalog').classList.remove('open'); $('#catQ').blur(); }
 $('#openCatalog').onclick = openCatalog;
 $('#closeCatalog').onclick = closeCatalog;
 $('#catForm').onsubmit = e => { e.preventDefault(); cat.q = $('#catQ').value; $('#catQ').blur(); catSearch(false); };
