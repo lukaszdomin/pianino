@@ -144,6 +144,17 @@ input[type=range]{accent-color:var(--accent)}
   <div class="btns"><button id="refreshBtn">↻ Szukaj ponownie</button></div>
   <h4>Diagnostyka</h4>
   <div id="diag" class="hint" style="margin:0;font-size:13px;line-height:1.6"></div>
+  <div class="btns">
+    <button id="noteTestBtn">🔊 Zagraj C na keyboardzie</button>
+  </div>
+  <p class="hint" style="margin:8px 0">Ten test wysyła zwykłą nutę. Jeśli keyboard ją zagra, połączenie iPad → keyboard działa.</p>
+  <h4>Dziennik</h4>
+  <textarea id="logBox" readonly style="width:100%;height:180px;background:#0d0f14;color:#b9c0cf;border:1px solid var(--line);border-radius:8px;font:11px/1.4 ui-monospace,Menlo,monospace;padding:8px;-webkit-user-select:text;user-select:text"></textarea>
+  <div class="btns">
+    <button id="copyLogBtn" class="primary">📋 Kopiuj dziennik</button>
+    <button id="clearLogBtn">Wyczyść</button>
+  </div>
+  <p class="hint" style="margin:8px 0">Skopiuj i wklej dziennik w rozmowie z Claude – zobaczę dokładnie, co się dzieje.</p>
 
   <h4>Keyboard</h4>
   <div class="field">Najniższy klawisz <select id="lowSel"></select></div>
@@ -314,6 +325,34 @@ function fromB64(s) { const bin = atob(s), b = new Uint8Array(bin.length); for (
 
 /* ---------------- MIDI / światła ---------------- */
 let access = null, out = null, inp = null, outsList = [], insList = [];
+/* ---- dziennik diagnostyczny (do skopiowania i wklejenia w czacie) ---- */
+const LOG = [], T0 = performance.now();
+function log(msg) {
+  const line = ((performance.now() - T0) / 1000).toFixed(2).padStart(7) + 's  ' + msg;
+  LOG.push(line); if (LOG.length > 800) LOG.splice(0, LOG.length - 800);
+  const ta = document.getElementById('logBox');
+  if (ta && $('#settings').classList.contains('open')) { ta.value = LOG.slice(-300).join('\n'); ta.scrollTop = ta.scrollHeight; }
+}
+const hex = d => Array.from(d).map(x => (+x).toString(16).padStart(2, '0')).join(' ');
+function describeMap(m) {
+  if (!m) return String(m);
+  const f = [];
+  try { f.push('typ=' + (m.constructor && m.constructor.name)); } catch (e) {}
+  ['forEach', 'values', 'get', 'keys', 'entries'].forEach(k => { try { if (typeof m[k] === 'function') f.push(k); } catch (e) {} });
+  try { if ('size' in m) f.push('size=' + m.size); } catch (e) {}
+  try { if (typeof m.length === 'number') f.push('length=' + m.length); } catch (e) {}
+  return f.join(' ');
+}
+function describePort(p) {
+  const f = {};
+  ['id', 'name', 'manufacturer', 'type', 'state', 'connection', 'version'].forEach(k => { try { if (p[k] !== undefined) f[k] = p[k]; } catch (e) {} });
+  const x = [];
+  try { x.push('klasa=' + (p.constructor && p.constructor.name)); } catch (e) {}
+  ['send', 'open', 'close', 'addEventListener', 'clear'].forEach(k => { try { if (typeof p[k] === 'function') x.push(k + '()'); } catch (e) {} });
+  try { if ('onmidimessage' in p) x.push('onmidimessage'); } catch (e) {}
+  return JSON.stringify(f) + ' [' + x.join(', ') + ']';
+}
+let txLogged = 0, rxLogged = 0;
 const D = {api: !!navigator.requestMIDIAccess, sysex: '?', err: '', last: '–', rx: 0, tx: 0, txErr: ''};
 function diag() {
   const el = $('#diag'); if (!el) return;
@@ -324,7 +363,7 @@ function diag() {
     `Odebrano z keyboardu: <b>${D.rx}</b> · wysłano do keyboardu: <b>${D.tx}</b>` + (D.txErr ? ` <span style="color:var(--bad)">(błąd wysyłania: ${esc(D.txErr)})</span>` : '') + `<br>` +
     `Ostatnia wiadomość z keyboardu: ${esc(D.last)}` + (D.err ? `<br><span style="color:var(--bad)">Błąd: ${esc(D.err)}</span>` : '');
 }
-window.addEventListener('error', e => { D.err = (e.message || 'błąd') + (e.lineno ? ' (linia ' + e.lineno + ')' : ''); diag(); });
+window.addEventListener('error', e => { D.err = (e.message || 'błąd') + (e.lineno ? ' (linia ' + e.lineno + ')' : ''); try { log('BŁĄD JS: ' + D.err); } catch (x) {} diag(); });
 
 // Działa z nowymi i starymi implementacjami Web MIDI (Map, forEach, tablica, funkcja).
 function portList(m) {
@@ -343,16 +382,25 @@ const withTimeout = (pr, ms) => Promise.race([pr, new Promise((_, rej) => setTim
 
 let pollTimer = 0;
 async function initMidi() {
+  log('initMidi; userAgent: ' + navigator.userAgent);
   if (!navigator.requestMIDIAccess) {
+    log('BRAK navigator.requestMIDIAccess');
     setStatus('Brak MIDI – otwórz w Web MIDI Browser', 'err'); diag(); return;
   }
-  try { access = await withTimeout(navigator.requestMIDIAccess({sysex: true}), 4000); D.sysex = 'tak'; }
+  try { access = await withTimeout(navigator.requestMIDIAccess({sysex: true}), 4000); D.sysex = 'tak'; log('requestMIDIAccess({sysex:true}) OK'); }
   catch (e) {
-    try { access = await withTimeout(navigator.requestMIDIAccess(), 4000); D.sysex = 'nie'; }
-    catch (e2) { D.err = 'requestMIDIAccess: ' + (e2.message || e2); setStatus('Brak dostępu do MIDI', 'err'); diag(); return; }
+    log('requestMIDIAccess({sysex:true}) błąd: ' + (e && (e.name + ' ' + e.message)));
+    try { access = await withTimeout(navigator.requestMIDIAccess(), 4000); D.sysex = 'nie'; log('requestMIDIAccess() OK'); }
+    catch (e2) { log('requestMIDIAccess() błąd: ' + (e2 && (e2.name + ' ' + e2.message))); D.err = 'requestMIDIAccess: ' + (e2.message || e2); setStatus('Brak dostępu do MIDI', 'err'); diag(); return; }
   }
   if (access.sysexEnabled === false) D.sysex = 'nie';
-  try { access.onstatechange = () => refreshPorts(); } catch (e) {}
+  log('access.sysexEnabled=' + access.sysexEnabled + '; outputs: ' + describeMap(access.outputs) + '; inputs: ' + describeMap(access.inputs));
+  try {
+    access.onstatechange = ev => {
+      try { log('statechange: ' + (ev && ev.port ? describePort(ev.port) : String(ev))); } catch (e) { log('statechange'); }
+      refreshPorts();
+    };
+  } catch (e) { log('nie można ustawić onstatechange: ' + e.message); }
   refreshPorts();
   // Niektóre przeglądarki MIDI na iPadzie nie zgłaszają nowych urządzeń – sprawdzamy co chwilę.
   clearInterval(pollTimer);
@@ -361,7 +409,15 @@ async function initMidi() {
 function refreshPorts() {
   if (!access) return;
   try {
+    const prevSig = refreshPorts.sig;
     outsList = portList(access.outputs); insList = portList(access.inputs);
+    const sig = outsList.map(describePort).join('|') + '#' + insList.map(describePort).join('|');
+    if (sig !== prevSig) {
+      refreshPorts.sig = sig;
+      log('urządzenia: wyjść=' + outsList.length + ', wejść=' + insList.length);
+      outsList.forEach((p, i) => log('  wyjście[' + i + '] ' + describePort(p)));
+      insList.forEach((p, i) => log('  wejście[' + i + '] ' + describePort(p)));
+    }
     const pick = (list, savedId) => list.find((x, i) => portKey(x, i) === savedId) || list.find(x => /one|smart|piano|color/i.test(x.name || '')) || list[0] || null;
     const fill = (sel, list, cur) => {
       sel.innerHTML = list.length ? '' : '<option value="">(brak urządzeń)</option>';
@@ -380,17 +436,22 @@ async function reconnect() {
   access = null; await initMidi();
   toast(outsList.length || insList.length ? 'Znaleziono: ' + [...outsList, ...insList].map(p => p.name).filter(Boolean)[0] : 'Nie widzę żadnego urządzenia MIDI');
 }
-function setOutput(o) { out = o; updateStatus(); }
+function setOutput(o) {
+  out = o; log('wybrane wyjście: ' + (o ? describePort(o) : 'brak'));
+  try { if (o && typeof o.open === 'function') { const r = o.open(); log('output.open() wywołane'); if (r && r.then) r.then(() => log('output.open() OK'), e => log('output.open() błąd: ' + e.message)); } } catch (e) { log('output.open() wyjątek: ' + e.message); }
+  updateStatus();
+}
 function setInput(i) {
   if (inp && inp !== i) {
     try { inp.onmidimessage = null; } catch (e) {}
     try { if (inp.removeEventListener) inp.removeEventListener('midimessage', onMidi); } catch (e) {}
   }
   inp = i;
+  log('wybrane wejście: ' + (i ? describePort(i) : 'brak'));
   if (inp) {
     try { inp.onmidimessage = onMidi; } catch (e) {}
     try { if (inp.addEventListener) inp.addEventListener('midimessage', onMidi); } catch (e) {}
-    try { if (typeof inp.open === 'function') { const r = inp.open(); if (r && r.catch) r.catch(() => {}); } } catch (e) {}
+    try { if (typeof inp.open === 'function') { const r = inp.open(); log('input.open() wywołane'); if (r && r.then) r.then(() => log('input.open() OK'), e => log('input.open() błąd: ' + e.message)); } } catch (e) { log('input.open() wyjątek: ' + e.message); }
   }
   updateStatus();
 }
@@ -407,12 +468,20 @@ function onMidi(e) {
   const key = (e && (e.timeStamp || e.receivedTime) || 0) + ':' + Array.from(data).join(','), now = performance.now();
   if (key === lastKey && now - lastAt < 5) return;
   lastEvt = e; lastKey = key; lastAt = now; D.rx++;
+  if (data[0] !== 0xFE && data[0] !== 0xF8) { if (rxLogged < 150) { rxLogged++; log('ODEBRANO: ' + hex(data)); } else if (rxLogged === 150) { rxLogged++; log('(dalsze odebrane wiadomości pomijam w dzienniku)'); } }
   const st = data[0], a = data[1], b = data[2]; const hi = st & 0xF0;
   if (st !== 0xFE && st !== 0xF8) { D.last = Array.from(data).slice(0, 6).map(x => x.toString(16).padStart(2, '0')).join(' ') + (hi === 0x90 && b > 0 ? ' (' + nn(a) + ')' : ''); if ($('#settings').classList.contains('open')) diag(); }
   if (hi === 0x90 && b > 0) noteOn(a, false);
   else if (hi === 0x80 || (hi === 0x90 && b === 0)) noteOff(a);
 }
-function sendRaw(bytes) { if (!out) return; try { out.send(bytes); D.tx++; } catch (e) { D.txErr = e.message || String(e); } if ($('#settings').classList.contains('open')) diag(); }
+function sendRaw(bytes) {
+  if (!out) { if (txLogged < 3) { txLogged++; log('WYSYŁANIE pominięte – brak wyjścia: ' + hex(bytes)); } return; }
+  try {
+    out.send(bytes); D.tx++;
+    if (txLogged < 40) { txLogged++; log('WYSŁANO: ' + hex(bytes)); } else if (D.tx % 100 === 0) log('… wysłano łącznie ' + D.tx + ' wiadomości');
+  } catch (e) { D.txErr = e.message || String(e); log('BŁĄD send(' + hex(bytes) + '): ' + (e.name || '') + ' ' + D.txErr); }
+  if ($('#settings').classList.contains('open')) diag();
+}
 function light(n, c) { const idx = n + S.offset - 21; if (idx < 0 || idx > 127) return; sendRaw([0xA2, idx, c]); }
 function allOff() {
   if (access && access.sysexEnabled) sendRaw([0xF0, 0x00, 0x20, 0x2B, 0x69, 0x16, 0x02, 0x00, 0xF7]);
@@ -727,7 +796,7 @@ const endTouch = e => { if (touches.has(e.pointerId)) { noteOff(touches.get(e.po
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => kbd.addEventListener(t, endTouch));
 
 /* ustawienia */
-const openS = () => { $('#settings').classList.add('open'); refreshPorts(); diag(); };
+const openS = () => { $('#settings').classList.add('open'); refreshPorts(); diag(); const ta = $('#logBox'); ta.value = LOG.slice(-300).join('\n'); ta.scrollTop = ta.scrollHeight; };
 $('#openSettings').onclick = openS; $('#status').onclick = openS;
 $('#closeSettings').onclick = () => $('#settings').classList.remove('open');
 $('#outSel').onchange = e => { allOff(); const o = outsList.find((p, i) => portKey(p, i) === e.target.value); S.outId = e.target.value; saveS(); setOutput(o || null); diag(); };
@@ -745,7 +814,7 @@ $('#colorSel').value = S.color;
 $('#colorSel').onchange = e => { S.color = +e.target.value; saveS(); };
 $('#testBtn').onclick = () => {
   if (!out) { toast('Najpierw połącz keyboard'); return; }
-  stop(); let i = 0; const lo = S.low, hi = high();
+  stop(); let i = 0; const lo = S.low, hi = high(); log('TEST ŚWIATEŁ: klawisze ' + nn(lo) + '–' + nn(hi) + ', kolor ' + S.color + ', przesunięcie ' + S.offset);
   const step = () => {
     const n = lo + i; if (n > lo) light(n - 1, 0);
     if (n > hi) { toast('Test zakończony'); return; }
@@ -754,6 +823,19 @@ $('#testBtn').onclick = () => {
   step();
 };
 $('#offBtn').onclick = () => { allOff(); lit = new Set(); renderKeys(); };
+$('#noteTestBtn').onclick = () => {
+  if (!out) { toast('Brak wyjścia MIDI'); log('test nuty: brak wyjścia'); return; }
+  log('TEST NUTY: note on C4 (kanał 1), po 0,6 s note off');
+  sendRaw([0x90, 60, 100]); setTimeout(() => sendRaw([0x80, 60, 0]), 600);
+};
+$('#copyLogBtn').onclick = async () => {
+  const text = ['=== Świecące Klawisze – dziennik ===', 'Diagnostyka: ' + $('#diag').innerText.replace(/\n/g, ' | '), ...LOG].join('\n');
+  const ta = $('#logBox'); ta.value = text;
+  try { await navigator.clipboard.writeText(text); toast('Skopiowano – wklej w czacie'); return; } catch (e) {}
+  try { ta.focus(); ta.select(); ta.setSelectionRange(0, text.length); if (document.execCommand('copy')) { toast('Skopiowano – wklej w czacie'); return; } } catch (e) {}
+  toast('Nie udało się skopiować automatycznie – przytrzymaj palec na tekście i wybierz „Kopiuj”', 5000);
+};
+$('#clearLogBtn').onclick = () => { LOG.length = 0; txLogged = 0; rxLogged = 0; $('#logBox').value = ''; };
 $('#initBtn').onclick = () => {
   if (!out) { toast('Najpierw połącz keyboard'); return; }
   if (!(access && access.sysexEnabled)) { toast('Ta przeglądarka nie pozwala na SysEx'); return; }
