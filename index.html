@@ -99,6 +99,10 @@ input[type=range]{accent-color:var(--accent)}
 .badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);margin-right:6px;color:var(--text)}
 .badge.commons{border-color:#3d6fd1;color:#8fb2ff} .badge.bitmidi{border-color:#8a5cd6;color:#c3a6ff}
 #catMsg{color:var(--muted);font-size:14px;padding:14px 10px;text-align:center}
+.lvl{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);margin-right:6px;color:var(--muted);white-space:nowrap}
+.lvl.l1{border-color:#2ec27e;color:#7fe0ad} .lvl.l2{border-color:#e0b100;color:#ffd84d} .lvl.l3{border-color:#e5484d;color:#ff8f92}
+.song .lvl{margin:0;font-size:10px;padding:0 6px}
+#catLvlSeg button{padding:7px 11px}
 #toast{position:fixed;left:50%;bottom:30vh;transform:translateX(-50%);background:#000c;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:40;max-width:80vw;text-align:center}
 @media (max-width:760px){aside{width:200px}#nowNotes{font-size:28px}}
 </style>
@@ -221,6 +225,12 @@ input[type=range]{accent-color:var(--accent)}
         <button type="button" data-src="commons">Wikimedia</button>
         <button type="button" data-src="bitmidi">BitMidi</button>
       </div>
+      <div class="seg" id="catLvlSeg">
+        <button type="button" data-lvl="0">Każdy poziom</button>
+        <button type="button" data-lvl="1">🟢 Łatwe</button>
+        <button type="button" data-lvl="2">🟡 Średnie</button>
+        <button type="button" data-lvl="3">🔴 Trudne</button>
+      </div>
       <label class="ctl"><input id="catMissing" type="checkbox"> Tylko te, których nie mam</label>
     </div>
     <div id="catSugg"></div>
@@ -245,7 +255,7 @@ function toast(msg, ms = 2800) {
 }
 
 /* ---------------- ustawienia ---------------- */
-const DEF = {low: 36, offset: 0, color: 1, transpose: 0, speed: 100, mode: 'wait', sound: false, outId: '', inId: ''};
+const DEF = {low: 36, offset: 0, color: 1, transpose: 0, speed: 100, mode: 'wait', sound: false, outId: '', inId: '', catLvl: 0};
 const S = Object.assign({}, DEF);
 try { Object.assign(S, JSON.parse(localStorage.getItem('sk_settings') || '{}')); } catch (e) {}
 function saveS() { try { localStorage.setItem('sk_settings', JSON.stringify(S)); } catch (e) {} }
@@ -358,6 +368,33 @@ function parseMidi(buf, title) {
   const tracks = [...parts.values()].sort((a, b) => a.idx - b.idx).map(x => x.name);
   return {title, tracks, notes};
 }
+/* ---------------- poziom trudności ----------------
+   Liczony z samych nut (biblioteki MIDI nie podają poziomu). Punkty za:
+   tempo (kroki na sekundę), akordy (nuty na krok), rozpiętość klawiszy,
+   dużo czarnych klawiszy, ponad 4 ścieżki i bardzo długi utwór. 0–2 pkt łatwe, 3–5 średnie, 6+ trudne. */
+const LEVELS = {1: 'Łatwe', 2: 'Średnie', 3: 'Trudne'};
+function songLevel(s) {
+  const ns_ = s.notes.slice().sort((a, b) => a.start - b.start);
+  if (!ns_.length) return null;
+  let stepsN = 0, gT = -1, lo = 127, hi = 0, black = 0, end = 0;
+  for (const n of ns_) {
+    if (!stepsN || n.start - gT >= 0.045) { stepsN++; gT = n.start; }
+    lo = Math.min(lo, n.note); hi = Math.max(hi, n.note); end = Math.max(end, n.end);
+    if (isBlack(n.note)) black++;
+  }
+  const dur = Math.max(1, end - ns_[0].start);
+  const nps = stepsN / dur, chord = ns_.length / stepsN, range = hi - lo;
+  const tracks = new Set(ns_.map(n => n.track)).size;
+  // Progi sprawdzone na wbudowanych utworach i na plikach z korpusu music21
+  // (pieśni ludowe → łatwe, chorał Bacha i arie → średnie, ragtime, sonaty, kwartety → trudne).
+  const pts = (nps < 2.5 ? 0 : nps < 3.5 ? 1 : nps < 5 ? 2 : 3) +
+              (chord < 1.3 ? 0 : chord < 2.2 ? 1 : chord < 3.5 ? 2 : 3) +
+              (range <= 14 ? 0 : range <= 30 ? 1 : 2) +
+              (black / ns_.length > 0.3 ? 1 : 0) + (tracks > 4 ? 1 : 0) + (stepsN > 1500 ? 1 : 0);
+  return {lvl: pts <= 2 ? 1 : pts <= 5 ? 2 : 3, pts, dur, nps: +nps.toFixed(1), chord: +chord.toFixed(1), range, tracks, steps: stepsN};
+}
+const lvlBadge = l => l ? `<span class="lvl l${l}">${LEVELS[l]}</span>` : '';
+
 function toB64(buf) { const b = new Uint8Array(buf); let s = ''; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s); }
 function fromB64(s) { const bin = atob(s), b = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i); return b.buffer; }
 
@@ -724,20 +761,27 @@ function getUserSong(u) {
   if (!cache[u.id]) { cache[u.id] = parseMidi(fromB64(u.b64), u.title); cache[u.id].id = u.id; }
   return cache[u.id];
 }
+BUILTIN.forEach(s => { const lv = songLevel(s); s.lvl = lv ? lv.lvl : 0; });
+// Utwory dodane przed wprowadzeniem poziomów: liczymy raz i zapisujemy.
+function levelOldSongs() {
+  let changed = false;
+  userSongs.forEach(u => { if (u.lvl === undefined) { try { const lv = songLevel(getUserSong(u)); u.lvl = lv ? lv.lvl : 0; } catch (e) { u.lvl = 0; } changed = true; } });
+  if (changed) { saveUser(); renderLib(); }
+}
 function songRow(s, onDel) {
   const d = document.createElement('div');
   d.className = 'song' + (song && song.id === s.id ? ' on' : '');
-  d.innerHTML = `<span class="t">${esc(s.title)}</span>`;
+  d.innerHTML = `<span class="t">${esc(s.title)}</span>${lvlBadge(s.lvl)}`;
   d.onclick = () => s.load();
   if (onDel) { const x = document.createElement('button'); x.className = 'del'; x.textContent = '×'; x.onclick = e => { e.stopPropagation(); onDel(); }; d.appendChild(x); }
   return d;
 }
 function renderLib() {
   const b = $('#libBuiltin'); b.innerHTML = '';
-  BUILTIN.forEach(s => b.appendChild(songRow({id: s.id, title: s.title, load: () => selectSong(s)})));
+  BUILTIN.forEach(s => b.appendChild(songRow({id: s.id, title: s.title, lvl: s.lvl, load: () => selectSong(s)})));
   const l = $('#lib'); l.innerHTML = '';
   if (!userSongs.length) l.innerHTML = '<p class="hint" style="margin:6px">Jeszcze nic – dodaj plik .mid poniżej.</p>';
-  userSongs.forEach((u, i) => l.appendChild(songRow({id: u.id, title: u.title, load: () => {
+  userSongs.forEach((u, i) => l.appendChild(songRow({id: u.id, title: u.title, lvl: u.lvl, load: () => {
     try { selectSong(getUserSong(u)); } catch (e) { toast('Nie mogę otworzyć: ' + e.message); }
   }}, () => {
     if (song && song.id === u.id) { stop(); song = null; $('#songTitle').textContent = 'Wybierz utwór z listy'; $('#tracks').innerHTML = ''; refreshView(); }
@@ -776,7 +820,8 @@ $('#file').onchange = async e => {
       const parsed = parseMidi(buf, title);
       const id = 'u' + Date.now() + Math.random().toString(36).slice(2, 6);
       parsed.id = id; cache[id] = parsed;
-      userSongs.push({id, title, b64: toB64(buf)}); saveUser(); renderLib(); selectSong(parsed);
+      const lv = songLevel(parsed);
+      userSongs.push({id, title, b64: toB64(buf), lvl: lv ? lv.lvl : 0}); saveUser(); renderLib(); selectSong(parsed);
       toast('Dodano: ' + title);
     } catch (err) { toast('Nie udało się wczytać „' + f.name + '”: ' + err.message, 4000); }
   }
@@ -835,11 +880,45 @@ async function catBitmidi(q, page) {
 }
 const CAT_FN = {commons: catCommons, bitmidi: catBitmidi};
 
+/* Poziom trudności wyników: pliki pobieramy w tle (po 3 naraz), liczymy poziom
+   i zapamiętujemy go w localStorage (sk_levels), żeby kolejne wyszukiwania były od razu.
+   Pobrany plik zostaje w pamięci, więc „Pobierz” nie ściąga go drugi raz. */
+const catA = {res: {}, err: {}, buf: new Map(), queue: [], active: 0, timer: 0};
+try { catA.res = JSON.parse(localStorage.getItem('sk_levels') || '{}') || {}; } catch (e) { catA.res = {}; }
+function catSaveLevels() {
+  const keys = Object.keys(catA.res);
+  if (keys.length > 3000) keys.slice(0, keys.length - 3000).forEach(k => delete catA.res[k]);
+  try { localStorage.setItem('sk_levels', JSON.stringify(catA.res)); } catch (e) {}
+}
+// 1–3 = poziom, 0 = nie da się ustalić, undefined = jeszcze sprawdzamy
+function catLevel(it) {
+  const r = catA.res[it.src]; if (r) return r.l;
+  const o = catOwned(it); if (o && o.lvl !== undefined) return o.lvl;
+  return catA.err[it.src] ? 0 : undefined;
+}
+function catQueue(items) { items.forEach(it => { if (catLevel(it) === undefined) catA.queue.push(it); }); catPump(); }
+function catPump() {
+  while (catA.active < 3 && catA.queue.length) {
+    const it = catA.queue.shift();
+    if (catLevel(it) !== undefined) continue;
+    if (it.size && it.size > CAT_MAX_BYTES) { catA.res[it.src] = {l: 0}; catSaveLevels(); catRenderSoon(); continue; }
+    catA.active++;
+    catFetch(it.url, 'buf').then(buf => {
+      let lv = null;
+      try { if (buf.byteLength <= CAT_MAX_BYTES) lv = songLevel(parseMidi(buf, it.title)); } catch (e) {}
+      catA.res[it.src] = lv ? {l: lv.lvl, d: Math.round(lv.dur)} : {l: 0};
+      if (lv) { catA.buf.set(it.src, buf); if (catA.buf.size > 80) catA.buf.delete(catA.buf.keys().next().value); }
+      catSaveLevels();
+    }, e => { catA.err[it.src] = e.message; }).then(() => { catA.active--; catRenderSoon(); catPump(); });
+  }
+}
+function catRenderSoon() { clearTimeout(catA.timer); catA.timer = setTimeout(() => { if ($('#catalog').classList.contains('open')) renderCatalog(); }, 120); }
+
 async function catSearch(more) {
   const q = cat.q.trim();
   if (!q) { cat.items = []; cat.next = {}; cat.msg = ''; renderCatalog(); return; }
   const seq = more ? cat.seq : ++cat.seq;
-  if (!more) { cat.items = []; cat.next = {commons: 0, bitmidi: 0}; }
+  if (!more) { cat.items = []; cat.next = {commons: 0, bitmidi: 0}; catA.queue = []; }
   const srcs = Object.keys(CAT_FN).filter(s => (cat.src === 'all' || cat.src === s) && cat.next[s] != null);
   if (!srcs.length) return;
   cat.busy = true; cat.msg = ''; renderCatalog();
@@ -847,36 +926,43 @@ async function catSearch(more) {
   const errs = [];
   const results = await Promise.all(srcs.map(s => CAT_FN[s](q, cat.next[s]).catch(e => { errs.push(CAT_NAMES[s] + ': ' + e.message); return null; })));
   if (seq !== cat.seq) return; // w międzyczasie zaczęto inne wyszukiwanie
-  const seen = new Set(cat.items.map(it => it.src));
+  const seen = new Set(cat.items.map(it => it.src)), fresh = [];
   srcs.forEach((s, i) => {
     const r = results[i];
     if (!r) { cat.next[s] = null; return; }
     cat.next[s] = r.next;
-    r.items.forEach(it => { if (!seen.has(it.src)) { seen.add(it.src); cat.items.push(it); } });
+    r.items.forEach(it => { if (!seen.has(it.src)) { seen.add(it.src); cat.items.push(it); fresh.push(it); } });
     log('KATALOG: ' + CAT_NAMES[s] + ' – ' + r.items.length + ' wyników');
   });
+  catQueue(fresh);
   if (errs.length) { cat.msg = 'Nie udało się zapytać: ' + errs.join('; '); log('KATALOG błąd: ' + errs.join('; ')); }
   cat.busy = false; renderCatalog();
 }
 
 function catMeta(it) {
-  const m = ['<span class="badge ' + it.source + '">' + CAT_NAMES[it.source] + '</span>'];
-  if (it.dur) m.push(Math.floor(it.dur / 60) + ':' + String(Math.round(it.dur % 60)).padStart(2, '0'));
+  const l = catLevel(it), r = catA.res[it.src];
+  const badges = (l ? lvlBadge(l) : '<span class="lvl">' + (l === 0 ? 'poziom ?' : '⏳ poziom…') + '</span>') +
+    '<span class="badge ' + it.source + '">' + CAT_NAMES[it.source] + '</span>';
+  const m = [], dur = it.dur || (r && r.d);
+  if (dur) m.push(fmtTime(dur));
   if (it.size) m.push(Math.max(1, Math.round(it.size / 1024)) + ' KB');
   if (it.plays) m.push(it.plays.toLocaleString('pl-PL') + ' odtworzeń');
-  return m.join(' · ').replace('</span> · ', '</span>');
+  return badges + m.join(' · ');
 }
 function renderCatalog() {
   document.querySelectorAll('#catSrcSeg button').forEach(b => b.classList.toggle('on', b.dataset.src === cat.src));
+  document.querySelectorAll('#catLvlSeg button').forEach(b => b.classList.toggle('on', +b.dataset.lvl === S.catLvl));
   const sg = $('#catSugg'); sg.innerHTML = '';
   CAT_SUGG.forEach(s => {
     const c = document.createElement('span'); c.className = 'chip' + (cat.q === s ? ' on' : ''); c.textContent = s;
     c.onclick = () => { cat.q = s; $('#catQ').value = s; catSearch(false); };
     sg.appendChild(c);
   });
-  const list = $('#catList'); list.innerHTML = '';
+  const list = $('#catList'), scroll = list.scrollTop; list.innerHTML = '';
   const onlyMissing = $('#catMissing').checked;
-  const shown = cat.items.filter(it => (cat.src === 'all' || it.source === cat.src) && !(onlyMissing && catOwned(it)));
+  const base = cat.items.filter(it => (cat.src === 'all' || it.source === cat.src) && !(onlyMissing && catOwned(it)));
+  const shown = S.catLvl ? base.filter(it => catLevel(it) === S.catLvl) : base;
+  const pending = S.catLvl ? base.filter(it => catLevel(it) === undefined).length : 0;
   shown.forEach(it => {
     const owned = catOwned(it);
     const row = document.createElement('div'); row.className = 'cat';
@@ -891,7 +977,10 @@ function renderCatalog() {
   if (cat.busy) msg.textContent = 'Szukam…';
   else if (!cat.q.trim()) msg.innerHTML = 'Wpisz tytuł albo kompozytora i naciśnij „Szukaj”, albo wybierz podpowiedź powyżej.<br><br>' +
     '<b>Wikimedia Commons</b> – pliki na wolnych licencjach, głównie muzyka klasyczna.<br><b>BitMidi</b> – ponad 100 tys. plików wgranych przez internautów, także piosenki (licencje nie zawsze są jasne – do własnej nauki).';
-  else if (!shown.length && !cat.msg) msg.textContent = cat.items.length ? 'Wszystkie znalezione utwory już masz.' : 'Nic nie znaleziono. Spróbuj innej pisowni albo nazwy po angielsku.';
+  else if (pending) msg.textContent = 'Sprawdzam poziom trudności… (zostało ' + pending + ')';
+  else if (!shown.length && !cat.msg) msg.textContent = !cat.items.length ? 'Nic nie znaleziono. Spróbuj innej pisowni albo nazwy po angielsku.' :
+    base.length ? 'Wśród ' + base.length + ' znalezionych nie ma utworów na poziomie „' + LEVELS[S.catLvl] + '”. Pokaż więcej wyników albo wybierz inny poziom.' :
+    'Wszystkie znalezione utwory już masz.';
   if (cat.msg) msg.innerHTML += (msg.innerHTML ? '<br>' : '') + esc(cat.msg);
   if (msg.innerHTML) list.appendChild(msg);
   const hasMore = !cat.busy && cat.q.trim() && Object.keys(CAT_FN).some(s => (cat.src === 'all' || cat.src === s) && cat.next[s] != null);
@@ -899,6 +988,8 @@ function renderCatalog() {
     const m = document.createElement('button'); m.textContent = 'Pokaż więcej wyników'; m.style.cssText = 'display:block;margin:10px auto';
     m.onclick = () => catSearch(true); list.appendChild(m);
   }
+  if (cat.q.trim() && !cat.busy) list.insertAdjacentHTML('beforeend', '<p class="hint" style="text-align:center;margin:6px 0 4px">Poziom liczymy z samego pliku: tempo, akordy, rozpiętość klawiszy i liczba ścieżek (rąk/instrumentów). To przybliżenie – dotyczy całego utworu, a w odtwarzaczu możesz wybrać tylko jedną rękę.</p>');
+  list.scrollTop = scroll;
 }
 async function catDownload(it) {
   if (cat.loading[it.src]) return;
@@ -906,12 +997,13 @@ async function catDownload(it) {
   cat.loading[it.src] = true; renderCatalog();
   log('KATALOG: pobieram ' + it.url);
   try {
-    const buf = await catFetch(it.url, 'buf');
+    const buf = catA.buf.get(it.src) || await catFetch(it.url, 'buf');
     if (buf.byteLength > CAT_MAX_BYTES) throw new Error('plik jest za duży');
     const parsed = parseMidi(buf, it.title);
     const id = 'u' + Date.now() + Math.random().toString(36).slice(2, 6);
-    parsed.id = id; cache[id] = parsed;
-    userSongs.push({id, title: it.title, b64: toB64(buf), src: it.src}); saveUser(); renderLib();
+    parsed.id = id; cache[id] = parsed; catA.buf.delete(it.src);
+    const lv = songLevel(parsed);
+    userSongs.push({id, title: it.title, b64: toB64(buf), src: it.src, lvl: lv ? lv.lvl : 0}); saveUser(); renderLib();
     log('KATALOG: pobrano „' + it.title + '” (' + buf.byteLength + ' B, ' + parsed.notes.length + ' nut)');
     toast('Pobrano: ' + it.title);
   } catch (e) {
@@ -926,6 +1018,7 @@ $('#openCatalog').onclick = openCatalog;
 $('#closeCatalog').onclick = closeCatalog;
 $('#catForm').onsubmit = e => { e.preventDefault(); cat.q = $('#catQ').value; $('#catQ').blur(); catSearch(false); };
 $('#catMissing').onchange = renderCatalog;
+document.querySelectorAll('#catLvlSeg button').forEach(b => b.onclick = () => { S.catLvl = +b.dataset.lvl; saveS(); renderCatalog(); });
 document.querySelectorAll('#catSrcSeg button').forEach(b => b.onclick = () => {
   if (cat.src === b.dataset.src) return;
   cat.src = b.dataset.src; renderCatalog();
@@ -1038,6 +1131,7 @@ window.addEventListener('pagehide', allOff);
 
 /* start */
 renderMode(); renderTr(); renderOff(); buildKbd(); renderLib(); refreshView(); initMidi();
+setTimeout(levelOldSongs, 300);
 </script>
 </body>
 </html>

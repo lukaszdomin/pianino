@@ -35,6 +35,23 @@ import struct
 # Najmniejszy poprawny plik MIDI: jedna nuta C4
 TINY_MIDI = (b'MThd' + struct.pack('>IHHH', 6, 0, 1, 96) +
              b'MTrk' + struct.pack('>I', 12) + bytes([0x00, 0x90, 60, 100, 0x60, 0x80, 60, 0, 0x00, 0xFF, 0x2F, 0x00]))
+
+
+def hard_midi():
+    """Gęsty plik: 4-dźwiękowe akordy co 1/16 s na całej klawiaturze → poziom „Trudne”."""
+    ev = b''
+    for i in range(160):
+        chord = [36 + (i * 7) % 24, 52 + (i * 5) % 20, 72 + (i * 3) % 12, 84 + (i * 11) % 12]
+        for n in chord:
+            ev += bytes([0x00, 0x90, n, 90])
+        for k, n in enumerate(chord):
+            ev += bytes([12 if k == 0 else 0x00, 0x80, n, 0])
+    ev += bytes([0x00, 0xFF, 0x2F, 0x00])
+    return b'MThd' + struct.pack('>IHHH', 6, 0, 1, 96) + b'MTrk' + struct.pack('>I', len(ev)) + ev
+
+
+HARD_MIDI = hard_midi()
+HITS = {'commons': 0, 'bitmidi': 0}
 CORS = {'Access-Control-Allow-Origin': '*'}
 COMMONS_JSON = {'query': {'pages': {'111': {'pageid': 111, 'index': 1, 'title': 'File:Chopin-nocturne-test.mid',
     'imageinfo': [{'url': 'https://upload.wikimedia.org/x/Chopin-nocturne-test.mid?utm=1', 'size': 1234,
@@ -54,13 +71,18 @@ async def mock_catalog(page, bitmidi_ok=True):
             await route.fulfill(status=500, headers=CORS, body='err')
 
     async def midi(route):
+        HITS['commons'] += 1
         await route.fulfill(status=200, headers=CORS, content_type='audio/midi', body=TINY_MIDI)
+
+    async def midi_hard(route):
+        HITS['bitmidi'] += 1
+        await route.fulfill(status=200, headers=CORS, content_type='audio/midi', body=HARD_MIDI)
 
     await page.unroute('**/*')
     await page.route('https://commons.wikimedia.org/**', commons)
     await page.route('https://bitmidi.com/api/**', bitmidi)
     await page.route('https://upload.wikimedia.org/**', midi)
-    await page.route('https://bitmidi.com/uploads/**', midi)
+    await page.route('https://bitmidi.com/uploads/**', midi_hard)
 
 
 def chrome_path():
@@ -91,6 +113,8 @@ async def main():
         await page.wait_for_timeout(400)
 
         check('Bluetooth Session 1' in await page.text_content('#status'), 'wykrywa keyboard')
+        lib = await page.eval_on_selector_all('#libBuiltin .song', 'els => els.map(e => e.textContent)')
+        check('Wlazł kotek na płotekŁatwe' in lib and 'Dla Elizy – początekŚrednie' in lib, 'wbudowane utwory mają poziom ' + str(lib))
 
         # Tryb „Czekaj na mnie”: Oda do radości zaczyna się od E4 (MIDI 64 -> światło 43)
         await page.click('text=Oda do radości – Beethoven')
@@ -126,8 +150,29 @@ async def main():
         await page.wait_for_selector('.cat', timeout=3000)
         titles = await page.eval_on_selector_all('.cat .t b', 'els => els.map(e => e.textContent)')
         check(titles == ['Chopin nocturne test', 'Chopin Waltz Test'], 'katalog pokazuje wyniki z obu bibliotek ' + str(titles))
+
+        # Poziom trudności: liczony w tle z pobranych plików
+        await page.wait_for_selector('.cat .lvl.l3', timeout=3000)
+        await page.wait_for_selector('.cat .lvl.l1', timeout=3000)
+        lv = await page.eval_on_selector_all('.cat .lvl', 'els => els.map(e => e.textContent)')
+        check(lv == ['Łatwe', 'Trudne'], 'katalog pokazuje poziom trudności ' + str(lv))
+        await page.click('#catLvlSeg >> text=Łatwe')
+        titles = await page.eval_on_selector_all('.cat .t b', 'els => els.map(e => e.textContent)')
+        check(titles == ['Chopin nocturne test'], 'filtr „Łatwe” ' + str(titles))
+        await page.click('#catLvlSeg >> text=Trudne')
+        titles = await page.eval_on_selector_all('.cat .t b', 'els => els.map(e => e.textContent)')
+        check(titles == ['Chopin Waltz Test'], 'filtr „Trudne” ' + str(titles))
+        await page.click('#catLvlSeg >> text=Średnie')
+        check('nie ma utworów na poziomie' in await page.text_content('#catMsg'), 'pusty poziom pokazuje komunikat')
+        await page.click('#catLvlSeg >> text=Każdy poziom')
+        check(await page.eval_on_selector_all('.cat', 'e => e.length') == 2, '„Każdy poziom” pokazuje wszystko')
+        check(await page.evaluate("JSON.parse(localStorage.getItem('sk_levels'))['bitmidi:222'].l") == 3, 'poziomy są zapamiętane')
+
         await page.click('.cat >> nth=0 >> text=Pobierz')
         await page.wait_for_selector('.cat >> nth=0 >> text=Mam', timeout=3000)
+        check(HITS['commons'] == 1, 'pobranie nie ściąga pliku drugi raz (zapytań: %d)' % HITS['commons'])
+        check(await page.evaluate("userSongs[0].lvl") == 1, 'pobrany utwór ma zapisany poziom')
+        check('Łatwe' in await page.text_content('#lib'), 'poziom widać w „Moje utwory”')
         check(await page.evaluate("userSongs.some(u => u.src === 'commons:111')"), 'pobrany utwór trafia do „Moje utwory”')
         check(await page.evaluate("JSON.parse(localStorage.getItem('sk_songs')).length") == 1, 'pobrany utwór jest zapisany')
         await page.check('#catMissing')

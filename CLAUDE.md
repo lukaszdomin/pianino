@@ -48,12 +48,15 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
   Każdy push na `main` publikuje się w 1–2 minuty.
 - Dane użytkownika (wgrane pliki MIDI jako base64, ustawienia) trzymamy w `localStorage` (`sk_songs`, `sk_settings`).
   Utwory z katalogu mają dodatkowe pole `src` (np. `commons:6596429`, `bitmidi:27978`), po którym poznajemy, że już je mamy.
+  Każdy utwór ma pole `lvl` (1 łatwe, 2 średnie, 3 trudne, 0 nieznany). Poziomy wyników katalogu są zapamiętane w `sk_levels` (`src` → `{l, d}`).
 - Główne części `index.html`:
   - wbudowane utwory: `makeSong()` + tablica `BUILTIN` (notacja `C4:1 D#4:0.5 R:2`, akordy przez `+`);
   - parser plików MIDI: `parseMidi()`;
   - MIDI i światła: `initMidi()`, `refreshPorts()`, `portList()`, `light()`, `setLit()`, `allOff()`;
   - odtwarzacz: `prepare()` buduje `ns` (nuty) i `steps` (grupy nut), tryby `wait` i `tempo`;
   - katalog utworów z internetu: obiekt `cat`, `catSearch()`, `catCommons()`, `catBitmidi()`, `catDownload()`, `renderCatalog()`;
+  - poziom trudności: `songLevel()` (punkty za tempo, akordy, rozpiętość, czarne klawisze, >4 ścieżki, długość; 0–2 łatwe, 3–5 średnie, 6+ trudne),
+    w katalogu kolejka `catA` / `catPump()` pobiera pliki w tle (po 3 naraz) i liczy poziom; pobrany plik zostaje w pamięci dla „Pobierz”;
   - diagnostyka: `log()`, `diag()`, sekcja Dziennik w Ustawieniach z przyciskiem „Kopiuj dziennik”.
 
 ## Jak pracujemy
@@ -79,6 +82,10 @@ Gotowe i działa:
 - Tryby „Czekaj na mnie” i „W tempie” (25–150%), transpozycja, dźwięk z iPada, przewijanie, statystyki trafień.
 - Klawiatura na ekranie, test świateł, przesunięcie świateł, diagnostyka i dziennik.
 - Katalog utworów: wyszukiwanie w Wikimedia Commons i BitMidi, pobieranie jednym kliknięciem, oznaczenie „Mam”, filtr „Tylko te, których nie mam”.
+- Poziom trudności (Łatwe / Średnie / Trudne): filtr w katalogu (zapamiętany w ustawieniach) i plakietki przy wszystkich utworach.
+  Biblioteki nie podają poziomu, więc liczymy go z nut. Progi sprawdzone na plikach z korpusu music21:
+  pieśni ludowe → łatwe; chorał Bacha, arie, Dichterliebe → średnie; ragtime Joplina, Mozart K545, kwartety → trudne.
+  Poziom dotyczy całego pliku – utwory z BitMidi z pełną aranżacją (wiele instrumentów) zwykle wychodzą jako trudne.
 
 ## Katalog utworów (biblioteki MIDI)
 
@@ -101,9 +108,12 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 
 (Łukasz decyduje o kolejności. Claude dopisuje tu pomysły, które padną w rozmowie.)
 - [ ] Katalog: odsłuch utworu przed pobraniem.
+- [ ] Poziom liczony też dla pojedynczej ścieżki (np. sama melodia z piosenki z BitMidi), filtr poziomu w „Moje utwory”.
+- [ ] Sprawdzić na iPadzie, czy BitMidi nie blokuje pobierania wielu plików naraz (kolejka poziomów pobiera wszystkie wyniki).
 - [ ] Katalog: więcej bibliotek, jeśli znajdziemy takie z CORS (np. zbiory MIDI na GitHubie przez raw.githubusercontent.com).
 
 ## Dziennik zmian
 
+- 11.11.2026: poziom trudności utworów (łatwe/średnie/trudne): filtr w katalogu, plakietki w bibliotece, testy w `smoke_test.py`.
 - 11.11.2026: katalog utworów z internetu (Wikimedia Commons + BitMidi), testy katalogu w `smoke_test.py`.
 - 11.11.2026: pierwsza wersja; naprawa wykrywania urządzeń w Web MIDI Browser; diagnostyka, liczniki, dziennik, test nuty; potwierdzone działanie na iPadzie.
