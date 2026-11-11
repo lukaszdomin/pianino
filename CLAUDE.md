@@ -123,6 +123,9 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     `--blue` (fioletowy – wciśnięty klawisz bez nuty), `--ok` (zielony).
     Czcionki z Google Fonts: **Bricolage Grotesque** (tytuły, `--disp`) i **Atkinson Hyperlegible** (reszta i nazwy nut, `--ui`; czytelna z daleka).
     Zasada: **to, co trzeba zagrać teraz, świeci w kolorze ręki** (klawisz, linia trafienia, nuta, pasek); przyciski główne lawendowo-białe.
+    **Cienie** delikatne, w odcieniu granatu (czarne brudzą paletę): zmienne `--sh-xs` / `--sh-sm` / `--sh-md` / `--sh-lg` (od przycisków
+    po okna) i `--hl` (cienka jasna krawędź u góry, jak światło z góry); karty lekko się wciskają po stuknięciu; pod linią trafienia
+    klawisze w cieniu (`#kbd::after`), czarne klawisze rzucają miękki cień na białe.
     Ikony to wbudowane SVG (`class="ico"`, w kodzie `ICO_PLAY`, `ICO_SEARCH`, `ICO_SPK`, `ICO_STOP`, `ICO_STAR`), **bez emoji** w całej aplikacji
     (także katalog i ustawienia; melodia w ścieżkach oznaczona gwiazdką SVG), bez napisów wielkimi literami. Klawiatura z głębią (gradienty, „krawędź” klawisza), nad nią linia trafienia,
     świecący klawisz w kolorze ręki z poświatą. Status: „Keyboard połączony” z kropką, nazwa urządzenia w `title`;
@@ -231,6 +234,9 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
       bemole zamiast krzyżyków w tonacjach bemolowych, regulacja wysokości widoku / szybkości wodospadu.
 
 ## Dziennik zmian
+
+- 11.11.2026: delikatne cienie w odcieniu granatu: karty, „Graj dalej”, nagłówek, przyciski, odtwarzacz, menu, okna, klawiatura
+  (cień pod linią trafienia, czarne klawisze rzucają cień); karty lekko się wciskają po stuknięciu.
 
 - 11.11.2026: paleta „Noc” zamiast czarnej (Łukasz: czerń „smutna”, lepszy granat z wariantu C): granatowe tło i panele, lawendowa biel;
   to, co zagrać, świeci w kolorze ręki (prawa pomarańczowa, lewa niebieska) – klawisze, nuty na pięciolinii, paski wodospadu;
