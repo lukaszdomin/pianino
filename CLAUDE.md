@@ -49,7 +49,13 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
 - `swiecace-klawisze.html` przekierowuje do `./` (stary adres z zakładek).
 - Hosting: **GitHub Pages** z gałęzi `main`, folder główny. Adres: https://lukaszdomin.github.io/pianino/
   Każdy push na `main` publikuje się w 1–2 minuty.
-- Dane użytkownika (pobrane pliki MIDI jako base64, ustawienia) trzymamy w `localStorage` (`sk_songs`, `sk_settings`).
+- Dane użytkownika: **lista pobranych utworów** (`id`, `title`, `src`, `url`, `lvl`, `roll`) i ustawienia w `localStorage` (`sk_songs`, `sk_settings`),
+  **same pliki MIDI** (base64) w **IndexedDB** (baza `swiecace-klawisze`, magazyn `files`, klucz `song:<id>`; od 11.11.2026 –
+  wcześniej pliki były w `sk_songs` i po zapełnieniu ~5 MB nowe utwory znikały po zamknięciu aplikacji).
+  W pamięci sesji pliki są w `songBuf` (id → ArrayBuffer). `loadSongFiles()` przy starcie: wczytuje pliki z IndexedDB, przenosi stare wpisy
+  z `u.b64` do IndexedDB (`storeSongFile()`), prosi o `navigator.storage.persist()`, zapisuje w dzienniku wpis „PAMIĘĆ: utworów …”,
+  a brakujące pliki pobiera znowu (`ensureSongFile()` → `songUrl()`: zapisany `url` albo adres odtworzony z `src` dla Commons, BitMidi, Lakh, Billboard).
+  Gdy IndexedDB nie działa, plik zostaje w liście (`u.b64`) jak dawniej. `openUser()` jest asynchroniczne (czeka na plik, gdy go nie ma w pamięci).
   Utwory z katalogu mają dodatkowe pole `src` (np. `commons:6596429`, `bitmidi:27978`, `billboard:2017/1/2017_01_full.mid`), po którym poznajemy, że już je mamy.
   Każdy utwór ma pole `lvl` (1 łatwe, 2 średnie, 3 trudne, 0 nieznany). Poziomy wyników katalogu są zapamiętane w `sk_levels` (`src` → `{l, d}`).
 - Główne części `index.html`:
@@ -242,11 +248,18 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 - Nowe hity: Lakh kończy się ok. 2010 r., BitMidi ma mało nowych piosenek. Jedyne znalezione źródło z CORS i nowymi przebojami to BiMMuDa –
   tylko top 5 z każdego roku i sama melodia, ale ręcznie spisana i łatwa do grania. Strony z dużą liczbą nowych MIDI (midishow, freemidi)
   nie mają CORS, a my nie mamy serwera.
-- Próbki trzymamy w IndexedDB, nie w `localStorage` (za mały, ~5 MB, i są tam już pobrane utwory).
+- Próbki trzymamy w IndexedDB, nie w `localStorage` (za mały, ~5 MB).
+- Pobrane utwory (11.11.2026, Łukasz: „znikają po zamknięciu”, jeden użytkownik, „najprościej jak się da”): pliki w IndexedDB, lista w `localStorage`,
+  brakujące pliki pobierane znowu ze źródła. Bez serwera i bez kont. Zapis poza iPadem (np. plik w repozytorium przez API GitHuba)
+  wymagałby tokenu trzymanego na iPadzie – odłożone, dopóki nie okaże się, że Web MIDI Browser czyści całą pamięć strony.
 
 ## Do zrobienia / pomysły
 
 (Łukasz decyduje o kolejności. Claude dopisuje tu pomysły, które padną w rozmowie.)
+- [ ] Sprawdzić na iPadzie zapis utworów: pobrać kilka utworów, zamknąć Web MIDI Browser (także przesunięciem w przełączniku aplikacji),
+      otworzyć znowu. W dzienniku wpis „PAMIĘĆ: utworów N (z IndexedDB …, przeniesione z listy …, bez pliku …)” i „trwały zapis …”.
+      Jeśli po zamknięciu znika **wszystko** (także ustawienia i fortepian pobiera się znowu) – Web MIDI Browser czyści pamięć strony
+      i trzeba zapisywać listę poza iPadem (np. plik w repozytorium przez API GitHuba albo eksport/import listy).
 - [ ] Sprawdzić „Pokaz” na iPadzie: czy keyboard gra nuty wysłane z iPada (ten sam test: Ustawienia → „Zagraj C na keyboardzie”),
       czy nie ma opóźnień / zawieszonych nut przez Bluetooth, czy keyboard nie odsyła granych nut jako wciśniętych (fioletowe klawisze).
       Jeśli keyboard nie gra – włączyć „Dźwięk z iPada”.
@@ -281,6 +294,10 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
       bemole zamiast krzyżyków w tonacjach bemolowych, regulacja wysokości widoku / szybkości wodospadu.
 
 ## Dziennik zmian
+
+- 11.11.2026: zapis pobranych utworów – pliki MIDI przeniesione z `localStorage` (~5 MB, po zapełnieniu nowe utwory znikały po zamknięciu)
+  do IndexedDB; w `localStorage` zostaje sama lista; stare zapisy przenoszone przy starcie; brakujący plik pobierany znowu ze źródła;
+  usuwanie kasuje też plik; wpis „PAMIĘĆ:” w dzienniku; testy w `smoke_test.py` (`storage_tests`, m.in. 12 plików po 450 KB).
 
 - 11.11.2026: **brzmienie dobrane do utworu** – 7 brzmień (fortepian, pianino elektryczne, syntezator pop, syntezator dance, organy, klawesyn, pozytywka);
   aplikacja sama proponuje brzmienie (tytuł i wykonawca, rok przeboju, instrumenty, perkusja i tempo w pliku), a w menu Opcje można je zmienić

@@ -527,6 +527,77 @@ async def library_tests(page, check):
           and not await page.is_visible('#libEdit'), 'pusta lista: wbudowane, podpowiedź o katalogu, bez „Edytuj”')
 
 
+async def storage_tests(page, check):
+    """Zapis pobranych utworów: lista w localStorage, pliki w IndexedDB; przenosiny starego zapisu;
+    dużo dużych plików (dawniej localStorage się zapełniał i utwory znikały po zamknięciu); odzyskiwanie brakującego pliku."""
+    import base64
+    hits = {'n': 0}
+
+    async def lost(route):
+        hits['n'] += 1
+        await route.fulfill(status=200, headers={'Access-Control-Allow-Origin': '*'}, content_type='audio/midi', body=TINY_MIDI)
+    await page.route('https://upload.wikimedia.org/odzysk-test.mid', lost)
+
+    async def until(expr, ms=8000):
+        """Czeka, aż wyrażenie (może zwracać Promise) da prawdę."""
+        for _ in range(ms // 100):
+            if await page.evaluate(expr):
+                return True
+            await page.wait_for_timeout(100)
+        return False
+
+    # stary zapis (plik w liście) → po starcie przeniesiony do IndexedDB
+    await page.evaluate("""b => localStorage.setItem('sk_songs', JSON.stringify([{id: 'ustary', title: 'Stary zapis', b64: b, src: 'bitmidi:77'}]))""",
+                        base64.b64encode(TINY_MIDI).decode())
+    await page.reload()
+    await page.wait_for_function("!JSON.parse(localStorage.getItem('sk_songs'))[0].b64", timeout=5000)
+    check(await page.evaluate("idbGet('song:ustary').then(t => !!t)"), 'stary zapis: plik przeniesiony z listy do IndexedDB')
+    check('Stary zapis' in await page.text_content('#lib'), 'stary zapis: utwór dalej w bibliotece')
+
+    # 12 plików po 450 KB (razem ponad 5 MB) – wszystkie muszą przetrwać ponowne otwarcie
+    big = list(TINY_MIDI + bytes(450000))
+    ids = await page.evaluate("""b => { const out = [];
+        for (let i = 0; i < 12; i++) out.push(addUserSong(new Uint8Array(b).buffer, 'Duży ' + i, 'bitmidi:9' + i).id);
+        return out; }""", big)
+    await page.evaluate("""() => addUserSong(new Uint8Array(%s).buffer, 'Do odzyskania', 'commons:999', 'https://upload.wikimedia.org/odzysk-test.mid')"""
+                        % json.dumps(list(TINY_MIDI)))
+    check(await until("Promise.all(userSongs.map(u => idbGet(SONG_KEY(u.id)))).then(a => a.every(Boolean))"), 'pliki zapisane w IndexedDB')
+    lst = await page.evaluate("localStorage.getItem('sk_songs')")
+    check('"b64"' not in lst and len(lst) < 20000, 'lista w localStorage bez plików (%d znaków)' % len(lst))
+    await page.reload()
+    await page.wait_for_timeout(500)
+    cards = await page.eval_on_selector_all('#lib .song.user', 'els => els.length')
+    check(cards == 14, 'po ponownym otwarciu są wszystkie pobrane utwory (%d z 14)' % cards)
+    await page.click('#lib .song.user >> text=Duży 3')
+    check(await until("$('#songTitle').textContent === 'Duży 3'"), 'duży utwór otwiera się po ponownym otwarciu')
+    await go_home(page)
+
+    # plik zniknął z IndexedDB (lista została) → pobrany znowu z zapisanego adresu
+    await page.evaluate("idbDel(SONG_KEY(userSongs.find(u => u.title === 'Do odzyskania').id))")
+    await page.reload()
+    await until("idbGet(SONG_KEY(userSongs.find(u => u.title === 'Do odzyskania').id)).then(Boolean)")
+    check(hits['n'] == 1, 'brakujący plik pobrany znowu (zapytań: %d)' % hits['n'])
+    await page.click('#lib .song.user >> text=Do odzyskania')
+    check(await until("$('#songTitle').textContent === 'Do odzyskania'"), 'odzyskany utwór się otwiera')
+    await go_home(page)
+    check(await page.evaluate("LOG.some(l => String(l).includes('PAMIĘĆ: utworów 14'))"), 'wpis „PAMIĘĆ:” w dzienniku')
+
+    # otwarcie utworu, którego pliku nie ma jeszcze w pamięci (wczytanie z IndexedDB w chwili stuknięcia)
+    await page.evaluate("(() => { const u = userSongs.find(x => x.title === 'Duży 5'); delete songBuf[u.id]; delete cache[u.id]; })()")
+    await page.click('#lib .song.user >> text=Duży 5')
+    check(await until("$('#songTitle').textContent === 'Duży 5'"), 'utwór wczytany z IndexedDB w chwili otwarcia')
+    await go_home(page)
+    check(hits['n'] == 1, 'bez zbędnego pobierania (zapytań: %d)' % hits['n'])
+
+    # usuwanie kasuje też plik
+    gone = await page.evaluate("userSongs[userSongs.length - 1].id")   # pierwsza karta = najnowszy utwór
+    await page.click('#libEdit')
+    await page.click('#lib .song.user >> nth=0 >> .del')
+    await page.click('#libEdit')
+    check(await page.evaluate("userSongs.length") == 13 and await until("idbGet('song:%s').then(t => !t)" % gone),
+          'usunięty utwór znika też z IndexedDB')
+
+
 def chrome_path():
     for name in ('google-chrome', 'chromium', 'chromium-browser'):
         p = shutil.which(name)
@@ -797,6 +868,8 @@ async def main():
               'po przeładowaniu fortepian z pamięci, bez pobierania (zapytań: %d)' % HITS['piano'])
         mig = await page.evaluate("({v: S.voice, d: S.demoOut, k: S.kbdMode, sv: S.songVoice, old: 'demoVoice' in S, ver: S.voiceVer})")
         check(mig == {'v': 'auto', 'd': 'ipad', 'k': 'song', 'sv': {}, 'old': False, 'ver': 2}, 'stare ustawienia brzmienia przeniesione ' + str(mig))
+
+        await storage_tests(page, check)
 
         check(not errors, 'brak błędów JS ' + (str(errors) if errors else ''))
         await browser.close()

@@ -917,13 +917,19 @@ function audioOut() {
   }
   return master;
 }
+let idbP = null;   // jedno połączenie z bazą na całą sesję
 function idbOpen() {
-  return new Promise((res, rej) => {
+  if (!idbP) idbP = new Promise((res, rej) => {
     if (!window.indexedDB) { rej(new Error('brak IndexedDB')); return; }
     const r = indexedDB.open('swiecace-klawisze', 1);
     r.onupgradeneeded = () => r.result.createObjectStore('files');
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error || new Error('IndexedDB'));
-  });
+  }).catch(e => { idbP = null; throw e; });
+  return idbP;
+}
+async function idbDel(key) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => { const tx = db.transaction('files', 'readwrite'); tx.objectStore('files').delete(key); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
 }
 async function idbGet(key) {
   const db = await idbOpen();
@@ -1673,21 +1679,95 @@ function drawFall({c, w, h}, tRef) {
 }
 
 /* ---------------- biblioteka ---------------- */
-let userSongs = [], cache = {};
+/* Zapis pobranych utworów:
+   - lista (id, tytuł, źródło `src`, adres `url`, poziom, miniatura) – mała, w localStorage (sk_songs);
+   - same pliki MIDI – w IndexedDB (klucz 'song:<id>', base64), bo localStorage ma ok. 5 MB: po jego zapełnieniu
+     nowe utwory działały tylko do zamknięcia aplikacji (Łukasz: „znikają po zamknięciu”).
+   Stare wpisy z plikiem w liście (u.b64) przenosimy do IndexedDB przy starcie (`loadSongFiles()`).
+   Gdy IndexedDB nie działa, plik zostaje w liście jak dawniej. Gdy pliku brak, a znamy źródło – pobieramy go znowu. */
+let userSongs = [], cache = {}, songBuf = {};
 try { userSongs = JSON.parse(localStorage.getItem('sk_songs') || '[]'); } catch (e) { userSongs = []; }
+const SONG_KEY = id => 'song:' + id;
 function saveUser() {
   try { localStorage.setItem('sk_songs', JSON.stringify(userSongs)); }
-  catch (e) { toast('Brak miejsca na zapis – utwór zniknie po zamknięciu strony'); }
+  catch (e) { toast('Brak miejsca na zapis listy utworów'); log('PAMIĘĆ: nie udało się zapisać listy utworów (' + (e && e.message) + ')'); }
 }
+const songBytes = u => songBuf[u.id] || (u.b64 ? fromB64(u.b64) : null);
 function getUserSong(u) {
-  if (!cache[u.id]) { cache[u.id] = parseMidi(fromB64(u.b64), u.title); cache[u.id].id = u.id; cache[u.id].src = u.src || ''; }
+  if (!cache[u.id]) {
+    const b = songBytes(u); if (!b) throw new Error('brak pliku – wczytuję');
+    cache[u.id] = parseMidi(b, u.title); cache[u.id].id = u.id; cache[u.id].src = u.src || '';
+  }
   return cache[u.id];
+}
+// Zapisuje plik utworu w IndexedDB; gdy się nie da – w liście (localStorage), jak dawniej.
+async function storeSongFile(u, buf) {
+  try {
+    await idbSet(SONG_KEY(u.id), toB64(buf));
+    if (u.b64) { delete u.b64; saveUser(); }
+    return true;
+  } catch (e) {
+    log('PAMIĘĆ: plik „' + u.title + '” nie zapisał się w IndexedDB (' + (e && e.message) + ') – zapisuję w liście');
+    if (!u.b64) { u.b64 = toB64(buf); saveUser(); }
+    return false;
+  }
+}
+// Adres pliku do ponownego pobrania (starsze wpisy nie mają `url`).
+async function songUrl(u) {
+  if (u.url) return u.url;
+  const s = u.src || '', i = s.indexOf(':'), kind = s.slice(0, i), rest = s.slice(i + 1), enc = x => encodeURIComponent(x);
+  if (kind === 'bitmidi') return 'https://bitmidi.com/uploads/' + rest + '.mid';
+  if (kind === 'lakh') { await lakhLoad(); const j = rest.indexOf('/'); return lakhItem({artist: rest.slice(0, j), file: rest.slice(j + 1)}).url; }
+  if (kind === 'billboard') { await bbLoad(); return bbItem({path: rest}).url; }
+  if (kind === 'commons') {
+    const j = await catFetch('https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=imageinfo&iiprop=url&pageids=' + enc(rest));
+    const p = j.query && j.query.pages && j.query.pages[rest];
+    return p && p.imageinfo && p.imageinfo[0] ? p.imageinfo[0].url.split('?')[0] : null;
+  }
+  return null;
+}
+// Wczytuje plik utworu do pamięci: z IndexedDB, a gdy go tam nie ma – pobiera ze źródła.
+const songLoading = {};   // id → trwające wczytywanie (żeby nie pobierać pliku dwa razy naraz)
+function ensureSongFile(u) {
+  if (songBytes(u)) return Promise.resolve();
+  if (!songLoading[u.id]) songLoading[u.id] = loadSongFile(u).finally(() => { delete songLoading[u.id]; });
+  return songLoading[u.id];
+}
+async function loadSongFile(u) {
+  let s = null; try { s = await idbGet(SONG_KEY(u.id)); } catch (e) {}
+  if (s) { songBuf[u.id] = fromB64(s); return; }
+  const url = await songUrl(u);
+  if (!url) throw new Error('pliku nie ma na iPadzie');
+  log('PAMIĘĆ: brak pliku „' + u.title + '” – pobieram znowu ' + url);
+  const buf = await catFetch(url, 'buf');
+  songBuf[u.id] = buf; u.url = url; saveUser();
+  await storeSongFile(u, buf);
+}
+// Start: pliki z IndexedDB do pamięci, przenosiny starych zapisów z localStorage, prośba o trwały zapis.
+async function loadSongFiles() {
+  const t0 = Date.now(); let fromDb = 0, moved = 0, lost = 0;
+  try { if (navigator.storage && navigator.storage.persist) log('PAMIĘĆ: trwały zapis ' + ((await navigator.storage.persist()) ? 'włączony' : 'niedostępny')); } catch (e) {}
+  for (const u of userSongs.slice()) {
+    if (songBuf[u.id]) continue;
+    if (u.b64) { songBuf[u.id] = fromB64(u.b64); if (await storeSongFile(u, songBuf[u.id])) moved++; continue; }
+    let s = null; try { s = await idbGet(SONG_KEY(u.id)); } catch (e) {}
+    if (s) { songBuf[u.id] = fromB64(s); fromDb++; } else lost++;
+  }
+  let ls = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); ls += k.length + (localStorage.getItem(k) || '').length; } } catch (e) {}
+  log('PAMIĘĆ: utworów ' + userSongs.length + ' (z IndexedDB ' + fromDb + ', przeniesione z listy ' + moved + ', bez pliku ' + lost +
+      '), localStorage ' + Math.round(ls / 1024) + ' KB, ' + (Date.now() - t0) + ' ms');
+  levelOldSongs(); rollOldSongs();
+  // brakujące pliki pobieramy w tle, po kolei
+  for (const u of userSongs.filter(x => !songBytes(x))) {
+    try { await ensureSongFile(u); } catch (e) { log('PAMIĘĆ: nie mogę odzyskać „' + u.title + '” (' + e.message + ')'); }
+  }
+  levelOldSongs(); rollOldSongs();
 }
 BUILTIN.forEach(s => { const lv = songLevel(s); s.lvl = lv ? lv.lvl : 0; });
 // Utwory dodane przed wprowadzeniem poziomów: liczymy raz i zapisujemy.
 function levelOldSongs() {
   let changed = false;
-  userSongs.forEach(u => { if (u.lvl === undefined) { try { const lv = songLevel(getUserSong(u)); u.lvl = lv ? lv.lvl : 0; } catch (e) { u.lvl = 0; } changed = true; } });
+  userSongs.forEach(u => { if (u.lvl === undefined && (cache[u.id] || songBytes(u))) { try { const lv = songLevel(getUserSong(u)); u.lvl = lv ? lv.lvl : 0; } catch (e) { u.lvl = 0; } changed = true; } });
   if (changed) { saveUser(); renderLib(); }
 }
 /* Biblioteka – osobny ekran startowy (body.home): kafelek „Graj dalej”, filtr poziomu, siatka kart.
@@ -1731,7 +1811,7 @@ const bars = l => `<span class="bars" aria-hidden="true"><i${l >= 1 ? ' class="o
 BUILTIN.forEach(s => { s.roll = rollOf(s); });
 // Miniatury utworów pobranych przed etapem 3: liczymy raz (po kilka naraz, żeby nie zamrozić ekranu) i zapisujemy.
 function rollOldSongs() {
-  const todo = userSongs.filter(u => !u.roll).slice(0, 4);
+  const todo = userSongs.filter(u => !u.roll && (cache[u.id] || songBytes(u))).slice(0, 4);
   if (!todo.length) return;
   todo.forEach(u => { try { u.roll = rollOf(getUserSong(u)); } catch (e) { u.roll = []; } });
   saveUser(); renderLib(); setTimeout(rollOldSongs, 60);
@@ -1755,13 +1835,19 @@ function songCard(s, onDel) {
 function removeUserSong(u) {
   if (song && song.id === u.id) { stop(); song = null; $('#songTitle').textContent = 'Wybierz utwór'; $('#tracks').innerHTML = ''; refreshView(); }
   const i = userSongs.indexOf(u); if (i >= 0) userSongs.splice(i, 1);
-  delete cache[u.id]; saveUser();
+  delete cache[u.id]; delete songBuf[u.id]; saveUser();
+  idbDel(SONG_KEY(u.id)).catch(() => {});
   if (S.songVoice[u.id]) { delete S.songVoice[u.id]; saveS(); }
   if (!userSongs.length) libEditing = false;
   toast('Usunięto: ' + u.title);
   renderLib();
 }
-const openUser = u => { try { selectSong(getUserSong(u)); } catch (e) { toast('Nie mogę otworzyć: ' + e.message); } };
+async function openUser(u) {
+  try {
+    if (!cache[u.id] && !songBytes(u)) { toast('Wczytuję „' + u.title + '”…'); await ensureSongFile(u); }
+    selectSong(getUserSong(u));
+  } catch (e) { toast('Nie mogę otworzyć: ' + e.message); }
+}
 function findSong(id) {
   const b = BUILTIN.find(x => x.id === id); if (b) return {song: b, title: b.title, artist: '', roll: b.roll, open: () => selectSong(b)};
   const u = userSongs.find(x => x.id === id); if (!u) return null;
@@ -1778,8 +1864,8 @@ function renderResume() {
     `<div class="rbot"><div class="rprog"><div class="rbar"><i style="width:${total ? Math.round(step / total * 100) : 0}%"></i></div>` +
     `<span>${done ? (step >= total && total ? 'Ukończone' : 'Od początku') : 'Krok ' + (step + 1) + ' z ' + total}</span></div>` +
     `<button id="resumeBtn" class="primary">${ICO_PLAY}${done ? 'Zagraj od początku' : 'Graj dalej'}</button></div></div>`;
-  $('#resumeBtn').onclick = () => {
-    f.open();
+  $('#resumeBtn').onclick = async () => {
+    await f.open();
     if (!done && S.mode === 'wait' && steps.length) { stepIdx = Math.min(step, steps.length - 1); refreshView(); }
   };
 }
@@ -1819,13 +1905,15 @@ $('#libQ').onkeydown = e => {
 };
 document.querySelectorAll('#libLvlSeg button').forEach(x => x.onclick = () => { S.libLvl = +x.dataset.lvl; saveS(); renderLib(); });
 // Dodaje plik MIDI do „Moje utwory” (używa tego Katalog). Zwraca rozpoznany utwór.
-function addUserSong(buf, title, src) {
+function addUserSong(buf, title, src, url) {
   const parsed = parseMidi(buf, title);
   const id = 'u' + Date.now() + Math.random().toString(36).slice(2, 6);
   parsed.id = id; parsed.src = src || ''; cache[id] = parsed;
-  const lv = songLevel(parsed), u = {id, title, b64: toB64(buf), lvl: lv ? lv.lvl : 0, roll: rollOf(parsed)};
+  const lv = songLevel(parsed), u = {id, title, lvl: lv ? lv.lvl : 0, roll: rollOf(parsed)};
   if (src) u.src = src;
-  userSongs.push(u); saveUser(); renderLib();
+  if (url) u.url = url;
+  songBuf[id] = buf; userSongs.push(u); saveUser(); renderLib();
+  storeSongFile(u, buf);
   return parsed;
 }
 function selectSong(s) {
@@ -2150,7 +2238,7 @@ function renderCatalog() {
     row.innerHTML = `<div class="t"><b>${esc(it.title)}</b><small>${catMeta(it)}</small></div>`;
     const b = document.createElement('button');
     if (cat.loading[it.src]) { b.textContent = 'Pobieram…'; b.disabled = true; }
-    else if (owned) { b.textContent = 'Mam – graj'; b.className = 'have'; b.onclick = () => { closeCatalog(); try { selectSong(getUserSong(owned)); } catch (e) { toast('Nie mogę otworzyć: ' + e.message); } }; }
+    else if (owned) { b.textContent = 'Mam – graj'; b.className = 'have'; b.onclick = () => { closeCatalog(); openUser(owned); }; }
     else { b.textContent = 'Pobierz'; b.className = 'primary'; b.onclick = () => catDownload(it); }
     const pb = document.createElement('button');
     pb.className = 'pv' + (pv.src === it.src ? ' on' : '');
@@ -2190,7 +2278,7 @@ async function catDownload(it) {
   try {
     const buf = catA.buf.get(it.src) || await catFetch(it.url, 'buf');
     if (buf.byteLength > CAT_MAX_BYTES) throw new Error('plik jest za duży');
-    const parsed = addUserSong(buf, it.title, it.src);
+    const parsed = addUserSong(buf, it.title, it.src, it.url);
     catA.buf.delete(it.src);
     log('KATALOG: pobrano „' + it.title + '” (' + buf.byteLength + ' B, ' + parsed.notes.length + ' nut)');
     toast('Pobrano: ' + it.title);
@@ -2422,7 +2510,7 @@ window.addEventListener('pagehide', allOff);
 /* start */
 document.body.classList.add('home');
 playUI(false); renderMode(); renderView(); renderTr(); renderOff(); buildKbd(); renderLib(); refreshView(); initMidi();
-setTimeout(levelOldSongs, 300); setTimeout(rollOldSongs, 500);
+setTimeout(loadSongFiles, 300);
 </script>
 </body>
 </html>
