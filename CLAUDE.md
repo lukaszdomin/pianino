@@ -100,27 +100,32 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     do pięciolinii (`clef()`), a gdy czcionka ich nie ma – litery G/F. Leży w `#right` (cała szerokość ekranu grania).
     **Wodospad** `drawFall()`: paski z `ns` spadają na klawisze, 3 s nad klawiaturą (`VIEW_SECS`, skalowane tempem); na całą
     szerokość (element `#view` przenoszony przed `#kbd`), położenie klawiszy z `keyGeom()` – to samo co klawiatura na ekranie.
-    Kolory wodospadu (`FC`): **lewa ręka jasnoniebieska, prawa kremowa** (ciemniejsze odcienie na czarnych klawiszach), aktualne
-    czerwone z poświatą (rysowane na końcu), trafione zielone, pomyłka bursztynowa; u góry wygaszanie do tła (pod odtwarzaczem).
+    Kolory wodospadu (`FC`): **lewa ręka niebieska, prawa pomarańczowa** (ciemniejsze odcienie na czarnych klawiszach), aktualne
+    jaśniejsze (`nowL` / `nowR`) z poświatą i białą obwódką (rysowane na końcu), trafione zielone, pomyłka różowo-czerwona;
+    u góry wygaszanie do tła (pod odtwarzaczem).
     Ręka nuty (`n.h` w `ns`, `'L'`/`'R'`) z `hands()`: nazwa ścieżki (`HAND_L` / `HAND_R`: lewa/left/LH/bass, prawa/right/RH),
     przy kilku ścieżkach najwyższa = prawa, średnia < C4 = lewa (gdy wszystkie wysoko – najniższa lewa), jedna ścieżka z nutami
     po obu stronach C4 (15–85% poniżej) – podział na C4; sama melodia – cała prawa.
     **Układ wodospadu** (`body.fall`): wodospad na całą wysokość między tytułem a klawiaturą, odtwarzacz `#transport` przeniesiony
     do `#view` (u góry wodospadu), menu Opcje otwiera się wtedy w dół (`openOpts()` wybiera kierunek).
-    **Filc świeci** (`#felt` w `#kbd`, budowany w `buildKbd()`, odświeżany w `renderKeys()`) nad zapalonymi klawiszami – we wszystkich widokach,
-    na zielono po trafieniu.
-    Kolory pięciolinii (`VC`, ciemna „scena”): przyszłe kość słoniowa (coraz bledsze), aktualne czerwone z poświatą (`VC.now` = `--led`)
-    i **duża nazwa nuty nad kolumną** (zastępuje pole „Zagraj”), trafione zielone, pomyłka bursztynowa, minione przygaszone.
+    **Linia trafienia** (`#felt` w `#kbd`, budowany w `buildKbd()`, odświeżany w `renderKeys()`): jasna kreska z poświatą nad klawiaturą,
+    nad zapalonymi klawiszami świeci w kolorze ręki (we wszystkich widokach), na zielono po trafieniu.
+    **Ręka zapalonych nut** na ekranie: `litHand` (nuta → `'L'`/`'R'`), ustawiana w `showStep()` z `steps[i].hands` (budowane w `prepare()`)
+    i w `loop()` z `ns`; klawisz `.key.lit.lh` = lewa (niebieski), bez `lh` = prawa (pomarańczowy).
+    Kolory pięciolinii (`VC`): przyszłe lawendowo-białe (coraz bledsze), aktualne **w kolorze ręki** z poświatą (`handCol()`)
+    i **duża nazwa nuty nad kolumną** (zastępuje pole „Zagraj”), trafione zielone, pomyłka różowo-czerwona, minione przygaszone.
     Pięciolinia zostawia miejsce na nazwę u góry i na pływający odtwarzacz u dołu (`STAFF_TOP` / `STAFF_BOT`).
     W poziomie z widokiem klawiatura i widok mają po 22vh. Pole „Zagraj / potem” (`#now`) widać tylko w trybie „Bez nut” (`body.withView #now{display:none}`).
     Pięciolinia w `#right` rośnie i zajmuje całe wolne miejsce (`#right>#view{flex:1}`, główki do `half` = 11 px);
-  - wygląd „Scena” (3 etapy, 11.11.2026; makiety: https://claude.ai/artifact/PsCLH8WKuvSDmZbxqmCrvp): kolory lakieru pianina
-    (zmienne CSS `--bg`, `--panel`, `--text` = kość słoniowa, `--led` = czerwień diod, `--miss` = bursztyn, `--felt` = bordowy filc),
-    czcionki z Google Fonts: **Bricolage Grotesque** (tytuły, `--disp`) i **Atkinson Hyperlegible** (reszta i nazwy nut, `--ui`; czytelna z daleka).
-    Zasada: **czerwony tylko dla tego, co trzeba zagrać teraz** (jak diody w keyboardzie); przyciski główne w kolorze kości słoniowej.
+  - wygląd „Scena” (3 etapy, 11.11.2026; makiety: https://claude.ai/artifact/PsCLH8WKuvSDmZbxqmCrvp) w **palecie „Noc”** z wariantu C
+    (od 11.11.2026, wcześniej czarny lakier z czerwienią – Łukasz: „smutny”): granat i indygo (zmienne CSS `--bg` #0f1131, `--panel`,
+    `--panel2`, `--line`, `--text` = lawendowa biel), **kolory rąk** `--right` (pomarańczowy) i `--left` (niebieski), `--miss` (różowo-czerwony),
+    `--blue` (fioletowy – wciśnięty klawisz bez nuty), `--ok` (zielony).
+    Czcionki z Google Fonts: **Bricolage Grotesque** (tytuły, `--disp`) i **Atkinson Hyperlegible** (reszta i nazwy nut, `--ui`; czytelna z daleka).
+    Zasada: **to, co trzeba zagrać teraz, świeci w kolorze ręki** (klawisz, linia trafienia, nuta, pasek); przyciski główne lawendowo-białe.
     Ikony to wbudowane SVG (`class="ico"`, w kodzie `ICO_PLAY`, `ICO_SEARCH`, `ICO_SPK`, `ICO_STOP`, `ICO_STAR`), **bez emoji** w całej aplikacji
-    (także katalog i ustawienia; melodia w ścieżkach oznaczona gwiazdką SVG), bez napisów wielkimi literami. Klawiatura z głębią (gradienty, „krawędź” klawisza), nad nią filcowy pasek,
-    świecący klawisz czerwony z poświatą. Status: „Keyboard połączony” z kropką, nazwa urządzenia w `title`;
+    (także katalog i ustawienia; melodia w ścieżkach oznaczona gwiazdką SVG), bez napisów wielkimi literami. Klawiatura z głębią (gradienty, „krawędź” klawisza), nad nią linia trafienia,
+    świecący klawisz w kolorze ręki z poświatą. Status: „Keyboard połączony” z kropką, nazwa urządzenia w `title`;
   - pasek odtwarzacza: pływająca „pigułka” `#transport` na dole prawej kolumny (`position:absolute` w `#right`): ⏮ Start/Pauza ⏭ ↺
     (same ikony, `playUI()` zmienia ikonę i `aria-label`) i przycisk **Opcje** (`#optsBtn`) z podsumowaniem słowami
     (`renderOpts()`: „Czekaj na mnie” / „W tempie 80%”, transpozycja, ikona głośnika, widok). Suwak `#pos` i krok są pod tytułem,
@@ -148,7 +153,7 @@ Zasady:
 Gotowe i działa:
 - 6 wbudowanych utworów: Wlazł kotek, Panie Janie, Mrugaj gwiazdko, Oda do radości, Dla Elizy (początek, obie ręce), Gama C-dur.
 - Utwory MIDI z Katalogu z wyborem ścieżek (rąk). Ręczne wgrywanie plików usunięte – wcześniej wgrane pliki dalej są w bibliotece („własny plik”).
-- Wygląd „Scena” (ciemny lakier pianina, czerwony = to, co zagrać). Osobny ekran biblioteki: „Graj dalej”, karty z miniaturą melodii
+- Wygląd „Scena” w palecie „Noc” (granat i indygo; prawa ręka pomarańczowa, lewa niebieska – w tym kolorze świeci to, co zagrać). Osobny ekran biblioteki: „Graj dalej”, karty z miniaturą melodii
   i poziomem, filtr poziomu, „Edytuj” do usuwania, jedna wyszukiwarka dla własnych utworów i katalogu.
 - Tryby „Czekaj na mnie” i „W tempie” (25–150%), transpozycja, dźwięk z iPada, przewijanie, statystyki trafień.
 - Brzmienie fortepianu z nagranych próbek (pobierane raz, zapisane na iPadzie); prosty dźwięk do wyboru w Ustawieniach.
@@ -226,6 +231,10 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
       bemole zamiast krzyżyków w tonacjach bemolowych, regulacja wysokości widoku / szybkości wodospadu.
 
 ## Dziennik zmian
+
+- 11.11.2026: paleta „Noc” zamiast czarnej (Łukasz: czerń „smutna”, lepszy granat z wariantu C): granatowe tło i panele, lawendowa biel;
+  to, co zagrać, świeci w kolorze ręki (prawa pomarańczowa, lewa niebieska) – klawisze, nuty na pięciolinii, paski wodospadu;
+  zamiast bordowego filcu jasna linia trafienia z poświatą; pomyłki różowo-czerwone; test kolorów rąk na klawiszach w `smoke_test.py`.
 
 - 11.11.2026: nowy wygląd „Scena”, etap 3 – osobny ekran biblioteki zamiast lewego panelu: „Graj dalej” (ostatni utwór i krok),
   siatka kart z miniaturą melodii, poziomem kreskami i źródłem, filtr poziomu zawsze widoczny, jedna wyszukiwarka (biblioteka + „Szukaj w katalogu”),

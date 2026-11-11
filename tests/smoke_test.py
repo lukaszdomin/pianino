@@ -192,8 +192,9 @@ COUNT_PX = """([r, g, b]) => {
     if (d[i + 3] > 200 && Math.abs(d[i] - r) < 12 && Math.abs(d[i + 1] - g) < 12 && Math.abs(d[i + 2] - b) < 12) n++;
   return n;
 }"""
-# LED – aktualna nuta (czerwona jak diody), MISS – pomyłka (bursztynowa), CREAM / SKY – prawa / lewa ręka w wodospadzie
-LED, MISS, CREAM, SKY = [255, 77, 61], [245, 165, 36], [242, 215, 160], [143, 176, 255]
+# paleta „Noc”: RIGHT / LEFT – prawa (pomarańczowa) / lewa (niebieska) ręka, NOW_R – aktualny pasek prawej ręki w wodospadzie,
+# MISS – pomyłka (różowo-czerwona)
+RIGHT, LEFT, NOW_R, MISS = [255, 159, 28], [79, 163, 255], [255, 190, 92], [255, 92, 122]
 
 
 async def opt(page, selector):
@@ -260,11 +261,11 @@ async def view_tests(page, check):
     check(await page.evaluate("S.view") == 'staff' and await page.is_visible('#viewCv'), 'domyślnie widać pięciolinię')
     check(await page.evaluate("document.querySelector('#viewCv').width > 0"), 'pięciolinia ma rozmiar')
     await page.wait_for_timeout(300)
-    check(await px(LED) > 30, 'pięciolinia: aktualna nuta na czerwono (jak diody)')
-    check(await px(MISS) > 30, 'pięciolinia: pomyłka (trzymany klawisz) na bursztynowo')
+    check(await px(RIGHT) > 30, 'pięciolinia: aktualna nuta w kolorze prawej ręki (pomarańczowa)')
+    check(await px(MISS) > 30, 'pięciolinia: pomyłka (trzymany klawisz) różowo-czerwona')
     await page.evaluate('__in.fire([0x80,61,0])')
     await page.wait_for_timeout(100)
-    check(await px(MISS) == 0, 'po puszczeniu klawisza bursztynowa nuta znika')
+    check(await px(MISS) == 0, 'po puszczeniu klawisza nuta pomyłki znika')
     st = await page.evaluate('steps[stepIdx].notes')
     pos_before = await page.evaluate('vw.pos')
     for n in st:
@@ -276,8 +277,8 @@ async def view_tests(page, check):
     await page.wait_for_timeout(200)
     check(await page.evaluate("JSON.parse(localStorage.getItem('sk_settings')).view") == 'fall', 'wybór widoku zapamiętany')
     check(await page.evaluate("document.querySelector('#view').className") == 'fall', 'wodospad włączony')
-    check(await px(LED) > 30, 'wodospad: nuta do zagrania przy klawiaturze na czerwono')
-    check(await px(CREAM) > 30 and await px(SKY) == 0, 'wodospad: melodia (prawa ręka) kremowa, bez lewej ręki')
+    check(await px(NOW_R) > 30, 'wodospad: nuta do zagrania przy klawiaturze (jaśniejsza, z poświatą)')
+    check(await px(RIGHT) > 30 and await px(LEFT) == 0, 'wodospad: melodia (prawa ręka) pomarańczowa, bez lewej ręki')
     lay = await page.evaluate("""() => { const t = document.querySelector('#transport'), v = document.querySelector('#view').getBoundingClientRect(),
         k = document.querySelector('#kbd').getBoundingClientRect();
         return {inView: t.parentNode.id === 'view', top: t.getBoundingClientRect().top - v.top, full: v.width >= innerWidth - 1,
@@ -288,7 +289,7 @@ async def view_tests(page, check):
     n0 = (await page.evaluate('steps[stepIdx].notes'))[0]
     check(await page.evaluate(f"""(() => {{ const g = kGeom.get({n0}), cv = document.querySelector('#viewCv');
         const x = Math.round((g.l + g.w / 2) * cv.width), d = cv.getContext('2d').getImageData(x, cv.height - 12, 1, 1).data;
-        return d[0] > 230 && d[1] < 130 && d[2] < 110; }})()"""), 'wodospad: pasek stoi nad właściwym klawiszem')
+        return d[0] > 240 && d[1] > 165 && d[1] < 215 && d[2] < 140; }})()"""), 'wodospad: pasek stoi nad właściwym klawiszem')
     await page.evaluate('__in.fire([0x90,37,90])')
     await page.wait_for_timeout(50)
     check(await px(MISS) > 10, 'wodospad: pomyłka zaznaczona na dole toru')
@@ -435,6 +436,9 @@ async def main():
         # Cały utwór na dwie ręce (akordy)
         await page.click('text=Gama C-dur (obie ręce)')
         await page.click('#playBtn')
+        keys = await page.evaluate("""() => ({lh: [...document.querySelectorAll('.key.lit.lh')].map(e => +e.dataset.n),
+            rh: [...document.querySelectorAll('.key.lit:not(.lh)')].map(e => +e.dataset.n), felt: document.querySelectorAll('#felt i.lh').length})""")
+        check(keys['lh'] == [48] and keys['rh'] == [60] and keys['felt'] == 1, 'klawisze świecą w kolorach rąk (C3 lewa, C4 prawa) ' + str(keys))
         for _ in range(20):
             st = await page.evaluate('steps[stepIdx] ? steps[stepIdx].notes : null')
             if not st:

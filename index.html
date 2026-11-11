@@ -9,9 +9,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#16131a;--panel:#1e1a23;--panel2:#2a2430;--line:#3a3342;--text:#f2ede3;--muted:#a79fb0;--accent:#f2ede3;--ok:#5fd39a;--bad:#e5484d;--blue:#8fb0ff;
-  --led:#ff4d3d;--miss:#f5a524;--felt:#8e1f2a;--ui:"Atkinson Hyperlegible",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;--disp:"Bricolage Grotesque",var(--ui)}
-/* zasada kolorów: czerwony (--led) = tylko to, co trzeba zagrać teraz – jak diody w keyboardzie; pomyłki na bursztynowo (--miss) */
+:root{--bg:#0f1131;--panel:#15183f;--panel2:#1e2252;--line:#2e3370;--text:#eeedff;--muted:#9c9ed0;--accent:#eeedff;--ok:#3dd68c;--bad:#ff5c7a;--blue:#b07cff;
+  --right:#ff9f1c;--left:#4fa3ff;--miss:#ff5c7a;--ui:"Atkinson Hyperlegible",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;--disp:"Bricolage Grotesque",var(--ui)}
+/* paleta „Noc” (granat i indygo, z wariantu C): kolory rąk – prawa pomarańczowa (--right), lewa niebieska (--left);
+   w kolorze ręki świeci wszystko, co trzeba zagrać teraz (klawisz, nuta, pasek); pomyłki różowo-czerwone (--miss), wciśnięte bez nuty fioletowe (--blue) */
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--ui);-webkit-user-select:none;user-select:none}
 body{display:flex;flex-direction:column;overflow:hidden}
@@ -28,28 +29,28 @@ header h1{font-family:var(--disp);font-size:20px;margin:0;font-weight:700;letter
 #status{margin-left:auto;font-size:14px;height:40px;display:flex;align-items:center;gap:8px;padding:0 14px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45vw}
 #status::before{content:"";width:8px;height:8px;border-radius:50%;flex:none;background:var(--muted)}
 #status.ok::before{background:var(--ok)} #status.err{color:var(--bad)} #status.err::before{background:var(--bad)}
-button.iconbtn{width:44px;height:44px;padding:0;display:flex;align-items:center;justify-content:center;background:none;color:#c9c1d2;border-radius:12px}
+button.iconbtn{width:44px;height:44px;padding:0;display:flex;align-items:center;justify-content:center;background:none;color:#c4c6ee;border-radius:12px}
 #main{flex:1;display:flex;min-height:0}
 /* dwa ekrany: biblioteka (body.home) i granie */
 body.home #main,body.home #view,body.home #kbd{display:none}
 body:not(.home) #home{display:none}
 body.home .backbtn,body.home header .ptop{display:none}
 body:not(.home) .brand,body:not(.home) .hsearch{display:none}
-.backbtn{height:44px;flex:none;display:flex;align-items:center;gap:4px;padding:0 14px 0 6px;background:none;border:none;color:#c9c1d2;font-size:16px}
+.backbtn{height:44px;flex:none;display:flex;align-items:center;gap:4px;padding:0 14px 0 6px;background:none;border:none;color:#c4c6ee;font-size:16px}
 header .ptop{flex:1;min-width:0}
 .hsearch{flex:1;max-width:520px;margin:0 auto;height:46px;display:flex;align-items:center;gap:10px;padding:0 16px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;color:var(--muted)}
 #libQ{flex:1;min-width:0;height:100%;background:none;border:none;outline:none;font-size:16px;color:var(--text);-webkit-user-select:text;user-select:text;-webkit-appearance:none;padding:0}
-#libQ::placeholder{color:#8f879a}
+#libQ::placeholder{color:#8587bd}
 /* biblioteka */
 #home{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .homein{max-width:1240px;margin:0 auto;padding:18px 24px 40px}
 #resume{display:flex;height:168px;background:var(--panel2);border:1px solid var(--line);border-radius:20px;overflow:hidden}
 #resume[hidden]{display:none}
-#resume .rroll{width:40%;max-width:440px;flex:none;box-sizing:border-box;padding:28px;background:#1b1720;border-right:1px solid var(--line)}
+#resume .rroll{width:40%;max-width:440px;flex:none;box-sizing:border-box;padding:28px;background:#121436;border-right:1px solid var(--line)}
 #resume .rtxt{flex:1;min-width:0;padding:22px 26px;display:flex;flex-direction:column}
 #resume small{font-size:14px;color:var(--muted)}
 #resume h2{margin:4px 0 0;font-family:var(--disp);font-size:32px;line-height:1.15;letter-spacing:-.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#resume .ra{font-size:16px;color:#c9c1d2;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#resume .ra{font-size:16px;color:#c4c6ee;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #resume .rbot{margin-top:auto;display:flex;align-items:center;gap:18px}
 #resume .rprog{flex:1;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
 #resume .rbar{height:4px;border-radius:2px;background:var(--line)} #resume .rbar i{display:block;height:4px;border-radius:2px;background:var(--text)}
@@ -58,7 +59,7 @@ header .ptop{flex:1;min-width:0}
 #resume[hidden]+.libbar{margin-top:6px}
 #libHead{margin:0 10px 0 0;font-family:var(--disp);font-size:22px;font-weight:700;letter-spacing:-.3px}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
-.chips button{height:40px;padding:0 16px;border-radius:999px;background:none;color:#c9c1d2;font-size:15px}
+.chips button{height:40px;padding:0 16px;border-radius:999px;background:none;color:#c4c6ee;font-size:15px}
 .chips button.on{background:var(--text);border-color:var(--text);color:var(--bg);font-weight:700}
 #libEdit{height:40px;border-radius:999px;background:none;margin-left:auto}
 #libEdit.on{background:var(--text);border-color:var(--text);color:var(--bg);font-weight:700}
@@ -66,20 +67,20 @@ header .ptop{flex:1;min-width:0}
 #libEdit[hidden]+.catbtn{margin-left:auto}
 #lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
 .song{position:relative;display:flex;flex-direction:column;min-height:206px;background:var(--panel2);border:1px solid var(--line);border-radius:16px;overflow:hidden;cursor:pointer;text-align:left}
-.song.on{border-color:#7a6e85}
-.song .roll{height:92px;flex:none;box-sizing:border-box;padding:16px;background:#1b1720;border-bottom:1px solid var(--line)}
+.song.on{border-color:#5d63b0}
+.song .roll{height:92px;flex:none;box-sizing:border-box;padding:16px;background:#121436;border-bottom:1px solid var(--line)}
 .roll svg{display:block;width:100%;height:100%}
 .song .t{flex:1;min-width:0;display:flex;flex-direction:column;padding:12px 14px}
 .song .tt{font-size:16px;font-weight:700;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .song .sub{flex:1;display:flex;flex-direction:column;gap:6px;margin-top:2px;font-size:14px;color:var(--muted)}
 .song .art{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.song .meta{margin-top:auto;display:flex;align-items:flex-end;gap:8px;font-size:13px;color:#c9c1d2}
-.song .lvl{border:none;padding:0;margin:0;font-size:13px;color:#c9c1d2;border-radius:0}
-.song .src{margin-left:auto;color:#8f879a;white-space:nowrap}
-.song .lvl.l1,.song .lvl.l2,.song .lvl.l3{color:#c9c1d2}  /* poziom pokazują kreski; czerwony zostaje dla nut do zagrania */
+.song .meta{margin-top:auto;display:flex;align-items:flex-end;gap:8px;font-size:13px;color:#c4c6ee}
+.song .lvl{border:none;padding:0;margin:0;font-size:13px;color:#c4c6ee;border-radius:0}
+.song .src{margin-left:auto;color:#8587bd;white-space:nowrap}
+.song .lvl.l1,.song .lvl.l2,.song .lvl.l3{color:#c4c6ee}  /* poziom pokazują kreski; czerwony zostaje dla nut do zagrania */
 #libQ::-webkit-search-cancel-button,#catQ::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
 .bars{display:inline-flex;align-items:flex-end;gap:2px;height:14px;flex:none}
-.bars i{width:4px;border-radius:1px;background:#4a4252}
+.bars i{width:4px;border-radius:1px;background:#343a7a}
 .bars i:nth-child(1){height:6px} .bars i:nth-child(2){height:10px} .bars i:nth-child(3){height:14px}
 .bars i.on{background:var(--text)}
 .song .del{position:absolute;top:8px;right:8px;z-index:2;background:#3a1719;border:1px solid var(--bad);color:#ff8f92;padding:7px 12px;font-size:14px;border-radius:999px;white-space:nowrap}
@@ -134,30 +135,32 @@ input[type=range]{accent-color:var(--accent)}
 #now{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding:18px 2px}
 body.withView #now{display:none}
 #now .lab{color:var(--muted);font-size:16px}
-#nowNotes{font-size:72px;font-weight:700;line-height:1;color:var(--led);min-width:60px}
+#nowNotes{font-size:72px;font-weight:700;line-height:1;color:var(--right);min-width:60px}
 #nextNotes{font-size:28px;color:var(--muted)}
 #stats{display:flex;gap:16px;font-size:14px;color:var(--muted);white-space:nowrap}
 #stats b{color:var(--text)}
 .shake{animation:shake .25s}
 @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
-#kbd{position:relative;height:27vh;min-height:140px;background:#0c0a0e;border-top:7px solid var(--felt);touch-action:none}
+#kbd{position:relative;height:27vh;min-height:140px;background:#070818;touch-action:none}
 .key{position:absolute;top:0;display:flex;align-items:flex-end;justify-content:center;font-size:11px;font-weight:700;padding-bottom:12px;box-sizing:border-box}
-.key.white{height:calc(100% - 4px);background:linear-gradient(180deg,#e9e3d7 0%,#f6f2ea 55%,#efe9de 100%);border-right:2px solid #0c0a0e;border-radius:0 0 6px 6px;color:#8a8274;z-index:1;box-shadow:inset 0 -7px 0 #d8d0c1}
-.key.black{height:60%;background:linear-gradient(180deg,#0e0c11 0%,#2c2732 85%,#1a171e 100%);border-radius:0 0 4px 4px;color:#c9c1d2;z-index:4;box-shadow:inset 0 -5px 0 #3b3542,0 3px 4px rgba(0,0,0,.5);padding-bottom:9px}
-.key.white.next{box-shadow:inset 0 -7px 0 #d8d0c1,inset 0 0 0 3px rgba(255,77,61,.6)}
-.key.black.next{box-shadow:inset 0 0 0 2px rgba(255,77,61,.75)}
-.key.lit{background:linear-gradient(180deg,#ffb3a8 0%,var(--led) 70%)!important;color:#3a0a06;font-size:16px;box-shadow:0 0 18px 1px rgba(255,77,61,.45),inset 0 -7px 0 rgba(0,0,0,.18)!important}
+.key.white{height:calc(100% - 4px);background:linear-gradient(180deg,#dcddf0 0%,#ffffff 55%,#f4f4fc 100%);border-right:2px solid #070818;border-radius:0 0 6px 6px;color:#7c7fa8;z-index:1;box-shadow:inset 0 -7px 0 #c9cae0}
+.key.black{height:60%;background:linear-gradient(180deg,#05061a 0%,#22264f 85%,#141738 100%);border-radius:0 0 4px 4px;color:#c4c6ee;z-index:4;box-shadow:inset 0 -5px 0 #2e3368,0 3px 4px rgba(0,0,0,.5);padding-bottom:9px}
+.key.white.next{box-shadow:inset 0 -7px 0 #c9cae0,inset 0 0 0 3px rgba(255,159,28,.6)}
+.key.black.next{box-shadow:inset 0 0 0 2px rgba(255,159,28,.8)}
+.key.lit{background:linear-gradient(180deg,#ffd59a 0%,var(--right) 70%)!important;color:#0f1131;font-size:16px;box-shadow:0 -6px 22px 2px rgba(255,159,28,.5),inset 0 -7px 0 rgba(0,0,0,.18)!important}
+.key.lit.lh{background:linear-gradient(180deg,#bfe0ff 0%,var(--left) 70%)!important;box-shadow:0 -6px 22px 2px rgba(79,163,255,.5),inset 0 -7px 0 rgba(0,0,0,.18)!important}
 .key.white.lit{z-index:3}
-.key.hitk{background:linear-gradient(180deg,#d5f5e4 0%,#9fe6c0 100%)!important;color:#0d2a1b;box-shadow:inset 0 -7px 0 rgba(0,0,0,.12)!important}
-.key.held{background:var(--blue)!important;color:#16131a}
+.key.hitk{background:linear-gradient(180deg,#b5f2d3 0%,#7ee3b1 100%)!important;color:#0d2a1b;box-shadow:inset 0 -7px 0 rgba(0,0,0,.12)!important}
+.key.held{background:var(--blue)!important;color:#0f1131}
 .key.good{background:var(--ok)!important;color:#0d2a1b}
-.key.bad{background:var(--miss)!important;color:#2a1a00}
+.key.bad{background:var(--miss)!important;color:#3a0014}
 #view{position:relative;height:24vh;min-height:120px}
 #view.staff{background:var(--bg)} #view.fall{background:var(--bg)}
-/* świecący filc nad zapalonymi klawiszami (linia trafienia) */
-#felt{position:absolute;left:0;right:0;top:-7px;height:7px;pointer-events:none;z-index:6}
-#felt i{position:absolute;top:0;bottom:0;margin:0 -7px;border-radius:3px;background:var(--led);box-shadow:0 0 22px 5px rgba(255,77,61,.8)}
-#felt i.ok{background:var(--ok);box-shadow:0 0 16px 3px rgba(95,211,154,.7)}
+/* linia trafienia nad klawiaturą: jasna, z poświatą; nad zapalonymi klawiszami świeci w kolorze ręki */
+#felt{position:absolute;left:0;right:0;top:-3px;height:3px;pointer-events:none;z-index:6;background:var(--text);box-shadow:0 0 16px 2px rgba(238,237,255,.45)}
+#felt i{position:absolute;top:-1px;bottom:-1px;margin:0 -6px;border-radius:3px;background:var(--right);box-shadow:0 0 20px 5px rgba(255,159,28,.8)}
+#felt i.lh{background:var(--left);box-shadow:0 0 20px 5px rgba(79,163,255,.8)}
+#felt i.ok{background:var(--ok);box-shadow:0 0 16px 3px rgba(61,214,140,.7)}
 /* wodospad: na całą wysokość nad klawiaturą; lista utworów jako wysuwany panel; odtwarzacz u góry wodospadu */
 body.fall #main{flex:none}
 body.fall #player{padding-bottom:10px}
@@ -180,14 +183,14 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
 .field{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:8px 0;font-size:15px}
 .field select{max-width:230px}
 .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.help{font-size:14px;line-height:1.5;color:#cfd3dc}
+.help{font-size:14px;line-height:1.5;color:#c4c6ee}
 .help ol{padding-left:20px;margin:6px 0}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:30}
 .overlay.open{display:flex}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 30px;text-align:center;min-width:300px}
 .card h2{margin:0 0 6px;font-size:28px;font-family:var(--disp)}
 .card p{color:var(--muted);margin:6px 0 18px;font-size:16px}
-.catbtn{display:flex;align-items:center;gap:8px;height:44px;padding:0 16px;border-radius:999px;background:none;border-color:#5a5063;color:var(--text);font-size:15px;font-weight:700}
+.catbtn{display:flex;align-items:center;gap:8px;height:44px;padding:0 16px;border-radius:999px;background:none;border-color:#3f4590;color:var(--text);font-size:15px;font-weight:700}
 #catalog{position:fixed;inset:3vh 3vw;background:var(--panel);border:1px solid var(--line);border-radius:18px;z-index:25;display:none;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px #000a}
 #catalog.open{display:flex}
 #catalog .top{padding:16px 18px 10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
@@ -198,7 +201,7 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
 #catSugg .sgroup{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 #catSugg .lbl{font-size:12px;color:var(--muted);min-width:118px}
 #catList{flex:1;overflow-y:auto;padding:8px 12px 12px;-webkit-overflow-scrolling:touch}
-.cat{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;border-bottom:1px solid #262a35}
+.cat{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;border-bottom:1px solid #262a5e}
 .cat .t{flex:1;min-width:0}
 .cat .t b{display:block;font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cat .t small{color:var(--muted);font-size:12px}
@@ -216,7 +219,7 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
 .song .lvl{margin:0;font-size:10px;padding:0 6px}
 .song .src{font-size:11px}
 #catLvlSeg button{padding:7px 11px}
-#toast{position:fixed;left:50%;top:68px;transform:translateX(-50%);background:#000c;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:40;max-width:80vw;text-align:center}
+#toast{position:fixed;left:50%;top:68px;transform:translateX(-50%);background:rgba(7,8,24,.94);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.4);padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:40;max-width:80vw;text-align:center}
 @media (max-width:760px){#nowNotes{font-size:48px}}
 </style>
 </head>
@@ -267,7 +270,7 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
     <button id="nextBtn" aria-label="Dalej" title="Dalej"><svg class="ico" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5v14M5 5l9 7-9 7z"/></svg></button>
     <button id="restartBtn" aria-label="Od początku" title="Od początku"><svg class="ico" aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.5-5.8M4 4v5h5"/></svg></button>
     <span class="sep"></span>
-    <button id="optsBtn" type="button" aria-expanded="false" aria-label="Opcje"><span id="optsSum"></span><svg class="ico" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a79fb0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
+    <button id="optsBtn" type="button" aria-expanded="false" aria-label="Opcje"><span id="optsSum"></span><svg class="ico" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9c9ed0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
   </div>
   <div id="view" class="staff"><canvas id="viewCv"></canvas></div>
   </div>
@@ -314,7 +317,7 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
   <p class="hint" style="margin:8px 0">Dotyczy odsłuchu w Katalogu i opcji „Dźwięk z iPada”. Próbki fortepianu pobierają się raz (2,6 MB) i zostają na iPadzie.
     Źródło: FluidR3 GM (Frank Wen, licencja CC-BY 3.0) z paczki midi-js-soundfonts (Benjamin Gleitzman).</p>
   <h4>Dziennik</h4>
-  <textarea id="logBox" readonly style="width:100%;height:180px;background:#0d0f14;color:#b9c0cf;border:1px solid var(--line);border-radius:8px;font:11px/1.4 ui-monospace,Menlo,monospace;padding:8px;-webkit-user-select:text;user-select:text"></textarea>
+  <textarea id="logBox" readonly style="width:100%;height:180px;background:#0a0c26;color:#b0b3e0;border:1px solid var(--line);border-radius:8px;font:11px/1.4 ui-monospace,Menlo,monospace;padding:8px;-webkit-user-select:text;user-select:text"></textarea>
   <div class="btns">
     <button id="copyLogBtn" class="primary">Kopiuj dziennik</button>
     <button id="clearLogBtn">Wyczyść</button>
@@ -796,7 +799,7 @@ function allOff() {
   if (access && access.sysexEnabled) sendRaw([0xF0, 0x00, 0x20, 0x2B, 0x69, 0x16, 0x02, 0x00, 0xF7]);
   for (let n = S.low; n <= high(); n++) light(n, 0);
 }
-let lit = new Set(), litTok = 0;
+let lit = new Set(), litTok = 0, litHand = new Map();  // litHand: nuta → 'L'/'R' (kolor świecenia na ekranie)
 function setLit(ns, blinkRepeats) {
   const tok = ++litTok, rep = [];
   for (const n of lit) if (!ns.has(n)) light(n, 0);
@@ -1031,8 +1034,8 @@ function prepare() {
   steps = [];
   for (const n of ns) {
     const L = steps[steps.length - 1];
-    if (L && n.start - L.time < 0.045) { if (!L.notes.includes(n.m)) L.notes.push(n.m); }
-    else steps.push({time: n.start, notes: [n.m]});
+    if (L && n.start - L.time < 0.045) { if (!L.notes.includes(n.m)) L.notes.push(n.m); L.hands[n.m] = L.hands[n.m] === 'R' ? 'R' : n.h; }
+    else steps.push({time: n.start, notes: [n.m], hands: {[n.m]: n.h}});
   }
   lastEnd = ns.reduce((m, n) => Math.max(m, n.end), 0);
   reset();
@@ -1063,13 +1066,13 @@ function seekAudio(t) { audioIdx = ns.findIndex(n => n.start >= t); if (audioIdx
 function showStep(blink) {
   const st = steps[stepIdx];
   if (!st) { finish(); return; }
-  hit = new Set(); setLit(new Set(st.notes), blink); refreshView();
+  hit = new Set(); litHand = new Map(st.notes.map(m => [m, st.hands[m] || 'R'])); setLit(new Set(st.notes), blink); refreshView();
 }
 function loop() {
   if (!playing) return;
-  const t = curT(), tl = t + LEAD, a = new Set();
-  for (const n of ns) { if (n.start > tl) break; if (tl < n.end) a.add(n.m); }
-  if (!sameSet(a, lit)) setLit(a, false);
+  const t = curT(), tl = t + LEAD, a = new Set(), ah = new Map();
+  for (const n of ns) { if (n.start > tl) break; if (tl < n.end) { a.add(n.m); if (ah.get(n.m) !== 'R') ah.set(n.m, n.h); } }
+  if (!sameSet(a, lit)) { litHand = ah; setLit(a, false); }
   while (audioIdx < ns.length && ns[audioIdx].start <= t) {
     const n = ns[audioIdx++];
     if (S.sound) tone(n.m, (n.end - n.start) / (S.speed / 100));
@@ -1173,6 +1176,7 @@ function renderKeys() {
   for (const [n, el] of keyEls) {
     const L = lit.has(n), N = next.has(n) && !L;
     el.classList.toggle('lit', L);
+    el.classList.toggle('lh', L && litHand.get(n) === 'L');
     el.classList.toggle('next', N);
     el.classList.toggle('hitk', L && hit.has(n) && S.mode === 'wait');
     el.classList.toggle('held', held.has(n));
@@ -1183,8 +1187,8 @@ function renderKeys() {
   const felt = $('#felt');
   if (felt) {
     const html = [...lit].filter(n => kGeom.has(n)).sort((a, b) => a - b).map(n => {
-      const g = kGeom.get(n), ok = hit.has(n) && S.mode === 'wait';
-      return `<i${ok ? ' class="ok"' : ''} style="left:${g.l * 100}%;width:${g.w * 100}%"></i>`;
+      const g = kGeom.get(n), ok = hit.has(n) && S.mode === 'wait', cls = ok ? 'ok' : litHand.get(n) === 'L' ? 'lh' : '';
+      return `<i${cls ? ' class="' + cls + '"' : ''} style="left:${g.l * 100}%;width:${g.w * 100}%"></i>`;
     }).join('');
     if (felt.innerHTML !== html) felt.innerHTML = html;
   }
@@ -1206,9 +1210,9 @@ function flash(n, cls) {
 const VIEW_SECS = 3;                 // wodospad: tyle sekund widać nad klawiaturą (przy tempie 100%)
 const DIA = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];  // nuta → numer litery (C=0 … H=6); czarne klawisze jako krzyżyki
 const dia = m => ({d: (Math.floor(m / 12) - 1) * 7 + DIA[pc(m)], sharp: isBlack(m)});
-const VC = {ink: '#f2ede3', line: 'rgba(242,237,227,.32)', past: 'rgba(242,237,227,.3)', now: '#ff4d3d', ok: '#5fd39a', bad: '#f5a524', held: '#8fb0ff'};
-/* wodospad: lewa ręka jasnoniebieska, prawa kremowa (ciemniejsze odcienie na czarnych klawiszach), aktualne czerwone jak diody */
-const FC = {L: '#8fb0ff', Lb: '#6f8fe0', R: '#f2d7a0', Rb: '#d4b67c', now: '#ff4d3d', ok: '#5fd39a', bad: '#f5a524', held: '#8fb0ff'};
+const VC = {ink: '#eeedff', line: 'rgba(238,237,255,.32)', past: 'rgba(238,237,255,.3)', R: '#ff9f1c', L: '#4fa3ff', ok: '#3dd68c', bad: '#ff5c7a', held: '#b07cff'};
+/* wodospad: lewa ręka niebieska, prawa pomarańczowa (ciemniejsze odcienie na czarnych klawiszach), aktualne jaśniejsze, z poświatą i obwódką */
+const FC = {L: '#4fa3ff', Lb: '#3384e0', R: '#ff9f1c', Rb: '#e0850a', nowL: '#8cc4ff', nowR: '#ffbe5c', ok: '#3dd68c', bad: '#ff5c7a', held: '#b07cff'};
 const VIEW_FONT = '"Atkinson Hyperlegible",-apple-system,sans-serif';
 const STAFF_TOP = 60, STAFF_BOT = 86;  // miejsce na dużą nazwę nuty u góry i pływający odtwarzacz u dołu
 const vw = {pos: null, kind: '', raf: 0, ref: null, dmin: 0, dmax: 0, clef: null};
@@ -1306,8 +1310,8 @@ function drawStaff({c, w, h}, pos) {
   // pięciolinie i klamra
   c.strokeStyle = VC.line; c.lineWidth = 1.5;
   for (const d of [18, 20, 22, 24, 26, 30, 32, 34, 36, 38]) { const y = Math.round(yOf(d)) + 0.5; c.beginPath(); c.moveTo(14, y); c.lineTo(w, y); c.stroke(); }
-  c.strokeStyle = 'rgba(242,237,227,.5)'; c.lineWidth = 3; c.beginPath(); c.moveTo(15, yOf(38)); c.lineTo(15, yOf(18)); c.stroke();
-  c.fillStyle = 'rgba(242,237,227,.75)'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.strokeStyle = 'rgba(238,237,255,.5)'; c.lineWidth = 3; c.beginPath(); c.moveTo(15, yOf(38)); c.lineTo(15, yOf(18)); c.stroke();
+  c.fillStyle = 'rgba(238,237,255,.75)'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
   const clx = clefW / 2 + 12;
   if (clefGlyphs(c)) {
     clef(c, '\u{1D11E}', clx, yOf(38) - half * 3, yOf(30) + half * 3.4);
@@ -1317,21 +1321,23 @@ function drawStaff({c, w, h}, pos) {
     c.fillText('F', clx, yOf(24) + half * 1.7);
   }
   if (!song) {
-    c.font = '16px ' + VIEW_FONT; c.fillStyle = '#a79fb0'; c.textAlign = 'left';
+    c.font = '16px ' + VIEW_FONT; c.fillStyle = '#9c9ed0'; c.textAlign = 'left';
     c.fillText('Wybierz utwór z listy – tu pojawią się nuty', cx - 20, yOf(28) + 5); return;
   }
 
   c.save(); c.beginPath(); c.rect(clefW + 6, 0, w, h); c.clip();
   // kolumna aktualnego kroku i duża nazwa nuty nad nią (czytelna z daleka)
   const colTop = Math.max(4, top - 54), colBot = Math.min(h - bot + 20, yOf(dBot) + half * 2);
-  c.fillStyle = 'rgba(255,77,61,.12)'; rrect(c, cx - colW / 2 - 4, colTop, colW + 8, colBot - colTop, (colW + 8) / 2); c.fill();
+  c.fillStyle = 'rgba(238,237,255,.07)'; rrect(c, cx - colW / 2 - 4, colTop, colW + 8, colBot - colTop, (colW + 8) / 2); c.fill();
   const curNotes = S.mode === 'wait' ? (steps[stepIdx] ? steps[stepIdx].notes : null) : (lit.size ? [...lit] : null);
+  // kolor ręki nuty w kroku i (prawa pomarańczowa, lewa niebieska)
+  const handCol = (i, m) => ((S.mode === 'wait' ? (steps[i] && steps[i].hands[m]) : litHand.get(m)) === 'L' ? VC.L : VC.R);
   const big = curNotes ? names(curNotes) : (S.mode === 'wait' && stepIdx >= steps.length ? '✓' : '');
   if (big) {
     let fs = h > 260 ? 44 : 30; c.font = 'bold ' + fs + 'px ' + VIEW_FONT;
     const mw = c.measureText(big).width, maxW = Math.max(colW + 8, (w - cx) * 1.6);
     if (mw > maxW) { fs = Math.max(16, fs * maxW / mw); c.font = 'bold ' + fs + 'px ' + VIEW_FONT; }
-    c.fillStyle = big === '✓' ? VC.ok : VC.now; c.textAlign = 'center'; c.textBaseline = 'top';
+    c.fillStyle = big === '✓' ? VC.ok : curNotes.some(m => handCol(stepIdx, m) === VC.R) ? VC.R : VC.L; c.textAlign = 'center'; c.textBaseline = 'top';
     c.fillText(big, cx, colTop + 10);
   }
   const first = Math.max(0, Math.floor(pos - (cx - clefW) / colW) - 1), last = Math.min(steps.length - 1, Math.ceil(pos + (w - cx) / colW) + 1);
@@ -1370,15 +1376,15 @@ function drawStaff({c, w, h}, pos) {
       let col = VC.ink, alpha = 1, glow = false;
       if (i < cur) alpha = 0.3;
       else if (i > cur) alpha = Math.max(0.42, 1 - (i - cur - 1) * 0.07);
-      else if (S.mode === 'wait') { col = hit.has(m) ? VC.ok : VC.now; glow = true; }
-      else if (lit.has(m)) { col = held.has(m) ? VC.ok : VC.now; glow = true; }
+      else if (S.mode === 'wait') { col = hit.has(m) ? VC.ok : handCol(i, m); glow = true; }
+      else if (lit.has(m)) { col = held.has(m) ? VC.ok : handCol(i, m); glow = true; }
       else alpha = 0.3;
       note(x + (shifted ? hx * 2 : 0), m, col, alpha, glow, false);
     }
   }
   // koniec utworu: podwójna kreska
   const ex = cx + (steps.length - pos) * colW;
-  if (ex < w) { c.fillStyle = 'rgba(242,237,227,.7)'; c.fillRect(ex, yOf(38), 1.5, yOf(18) - yOf(38)); c.fillRect(ex + 4, yOf(38), 4, yOf(18) - yOf(38)); }
+  if (ex < w) { c.fillStyle = 'rgba(238,237,255,.7)'; c.fillRect(ex, yOf(38), 1.5, yOf(18) - yOf(38)); c.fillRect(ex + 4, yOf(38), 4, yOf(18) - yOf(38)); }
   // wciśnięte klawisze, których teraz nie ma w nutach → bursztynowe główki przy kursorze
   for (const m of wrongHeld) if (held.has(m)) note(cx - hx * 2.6, m, VC.bad, 1, false, true);
   c.restore();
@@ -1389,11 +1395,11 @@ function drawFall({c, w, h}, tRef) {
   const yOf = t => h - (t - tRef) * pps;
   // tory: ciemniejsze pod czarnymi klawiszami, linia przy każdym C (i słabsza przy F)
   for (const [n, g] of kGeom) {
-    if (isBlack(n)) { c.fillStyle = '#121016'; c.fillRect(g.l * w, 0, g.w * w, h); }
-    else if (pc(n) === 0 || pc(n) === 5) { c.fillStyle = pc(n) === 0 ? '#2a2430' : '#1e1a23'; c.fillRect(Math.round(g.l * w), 0, 1, h); }
+    if (isBlack(n)) { c.fillStyle = '#0b0d28'; c.fillRect(g.l * w, 0, g.w * w, h); }
+    else if (pc(n) === 0 || pc(n) === 5) { c.fillStyle = pc(n) === 0 ? '#262a5e' : '#1a1d4a'; c.fillRect(Math.round(g.l * w), 0, 1, h); }
   }
   if (!song) {
-    c.font = '16px ' + VIEW_FONT; c.fillStyle = '#a79fb0'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = '16px ' + VIEW_FONT; c.fillStyle = '#9c9ed0'; c.textAlign = 'center'; c.textBaseline = 'middle';
     c.fillText('Wybierz utwór – nuty będą spadać na klawisze', w / 2, h / 2); return;
   }
   const exp = expected(), curStep = S.mode === 'wait' ? steps[stepIdx] : null;
@@ -1415,15 +1421,16 @@ function drawFall({c, w, h}, tRef) {
     const now = curStep ? Math.abs(n.start - curStep.time) < 0.045 : (n.start <= tRef && n.end > tRef && lit.has(n.m));
     if (now) { glowing.push([n, x, bw, yBot, bh]); continue; }  // aktualne rysujemy na końcu, z poświatą
     const blk = isBlack(n.m);
-    bar(n, x, bw, yBot, bh, n.h === 'L' ? (blk ? FC.Lb : FC.L) : (blk ? FC.Rb : FC.R), '#16131a');
+    bar(n, x, bw, yBot, bh, n.h === 'L' ? (blk ? FC.Lb : FC.L) : (blk ? FC.Rb : FC.R), '#0f1131');
   }
   for (const [n, x, bw, yBot, bh] of glowing) {
-    const done = S.mode === 'wait' ? hit.has(n.m) : held.has(n.m), col = done ? FC.ok : FC.now;
-    c.save(); c.shadowColor = col; c.shadowBlur = 22; bar(n, x, bw, yBot, bh, col, done ? '#0d2a1b' : '#3a0a06'); c.restore();
+    const done = S.mode === 'wait' ? hit.has(n.m) : held.has(n.m), col = done ? FC.ok : n.h === 'L' ? FC.nowL : FC.nowR;
+    c.save(); c.shadowColor = col; c.shadowBlur = 24; bar(n, x, bw, yBot, bh, col, done ? '#0d2a1b' : '#0f1131'); c.restore();
+    c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 1.5; rrect(c, x, yBot - bh, bw, bh, Math.min(7, bw / 3)); c.stroke();
   }
   // nuty wyłaniają się z ciemności u góry (tam wisi odtwarzacz)
   const fade = Math.min(110, h * 0.25), gr = c.createLinearGradient(0, 0, 0, fade);
-  gr.addColorStop(0, 'rgba(22,19,26,1)'); gr.addColorStop(1, 'rgba(22,19,26,0)');
+  gr.addColorStop(0, 'rgba(15,17,49,1)'); gr.addColorStop(1, 'rgba(15,17,49,0)');
   c.fillStyle = gr; c.fillRect(0, 0, w, fade);
   // wciśnięte klawisze: zielony (dobrze) / bursztynowy (źle) / niebieski (bez nuty) pasek na dole toru
   for (const m of held) {
@@ -1485,7 +1492,7 @@ function rollSvg(r, played) {
   if (!r || !r.length) return '';
   const lo = Math.min(...r), hi = Math.max(...r), span = Math.max(1, hi - lo), n = r.length, W = 100, H = 40, bh = 5;
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">` + r.map((m, i) =>
-    `<rect x="${(i * W / n + 0.4).toFixed(2)}" y="${((hi - m) / span * (H - bh)).toFixed(2)}" width="${Math.max(0.6, W / n - 1.2).toFixed(2)}" height="${bh}" rx="1.5" fill="#f2ede3" fill-opacity="${played === undefined ? 0.8 : i < played ? 1 : 0.32}"/>`).join('') + '</svg>';
+    `<rect x="${(i * W / n + 0.4).toFixed(2)}" y="${((hi - m) / span * (H - bh)).toFixed(2)}" width="${Math.max(0.6, W / n - 1.2).toFixed(2)}" height="${bh}" rx="1.5" fill="#eeedff" fill-opacity="${played === undefined ? 0.8 : i < played ? 1 : 0.32}"/>`).join('') + '</svg>';
 }
 const bars = l => `<span class="bars" aria-hidden="true"><i${l >= 1 ? ' class="on"' : ''}></i><i${l >= 2 ? ' class="on"' : ''}></i><i${l >= 3 ? ' class="on"' : ''}></i></span>`;
 BUILTIN.forEach(s => { s.roll = rollOf(s); });
