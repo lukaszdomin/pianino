@@ -60,7 +60,13 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     instrument (Lead/dęte +, bas/pady/smyczki/efekty −) i nazwa ścieżki (Melody/Vocal mocno, Lead/Solo słabiej, Bass/Pad/Chords −).
     Sprawdzone na plikach z Lakh: ABBA, Haddaway, Madonna, Toto, Darude, Daft Punk, Corona, 2 Unlimited, Eiffel 65. Nazwy instrumentów: tablica `GM`;
   - MIDI i światła: `initMidi()`, `refreshPorts()`, `portList()`, `light()`, `setLit()`, `allOff()`;
-  - odtwarzacz: `prepare()` buduje `ns` (nuty) i `steps` (grupy nut), tryby `wait` i `tempo`;
+  - odtwarzacz: `prepare()` buduje `ns` (nuty, z siłą uderzenia `v` z pliku) i `steps` (grupy nut), tryby `wait`, `tempo` i `demo`
+    (`timed()` = tryb z zegarem: `tempo` i `demo`);
+  - **tryb „Pokaz”** (`S.mode = 'demo'`, 11.11.2026): aplikacja sama gra wybrane ścieżki – `loop()` wysyła do keyboardu zwykłe
+    Note On / Note Off na kanale 1 (`demoNote()`, `demoOffs()`, brzmiące nuty w `demoOn`), więc gra on swoimi głośnikami;
+    światła bez wyprzedzenia `LEAD` (razem z dźwiękiem), klawisze na ekranie wciśnięte (`.key.lit.press`), trafień nie liczymy,
+    bez statystyk i okna wyniku. Pauza, przewijanie, koniec i wyjście → `demoSilence()` (Note Off + All Notes Off `B0 7B 00`).
+    Bez keyboardu gra iPad (`tone()`). Wybór „Pokaz” w menu Opcje przełącza widok na wodospad. Tempo działa jak w „W tempie”;
   - katalog utworów z internetu: obiekt `cat`, `catSearch()`, `catCommons()`, `catBitmidi()`, `catLakh()`, `catBillboard()`, `catDownload()`, `renderCatalog()`;
     spisy trzymane u nas (Lakh, Billboard) przeszukuje wspólne `idxFind()` (Billboard: przy równym dopasowaniu najnowsze najpierw);
     kolejność źródeł w „Wszystkie” = kolejność kluczy `CAT_FN` (Billboard pierwszy); przy wynikach Billboard „hit 2017 · sama melodia”;
@@ -158,7 +164,7 @@ Gotowe i działa:
 - Utwory MIDI z Katalogu z wyborem ścieżek (rąk). Ręczne wgrywanie plików usunięte – wcześniej wgrane pliki dalej są w bibliotece („własny plik”).
 - Wygląd „Scena” w palecie „Noc” (granat i indygo; prawa ręka pomarańczowa, lewa niebieska – w tym kolorze świeci to, co zagrać). Osobny ekran biblioteki: „Graj dalej”, karty z miniaturą melodii
   i poziomem, filtr poziomu, „Edytuj” do usuwania, jedna wyszukiwarka dla własnych utworów i katalogu.
-- Tryby „Czekaj na mnie” i „W tempie” (25–150%), transpozycja, dźwięk z iPada, przewijanie, statystyki trafień.
+- Tryby „Czekaj na mnie”, „W tempie” (25–150%) i **„Pokaz”** (aplikacja sama gra utwór na keyboardzie, klawisze się wciskają, wodospad), transpozycja, dźwięk z iPada, przewijanie, statystyki trafień.
 - Brzmienie fortepianu z nagranych próbek (pobierane raz, zapisane na iPadzie); prosty dźwięk do wyboru w Ustawieniach.
 - Klawiatura na ekranie, test świateł, przesunięcie świateł, diagnostyka i dziennik.
 - Pływający odtwarzacz: Start/Pauza, cofnij/dalej, od początku; suwak kroków pod tytułem; reszta opcji w menu „Opcje”.
@@ -210,6 +216,11 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 ## Do zrobienia / pomysły
 
 (Łukasz decyduje o kolejności. Claude dopisuje tu pomysły, które padną w rozmowie.)
+- [ ] Sprawdzić „Pokaz” na iPadzie: czy keyboard gra nuty wysłane z iPada (ten sam test: Ustawienia → „Zagraj C na keyboardzie”),
+      czy nie ma opóźnień / zawieszonych nut przez Bluetooth, czy keyboard nie odsyła granych nut jako wciśniętych (fioletowe klawisze).
+      Jeśli keyboard nie gra – włączyć „Dźwięk z iPada”.
+- [ ] Pomysł do „Pokazu”: przycisk na karcie utworu w bibliotece („Posłuchaj na keyboardzie”), granie całej aranżacji
+      (wszystkie ścieżki) niezależnie od wybranych rąk, perkusja na kanale 10.
 - [ ] Sprawdzić etap 3 na iPadzie: przewijanie siatki palcem, „Graj dalej” po zamknięciu i ponownym otwarciu Web MIDI Browser,
       szukanie z klawiaturą ekranową (Enter → katalog), czas pierwszego otwarcia przy wielu pobranych utworach (miniatury `rollOldSongs()`).
 - [ ] Pomysł: katalog też jako pełny ekran w stylu biblioteki (teraz okno nad biblioteką), karty wyników z miniaturą po odsłuchu.
@@ -234,6 +245,10 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
       bemole zamiast krzyżyków w tonacjach bemolowych, regulacja wysokości widoku / szybkości wodospadu.
 
 ## Dziennik zmian
+
+- 11.11.2026: tryb **„Pokaz”** – aplikacja sama gra pobrany utwór na keyboardzie (Note On/Off, z siłą uderzenia z pliku),
+  świecą diody, klawisze na ekranie się wciskają, nuty spływają w wodospadzie; pauza wycisza keyboard; bez keyboardu gra iPad;
+  testy w `smoke_test.py` (`demo_tests`).
 
 - 11.11.2026: delikatne cienie w odcieniu granatu: karty, „Graj dalej”, nagłówek, przyciski, odtwarzacz, menu, okna, klawiatura
   (cień pod linią trafienia, czarne klawisze rzucają cień); karty lekko się wciskają po stuknięciu.

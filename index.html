@@ -161,6 +161,10 @@ body.withView #now{display:none}
 .key.white.lit{z-index:3}
 .key.hitk{background:linear-gradient(180deg,#b5f2d3 0%,#7ee3b1 100%)!important;color:#0d2a1b;box-shadow:inset 0 -7px 0 rgba(0,0,0,.12)!important}
 .key.held{background:var(--blue)!important;color:#0f1131}
+/* „Pokaz”: klawisz, który gra aplikacja, wciska się (niżej, bez krawędzi, cień w środku) */
+.key{transition:transform .06s}
+.key.lit.press{transform:translateY(3px);box-shadow:0 -6px 22px 2px rgba(255,159,28,.5),inset 0 -2px 0 rgba(0,0,0,.2),inset 0 10px 12px -6px rgba(15,17,49,.35)!important;background:linear-gradient(180deg,#ffc978 0%,var(--right) 60%)!important}
+.key.lit.lh.press{box-shadow:0 -6px 22px 2px rgba(79,163,255,.5),inset 0 -2px 0 rgba(0,0,0,.2),inset 0 10px 12px -6px rgba(15,17,49,.35)!important;background:linear-gradient(180deg,#a9d3ff 0%,var(--left) 60%)!important}
 .key.good{background:var(--ok)!important;color:#0d2a1b}
 .key.bad{background:var(--miss)!important;color:#3a0014}
 #view{position:relative;height:24vh;min-height:120px}
@@ -292,9 +296,10 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
     <div class="seg" id="modeSeg">
       <button data-mode="wait">Czekaj na mnie</button>
       <button data-mode="tempo">W tempie</button>
+      <button data-mode="demo">Pokaz</button>
     </div>
   </div>
-  <div class="opt"><span class="lab">Tempo <small>(tryb „W tempie”)</small></span><span class="ctl"><input id="speed" type="range" min="25" max="150" step="5"><b id="speedTxt">100%</b></span></div>
+  <div class="opt"><span class="lab">Tempo <small>(„W tempie” i „Pokaz”)</small></span><span class="ctl"><input id="speed" type="range" min="25" max="150" step="5"><b id="speedTxt">100%</b></span></div>
   <div class="opt"><span class="lab">Transpozycja</span><span class="ctl"><button id="trDown">−</button><b id="trTxt">0</b><button id="trUp">+</button></span></div>
   <label class="opt"><span class="lab">Dźwięk z iPada</span><input id="sound" type="checkbox"></label>
   <div class="opt col"><span class="lab">Nad klawiaturą</span>
@@ -493,13 +498,13 @@ function parseMidi(buf, title) {
         const a = u8(); const b = (hi === 0xC0 || hi === 0xD0) ? 0 : u8();
         const k = ch * 128 + a;
         if (hi === 0xC0) { prog[ch] = a; if (firstProg[ch] === undefined) firstProg[ch] = a; }
-        else if (hi === 0x90 && b > 0) (open[k] = open[k] || []).push(tick);
+        else if (hi === 0x90 && b > 0) (open[k] = open[k] || []).push({t: tick, v: b});
         else if (hi === 0x80 || (hi === 0x90 && b === 0)) {
-          const arr = open[k]; if (arr && arr.length) notes.push({note: a, ch, s: arr.shift(), e: tick, pg: prog[ch]});
+          const arr = open[k]; if (arr && arr.length) { const o = arr.shift(); notes.push({note: a, ch, s: o.t, v: o.v, e: tick, pg: prog[ch]}); }
         }
       }
     }
-    for (const k in open) { const ch = Math.floor(k / 128); open[k].forEach(s => notes.push({note: k % 128, ch, s, e: Math.max(tick, s + div / 2), pg: prog[ch]})); }
+    for (const k in open) { const ch = Math.floor(k / 128); open[k].forEach(o => notes.push({note: k % 128, ch, s: o.t, v: o.v, e: Math.max(tick, o.t + div / 2), pg: prog[ch]})); }
     rawTracks.push({name, notes}); p = end;
   }
   tempos.sort((a, b) => a.tick - b.tick);
@@ -520,7 +525,7 @@ function parseMidi(buf, title) {
       const part = parts.get(key), pg = n.pg !== undefined ? n.pg : (firstProg[n.ch] || 0);
       part.pc[pg] = (part.pc[pg] || 0) + 1;
       const s = toSec(n.s), e = toSec(n.e);
-      notes.push({note: n.note, start: s, end: Math.max(s + 0.05, e - 0.02), track: part.idx});
+      notes.push({note: n.note, start: s, end: Math.max(s + 0.05, e - 0.02), track: part.idx, v: n.v});
     });
   });
   if (!notes.length) throw new Error('w pliku nie ma nut');
@@ -996,6 +1001,24 @@ let playing = false, stepIdx = 0, hit = new Set(), good = 0, bad = 0;
 let t0 = 0, pauseT = 0, audioIdx = 0, rafId = 0, startedAt = 0;
 const held = new Set(), wrongHeld = new Set();  // wrongHeld: wciśnięte jako pomyłka (czerwone w widoku nut)
 const LEAD = 0.08;
+const timed = () => S.mode !== 'wait';  // „W tempie” i „Pokaz” idą z zegarem, „Czekaj na mnie” – krokami
+/* Tryb „Pokaz”: aplikacja sama gra utwór. Nuty idą do keyboardu zwykłym Note On / Note Off (kanał 1),
+   więc gra on swoimi głośnikami; klawisze na ekranie się wciskają, świecą diody i lecą nuty (wodospad).
+   Bez keyboardu gra iPad. Nie liczymy trafień. */
+const demoOn = new Map();  // nuta brzmiąca na keyboardzie → koniec (sekundy utworu)
+function demoNote(n) {
+  if (!out) return;
+  if (demoOn.has(n.m)) sendRaw([0x80, n.m, 0]);  // ta sama nuta jeszcze brzmi – uderzamy ją od nowa
+  sendRaw([0x90, n.m, Math.max(1, Math.min(127, n.v || 90))]);
+  demoOn.set(n.m, n.end);
+}
+function demoOffs(t) { for (const [m, e] of demoOn) if (e <= t) { sendRaw([0x80, m, 0]); demoOn.delete(m); } }
+function demoSilence() {
+  if (!demoOn.size) return;
+  for (const m of demoOn.keys()) sendRaw([0x80, m, 0]);
+  demoOn.clear();
+  sendRaw([0xB0, 123, 0]);  // All Notes Off – na wszelki wypadek
+}
 
 /* przycisk Start/Pauza: sama ikona (napis w aria-label i podpowiedzi) */
 const ICO_PLAY = '<svg class="ico" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
@@ -1036,7 +1059,7 @@ function hands(s, list) {
 function prepare() {
   if (!song) return;
   ns = song.notes.filter(n => sel.has(n.track))
-    .map(n => ({start: n.start, end: n.end, m: mapNote(n.note), track: n.track}));
+    .map(n => ({start: n.start, end: n.end, m: mapNote(n.note), track: n.track, v: n.v || 90}));
   const handOf = hands(song, ns);
   ns.forEach(n => { n.h = handOf(n); });
   ns.sort((a, b) => a.start - b.start || a.m - b.m);
@@ -1066,12 +1089,12 @@ function play() {
   }
 }
 function stop() {
-  if (playing && S.mode === 'tempo') pauseT = curT();
-  playing = false; cancelAnimationFrame(rafId);
+  if (playing && timed()) pauseT = curT();
+  playing = false; cancelAnimationFrame(rafId); demoSilence();
   setLit(new Set()); playUI(false);
   refreshView();
 }
-function seekAudio(t) { audioIdx = ns.findIndex(n => n.start >= t); if (audioIdx < 0) audioIdx = ns.length; }
+function seekAudio(t) { demoSilence(); audioIdx = ns.findIndex(n => n.start >= t); if (audioIdx < 0) audioIdx = ns.length; }
 function showStep(blink) {
   const st = steps[stepIdx];
   if (!st) { finish(); return; }
@@ -1079,23 +1102,26 @@ function showStep(blink) {
 }
 function loop() {
   if (!playing) return;
-  const t = curT(), tl = t + LEAD, a = new Set(), ah = new Map();
+  const demo = S.mode === 'demo', t = curT(), tl = t + (demo ? 0 : LEAD), a = new Set(), ah = new Map();
   for (const n of ns) { if (n.start > tl) break; if (tl < n.end) { a.add(n.m); if (ah.get(n.m) !== 'R') ah.set(n.m, n.h); } }
   if (!sameSet(a, lit)) { litHand = ah; setLit(a, false); }
   while (audioIdx < ns.length && ns[audioIdx].start <= t) {
     const n = ns[audioIdx++];
-    if (S.sound) tone(n.m, (n.end - n.start) / (S.speed / 100));
+    if (demo) demoNote(n);
+    if (S.sound || (demo && !out)) tone(n.m, (n.end - n.start) / (S.speed / 100), 0, demo ? 0.12 + (n.v || 90) / 127 * 0.2 : 0);
   }
+  if (demo) demoOffs(t);
   showPosition(); updateNow(); drawView();
   if (t > lastEnd + 0.4) { finish(); return; }
   rafId = requestAnimationFrame(loop);
 }
 function finish() {
   const secs = startedAt ? (performance.now() - startedAt) / 1000 : 0;
-  playing = false; cancelAnimationFrame(rafId); setLit(new Set());
+  playing = false; cancelAnimationFrame(rafId); demoSilence(); setLit(new Set());
   playUI(false);
   if (S.mode === 'wait') stepIdx = steps.length; else pauseT = lastEnd;
   startedAt = 0; refreshView();
+  if (S.mode === 'demo') { toast('Koniec utworu'); return; }
   const total = good + bad, acc = total ? Math.round(good / total * 100) : 100;
   $('#resTitle').textContent = acc >= 90 ? 'Brawo!' : acc >= 70 ? 'Dobrze!' : 'Ćwicz dalej';
   $('#resText').innerHTML = `Trafione: <b>${good}</b> · Pomyłki: <b>${bad}</b> · Celność: <b>${acc}%</b>` +
@@ -1105,7 +1131,7 @@ function finish() {
 function noteOn(n, fromScreen) {
   held.add(n);
   if (fromScreen && S.sound) { ensureAudio(); tone(n, 0.5); }
-  if (playing) {
+  if (playing && S.mode !== 'demo') {
     if (S.mode === 'wait') {
       const st = steps[stepIdx];
       if (st) {
@@ -1153,7 +1179,7 @@ function updateNow() {
   }
 }
 function updateStats() {
-  $('#stats').innerHTML = song ? `<span>Trafione <b>${good}</b></span><span>Pomyłki <b>${bad}</b></span>` : '';
+  $('#stats').innerHTML = song && S.mode !== 'demo' ? `<span>Trafione <b>${good}</b></span><span>Pomyłki <b>${bad}</b></span>` : '';
 }
 const keyEls = new Map();
 /* położenie klawiszy jako ułamek szerokości ekranu: {l, w}; to samo dla klawiatury i wodospadu */
@@ -1189,6 +1215,7 @@ function renderKeys() {
     el.classList.toggle('next', N);
     el.classList.toggle('hitk', L && hit.has(n) && S.mode === 'wait');
     el.classList.toggle('held', held.has(n));
+    el.classList.toggle('press', L && playing && S.mode === 'demo');
     const label = (L || N) ? nnShort(n) : (pc(n) === 0 ? nn(n) : '');
     if (el.textContent !== label) el.textContent = label;
   }
@@ -1270,7 +1297,7 @@ function drawView() {
   if (S.view === 'off') return;
   const g = viewCtx(); if (!g) return;
   const kind = S.view, target = kind === 'staff' ? staffTarget() : fallTarget();
-  const live = playing && S.mode === 'tempo';
+  const live = playing && timed();
   // krok w trybie „Czekaj na mnie” przesuwamy płynnie; duże skoki (przewijanie) od razu
   if (vw.kind !== kind || vw.pos === null || live || Math.abs(target - vw.pos) > 6) vw.pos = target;
   else vw.pos += (target - vw.pos) * 0.3;
@@ -1400,7 +1427,7 @@ function drawStaff({c, w, h}, pos) {
 }
 
 function drawFall({c, w, h}, tRef) {
-  const win = VIEW_SECS * (S.mode === 'tempo' ? S.speed / 100 : 1), pps = h / win;
+  const win = VIEW_SECS * (timed() ? S.speed / 100 : 1), pps = h / win;
   const yOf = t => h - (t - tRef) * pps;
   // tory: ciemniejsze pod czarnymi klawiszami, linia przy każdym C (i słabsza przy F)
   for (const [n, g] of kGeom) {
@@ -1433,7 +1460,7 @@ function drawFall({c, w, h}, tRef) {
     bar(n, x, bw, yBot, bh, n.h === 'L' ? (blk ? FC.Lb : FC.L) : (blk ? FC.Rb : FC.R), '#0f1131');
   }
   for (const [n, x, bw, yBot, bh] of glowing) {
-    const done = S.mode === 'wait' ? hit.has(n.m) : held.has(n.m), col = done ? FC.ok : n.h === 'L' ? FC.nowL : FC.nowR;
+    const done = S.mode === 'wait' ? hit.has(n.m) : S.mode === 'tempo' && held.has(n.m), col = done ? FC.ok : n.h === 'L' ? FC.nowL : FC.nowR;
     c.save(); c.shadowColor = col; c.shadowBlur = 24; bar(n, x, bw, yBot, bh, col, done ? '#0d2a1b' : '#0f1131'); c.restore();
     c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 1.5; rrect(c, x, yBot - bh, bw, bh, Math.min(7, bw / 3)); c.stroke();
   }
@@ -2024,14 +2051,15 @@ document.querySelectorAll('#viewSeg button').forEach(b => b.onclick = () => {
 });
 window.addEventListener('resize', () => { vw.pos = null; drawView(); });
 /* menu „Opcje”: tryb, tempo, transpozycja, dźwięk, widok. Na przycisku krótkie podsumowanie ikonami. */
+const modeLabel = () => S.mode === 'wait' ? 'Czekaj na mnie' : S.mode === 'demo' ? 'Pokaz' + (S.speed !== 100 ? ' ' + S.speed + '%' : '') : 'W tempie ' + S.speed + '%';
 function renderOpts() {
   // podsumowanie słowami na przycisku w odtwarzaczu (tryb, transpozycja, dźwięk, widok)
-  const p = [S.mode === 'wait' ? 'Czekaj na mnie' : 'W tempie ' + S.speed + '%'];
+  const p = [modeLabel()];
   if (S.transpose) p.push((S.transpose > 0 ? '+' : '') + S.transpose);
   if (S.sound) p.push('<svg class="ico" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>');
   p.push('<span class="dim">' + {off: 'Bez nut', staff: 'Nuty', fall: 'Wodospad'}[S.view] + '</span>');
   $('#optsSum').innerHTML = p.map(x => x.startsWith('<') ? x : '<span>' + x + '</span>').join('');
-  $('#optsBtn').title = (S.mode === 'wait' ? 'Czekaj na mnie' : 'W tempie ' + S.speed + '%') +
+  $('#optsBtn').title = modeLabel() +
     (S.transpose ? ', transpozycja ' + S.transpose : '') + (S.sound ? ', dźwięk z iPada' : '') +
     ', ' + {off: 'bez nut', staff: 'nuty', fall: 'wodospad'}[S.view];
 }
@@ -2055,11 +2083,16 @@ function renderMode() { document.querySelectorAll('#modeSeg button').forEach(b =
 document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => {
   if (S.mode === b.dataset.mode) return;
   stop(); S.mode = b.dataset.mode; saveS(); renderMode(); reset();
+  if (S.mode === 'demo') {
+    // w pokazie nuty spływają na klawisze
+    if (S.view !== 'fall') { S.view = 'fall'; saveS(); renderView(); }
+    toast(out ? 'Pokaz: utwór zagra keyboard – naciśnij Start' : 'Pokaz: keyboard niepodłączony, zagra iPad – naciśnij Start');
+  }
 });
 $('#speed').value = S.speed; $('#speedTxt').textContent = S.speed + '%';
 $('#speed').oninput = e => {
   const t = curT(); S.speed = +e.target.value; $('#speedTxt').textContent = S.speed + '%';
-  if (playing && S.mode === 'tempo') t0 = performance.now() - t / (S.speed / 100) * 1000;
+  if (playing && timed()) t0 = performance.now() - t / (S.speed / 100) * 1000;
   saveS(); renderOpts();
 };
 function renderTr() { $('#trTxt').textContent = (S.transpose > 0 ? '+' : '') + S.transpose; renderOpts(); }

@@ -310,6 +310,46 @@ async def view_tests(page, check):
     await page.click('#playBtn')
 
 
+async def demo_tests(page, check):
+    """Tryb „Pokaz”: aplikacja sama gra utwór na keyboardzie (Note On / Note Off), klawisze na ekranie się wciskają,
+    nuty spływają w wodospadzie, trafień nie liczymy; pauza wycisza keyboard."""
+    view0 = await page.evaluate('S.view')
+    await opt(page, '#modeSeg >> text=Pokaz')
+    check(await page.evaluate("S.mode") == 'demo' and await page.evaluate("S.view") == 'fall', 'pokaz: włącza się wodospad')
+    check('Pokaz' in await page.text_content('#optsSum') and await page.text_content('#stats') == '', 'pokaz: opis na przycisku, bez statystyk')
+    await page.mouse.click(700, 160)
+    await page.evaluate('__sent.length = 0')
+    await page.click('#playBtn')
+    await page.wait_for_timeout(700)
+    sent = await page.evaluate('__sent')
+    ons = [m for m in sent if m[0] == 0x90]
+    first = await page.evaluate('ns[0].m')
+    check(len(ons) >= 2 and ons[0][1] == first and ons[0][2] > 0, 'pokaz: wysyła nuty do keyboardu (Note On %s)' % ons[:3])
+    check(any(m[0] == 0x80 for m in sent), 'pokaz: puszcza nuty (Note Off)')
+    check(any(m[0] == 0xA2 and m[2] > 0 for m in sent), 'pokaz: diody na keyboardzie świecą')
+    press = await page.evaluate("[...document.querySelectorAll('.key.press')].map(e => +e.dataset.n)")
+    sounding = await page.evaluate('[...demoOn.keys()]')
+    check(len(press) >= 1 and set(press) <= set(sounding) | set(await page.evaluate('[...lit]')), 'pokaz: grane klawisze na ekranie wciśnięte ' + str(press))
+    check(await page.evaluate("getComputedStyle(document.querySelector('.key.press')).transform") != 'none', 'pokaz: wciśnięty klawisz jest niżej')
+    check(await page.evaluate(COUNT_PX, NOW_R) > 30, 'pokaz: aktualna nuta świeci w wodospadzie')
+    good0 = await page.evaluate('good + bad')
+    await page.evaluate('__in.fire([0x90,61,90]); __in.fire([0x80,61,0])')
+    check(await page.evaluate('good + bad') == good0, 'pokaz: klawisze z keyboardu nie liczą się jako pomyłki')
+    await page.evaluate('__sent.length = 0')
+    await page.click('#playBtn')  # pauza
+    sent = await page.evaluate('__sent')
+    check(await page.evaluate('demoOn.size') == 0 and [0xB0, 123, 0] in sent and not await page.query_selector('.key.press'),
+          'pokaz: pauza wycisza keyboard (Note Off + All Notes Off)')
+    # bez keyboardu gra iPad
+    r = await page.evaluate("""() => { const o = out, calls = []; const t0 = window.tone; out = null; window.tone = (...a) => calls.push(a);
+        demoNote(ns[0]); window.tone = t0; out = o; return {sent: demoOn.size}; }""")
+    check(r['sent'] == 0, 'pokaz: bez keyboardu nic nie wysyła')
+    await opt(page, '#modeSeg >> text=Czekaj na mnie')
+    await opt(page, '#viewSeg >> text=' + {'off': 'Bez nut', 'staff': 'Nuty', 'fall': 'Wodospad'}[view0])
+    await page.mouse.click(700, 160)
+    await page.click('#playBtn')
+
+
 async def library_tests(page, check):
     """Biblioteka (osobny ekran): karty, najnowsze na górze, wbudowane na końcu, Edytuj/Usuń, szukanie, filtr poziomu, katalog."""
     for k, t in enumerate(LIB_TITLES):
@@ -421,6 +461,7 @@ async def main():
 
         await hands_tests(page, check)
         await view_tests(page, check)
+        await demo_tests(page, check)
         await options_menu_tests(page, check)
 
         # Powrót do biblioteki: zapamiętane miejsce i „Graj dalej”
