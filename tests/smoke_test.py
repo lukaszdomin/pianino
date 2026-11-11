@@ -345,6 +345,8 @@ async def main():
         await page.wait_for_function("pv.src !== ''", timeout=3000)
         check('Stop' in await page.text_content('.cat >> nth=0 >> button.pv') or '■' in await page.text_content('.cat >> nth=0 >> button.pv'), 'odsłuch gra (przycisk Stop)')
         check(await page.evaluate("[...pv.mel].length") == 1, 'odsłuch wyróżnia melodię')
+        check(await page.evaluate("!!unlockEl && !unlockEl.paused"), 'odsłuch odblokowuje dźwięk iPada (ciche <audio> gra)')
+        check(await page.evaluate("actx.state") == 'running', 'AudioContext działa')
         check(await page.evaluate("userSongs.length") == before, 'odsłuch niczego nie zapisuje')
         await page.click('.cat >> nth=0 >> button.pv')
         check(await page.evaluate("pv.src") == '', 'drugie stuknięcie zatrzymuje odsłuch')

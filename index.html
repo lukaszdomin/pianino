@@ -705,9 +705,39 @@ const sameSet = (a, b) => a.size === b.size && [...a].every(x => b.has(x));
 
 /* ---------------- dźwięk z iPada ---------------- */
 let actx = null;
+/* iPad wycisza WebAudio, gdy jest włączony tryb cichy (przełącznik albo dzwonek w Centrum sterowania),
+   a zwykłe <audio> gra normalnie. Dlatego przy pierwszym stuknięciu przełączamy sesję dźwięku na
+   „odtwarzanie”: navigator.audioSession (nowsze iOS) i ciche, zapętlone <audio> (starsze iOS). */
+let unlockEl = null, audioLogged = false;
+function silentWav() {
+  const n = 800, b = new Uint8Array(44 + n * 2), v = new DataView(b.buffer); // 0,1 s ciszy, 8 kHz, 16 bit, mono
+  const w = (o, t) => { for (let i = 0; i < t.length; i++) b[o + i] = t.charCodeAt(i); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  return 'data:audio/wav;base64,' + toB64(b.buffer);
+}
+function unlockAudio() {
+  try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}
+  try {
+    if (!unlockEl) {
+      unlockEl = document.createElement('audio');
+      unlockEl.setAttribute('x-webkit-airplay', 'deny'); unlockEl.setAttribute('playsinline', '');
+      unlockEl.loop = true; unlockEl.preload = 'auto'; unlockEl.src = silentWav();
+    }
+    if (unlockEl.paused) { const p = unlockEl.play(); if (p && p.catch) p.catch(e => log('DŹWIĘK: ciche <audio> nie ruszyło: ' + (e.name || '') + ' ' + e.message)); }
+  } catch (e) { log('DŹWIĘK: błąd odblokowania: ' + e.message); }
+}
 function ensureAudio() {
-  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
-  if (actx && actx.state === 'suspended') actx.resume();
+  unlockAudio();
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { log('DŹWIĘK: brak AudioContext: ' + e.message); } }
+  if (actx && actx.state !== 'running') { try { const r = actx.resume(); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
+  if (!audioLogged && actx) { audioLogged = true; setTimeout(audioInfo, 400); }
+}
+function audioInfo() {
+  log('DŹWIĘK: AudioContext ' + (actx ? actx.state + ', ' + actx.sampleRate + ' Hz' : 'brak') +
+      ', audioSession: ' + (navigator.audioSession ? navigator.audioSession.type : 'brak') +
+      ', ciche <audio>: ' + (unlockEl ? (unlockEl.paused ? 'zatrzymane' : 'gra') : 'brak'));
 }
 // at – kiedy zagrać (czas actx, domyślnie teraz), vol – głośność, dest – dokąd podłączyć (domyślnie głośnik)
 function tone(n, dur, at, vol, dest) {
@@ -1176,6 +1206,7 @@ async function catPreview(it) {
     pv.start = pv.notes[0].start; pv.idx = 0;
     pv.out = actx.createGain(); pv.out.gain.value = 0.8; pv.out.connect(actx.destination);
     pv.at0 = actx.currentTime + 0.15; pv.loading = ''; pv.src = it.src;
+    audioInfo();
     log('ODSŁUCH: „' + it.title + '” (' + s.notes.length + ' nut, melodia: ' + [...pv.mel].map(i => s.tracks[i]).join(', ') + ')');
     pvTick(); pv.timer = setInterval(pvTick, 100);
   } catch (e) {
@@ -1281,7 +1312,7 @@ function renderCatalog() {
   else if (!cat.q.trim()) msg.innerHTML = 'Wpisz tytuł albo kompozytora i naciśnij „Szukaj”, albo wybierz podpowiedź powyżej.<br><br>' +
     '<b>Wikimedia Commons</b> – pliki na wolnych licencjach, głównie muzyka klasyczna.<br><b>BitMidi</b> – ponad 100 tys. plików wgranych przez internautów, także piosenki (licencje nie zawsze są jasne – do własnej nauki).' +
     '<br><b>Lakh</b> – ok. 17 tys. piosenek pop, rock i dance (ABBA, Queen, Beatles, 2 Unlimited…) z <a href="https://colinraffel.com/projects/lmd/" target="_blank" rel="noopener">Lakh MIDI Dataset</a> Colina Raffela (CC-BY 4.0); pliki zebrane z internetu – do własnej nauki. Szukaj po wykonawcy albo tytule po angielsku.' +
-    '<br><br>Przy każdym wyniku jest <b>🔊 Posłuchaj</b> – zagra początek utworu (melodię głośniej) bez pobierania. Jeśli nic nie słychać, sprawdź przełącznik wyciszenia iPada.';
+    '<br><br>Przy każdym wyniku jest <b>🔊 Posłuchaj</b> – zagra początek utworu (melodię głośniej) bez pobierania. Jeśli nic nie słychać, podgłośnij iPada przyciskami głośności; gdy dalej cisza – Ustawienia → „Kopiuj dziennik”.';
   else if (pending) msg.textContent = 'Sprawdzam poziom trudności… (zostało ' + pending + ')';
   else if (!shown.length && !cat.msg) msg.textContent = !cat.items.length ? 'Nic nie znaleziono. Spróbuj innej pisowni albo nazwy po angielsku.' :
     base.length ? 'Wśród ' + base.length + ' znalezionych nie ma utworów na poziomie „' + LEVELS[S.catLvl] + '”. Pokaż więcej wyników albo wybierz inny poziom.' :
@@ -1428,7 +1459,7 @@ $('#initBtn').onclick = () => {
 /* ekran nie gaśnie + gaszenie świateł */
 let wake = null;
 async function requestWake() { try { if (navigator.wakeLock && !wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => wake = null); } } catch (e) {} }
-document.addEventListener('visibilitychange', () => { if (document.hidden) { stop(); allOff(); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { stop(); allOff(); pvStop(true); if (unlockEl) unlockEl.pause(); } });
 window.addEventListener('pagehide', allOff);
 
 /* start */

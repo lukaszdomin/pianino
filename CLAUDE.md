@@ -72,6 +72,8 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     Od `LIB_TOOLS_MIN` (10) utworów: wyszukiwanie (`#libQ`, `libNorm()`) i filtr poziomu (`S.libLvl`).
     **Ręcznego wgrywania plików nie ma** (usunięte 11.11.2026) – utwory dodaje tylko Katalog przez `addUserSong()`;
     smoke test też dodaje pliki przez `addUserSong()`;
+  - dźwięk: `ensureAudio()` → `unlockAudio()` – iPad w trybie cichym wycisza WebAudio, więc przy stuknięciu ustawiamy
+    `navigator.audioSession.type = 'playback'` i puszczamy ciche, zapętlone `<audio>` (WAV z `silentWav()`); stan w dzienniku („DŹWIĘK:”);
   - diagnostyka: `log()`, `diag()`, sekcja Dziennik w Ustawieniach z przyciskiem „Kopiuj dziennik”.
 
 ## Jak pracujemy
@@ -136,13 +138,15 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 (Łukasz decyduje o kolejności. Claude dopisuje tu pomysły, które padną w rozmowie.)
 - [ ] Poziom liczony też dla pojedynczej ścieżki (np. sama melodia z piosenki z BitMidi). (Filtr poziomu w „Moje utwory” już jest – na razie po poziomie całego pliku).
       Ważne teraz, gdy jest Lakh: prawie każda piosenka wychodzi „Trudne”, choć sama melodia (⭐) bywa łatwa.
-- [ ] Sprawdzić na iPadzie odsłuch (przełącznik wyciszenia iPada wycisza Web Audio) i czy wybór melodii trafia na prawdziwych plikach.
+- [ ] Sprawdzić na iPadzie, czy po poprawce odsłuch gra (wpis „DŹWIĘK:” w dzienniku) i czy wybór melodii trafia na prawdziwych plikach.
 - [ ] Zapamiętywać wybór ścieżek dla utworu (teraz po ponownym otwarciu wraca wybór automatyczny).
 - [ ] Sprawdzić na iPadzie, czy BitMidi nie blokuje pobierania wielu plików naraz (kolejka poziomów pobiera wszystkie wyniki).
 - [ ] Katalog: więcej bibliotek, jeśli znajdziemy takie z CORS (np. zbiory MIDI na GitHubie przez raw.githubusercontent.com).
 - [ ] Sprawdzić nowy lewy panel na iPadzie w obu orientacjach (przewijanie palcem, tryb „Edytuj”, szukajka z klawiaturą ekranową).
 
 ## Dziennik zmian
+
+- 11.11.2026: naprawa odsłuchu na iPadzie – czas leciał, ale nie było dźwięku (tryb cichy wycisza WebAudio); odblokowanie sesji dźwięku, wpis „DŹWIĘK:” w dzienniku.
 
 - 11.11.2026: wygląd: usunięte ręczne wgrywanie plików MIDI; nowy lewy panel (Katalog na górze, jedna przewijana lista – wcześniej
   w poziomie „Moje utwory” miały 8 px i nic nie było widać; najnowsze na górze; dwie linie w wierszu; zwijane wbudowane; „Edytuj” → „Usuń”;
