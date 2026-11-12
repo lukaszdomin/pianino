@@ -353,8 +353,8 @@ async def demo_tests(page, check):
     sent = await page.evaluate('__sent')
     pc = [i for i, m in enumerate(sent) if m == [0xC0, 0]]
     ons = [m for m in sent if m[0] == 0x90]
-    check(pc and [0xB0, 0, 0] in sent[:pc[0]] and pc[0] < sent.index(ons[0]) if ons else False,
-          'pokaz: przed nutami przełącza keyboard na fortepian (Bank Select + Program Change C0 00)')
+    check(pc and [0xB0, 0, 16] in sent[:pc[0]] and pc[0] < sent.index(ons[0]) if ons else False,
+          'pokaz: przed nutami przełącza keyboard na fortepian (Bank Select 16 + Program Change C0 00)')
     first = await page.evaluate('ns[0].m')
     check(len(ons) >= 2 and ons[0][1] == first and ons[0][2] > 0, 'pokaz: wysyła nuty do keyboardu (Note On %s)' % ons[:3])
     check(any(m[0] == 0x80 for m in sent), 'pokaz: puszcza nuty (Note Off)')
@@ -417,11 +417,31 @@ async def voice_tests(page, check):
     check(r['band'] == 'epiano' and r['pop'] == 'pop', 'zespół → pianino elektryczne, wolna piosenka z syntezatorami → syntezator pop ' + str(r))
 
     # utwór z syntezatorem: przy otwarciu keyboard przełącza się na „Lead 1 (square)” (C0 50)
-    await page.evaluate('__sent.length = 0')
+    await page.wait_for_timeout(600)  # dokończ wcześniejsze komendy brzmienia
+    await page.evaluate('__sent.length = 0; kbdHello = false')  # jak po nowym połączeniu
     await add_song(page, POP_MIDI, 'Piosenka z syntezatorem')
     await page.wait_for_function("song && song.title === 'Piosenka z syntezatorem'")
     sent = await page.evaluate('__sent')
     check([0xC0, 80] in sent and [0xB0, 0, 0] in sent, 'otwarcie utworu przełącza keyboard na jego brzmienie (C0 50)')
+    # brzmienie klawiszy: SysEx keyboardu (start sesji raz, włącz warstwę, ustaw brzmienie, zapytaj o ustawienia)
+    await page.wait_for_timeout(600)
+    sent = await page.evaluate('__sent')
+    SX = lambda *b: [0xF0, 0x00, 0x20, 0x2B, 0x69, *b, 0xF7]
+    want = [SX(0x00, 0x00, 0x55), SX(0x06, 0x00, 0x00, 0x01), SX(0x06, 0x01, 0x00, 0, 0, 80), SX(0x1D, 0x01)]
+    idx = [sent.index(w) if w in sent else -1 for w in want]
+    check(all(i >= 0 for i in idx) and idx == sorted(idx), 'brzmienie klawiszy: SysEx start sesji → warstwa → brzmienie 0/0/80 → pytanie ' + str(idx))
+    await page.evaluate('__sent.length = 0; kbdProgram(19, "test")')
+    await page.wait_for_timeout(400)
+    sent = await page.evaluate('__sent')
+    check(SX(0x00, 0x00, 0x55) not in sent and SX(0x06, 0x01, 0x00, 0, 0, 19) in sent, 'brzmienie klawiszy: start sesji tylko raz na połączenie')
+    # odpowiedź keyboardu 5D 01: warstwy, głośności, warstwa 0: LSB, MSB, program
+    await page.evaluate('__in.fire(' + str(SX(0x5D, 0x01, 1, 0, 0, 100, 100, 100, 0, 0, 19, 0, 0, 0, 0, 0, 0, 54, *([0] * 10))) + ')')
+    await page.evaluate('__in.fire(' + str(SX(0x5D, 0x01, 1, 0, 0, 100, 100, 100, 0, 16, 0, 0, 0, 0, 0, 0, 0, 54, *([0] * 10))) + ')')
+    logs = await page.evaluate("LOG.join('\\n')")
+    check('zgodne z wybranym' in logs and 'INNE niż wysłane 0/0/19' in logs, 'dziennik: czy keyboard przyjął brzmienie')
+    check(await page.evaluate("D.kbdTone") == 'bank 16/0, program 0', 'odpowiedź keyboardu odczytana (%s)' % await page.evaluate("D.kbdTone"))
+    await page.evaluate('kbdVoice(true)')
+    await page.wait_for_timeout(400)
     check('Syntezator pop' in await page.text_content('#optsSum'), 'na przycisku Opcje nazwa brzmienia (%s)' % await page.text_content('#optsSum'))
     await page.click('#optsBtn')
     ui = await page.evaluate("""() => ({n: document.querySelectorAll('#voiceSeg button').length,

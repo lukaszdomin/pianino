@@ -28,7 +28,18 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
 | Zapal wszystkie | `F0 00 20 2B 69 16 02 <kolor> F7` |
 
 - Kolor: `01` czerwony, `02` niebieski. COLOR pokazuje oba na czerwono.
-- „Start sesji” `F0 00 20 2B 69 00 00 55 F7` to **nasze przypuszczenie**, niepotwierdzone (przycisk eksperymentalny w Ustawieniach).
+- „Start sesji” `F0 00 20 2B 69 00 00 55 F7` – potwierdzony w open-one-piano: bez niego keyboard nie słucha komend brzmienia (raz na połączenie).
+
+**Brzmienie klawiszy** (open-one-piano, PROTOCOL.md i `assets/tones.json`, tabela `TOC` = The ONE COLOR):
+
+| Akcja | Bajty |
+|---|---|
+| Włącz/wyłącz warstwę | `F0 00 20 2B 69 06 00 <warstwa> <0/1> F7` (warstwa 0 = to, co grają klawisze) |
+| Brzmienie warstwy | `F0 00 20 2B 69 06 01 <warstwa> <bank MSB> <bank LSB> <program> F7` |
+| Zapytaj o ustawienia | `F0 00 20 2B 69 1D 01 F7` → odpowiedź `… 5D 01 <dane> F7` (bajty 6, 7, 8: LSB, MSB, program warstwy 0) |
+
+- Zwykłe Program Change na kanale 1 zmienia tylko brzmienie nut **przysłanych** z iPada – klawisze grają dalej swoim (sprawdzone 12.11.2026).
+- Banki są własne dla modelu: COLOR włącza się z fortepianem **bank 16/0, program 0**. Para spoza listy → domyślny fortepian.
 
 ## Środowisko uruchomieniowe
 
@@ -85,7 +96,10 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     perkusja + trochę syntezatorów → pop/dance; perkusja (zespół) → pianino elektryczne; na końcu fortepian. `parseMidi()` zwraca do tego
     `drums` (liczba nut perkusji), `bpm` (tempo na początku) i `progs` (czy plik ma zmiany programu); utwór ma `src` (`getUserSong()` / `addUserSong()`).
     `voiceOf(s)`: wybór Łukasza dla utworu (`S.songVoice[id]`) → propozycja (gdy `S.voice === 'auto'`) → fortepian (`S.voice === 'piano'`, „Zawsze fortepian”).
-    **Keyboard**: `kbdVoice(force)` wysyła Bank Select 0 (`B0 00 00`, `B0 20 00`) i Program Change (`C0 <program>`) przy otwarciu utworu,
+    **Keyboard**: `kbdVoice(force)` → `kbdProgram()` wysyła Bank Select i Program Change (`B0 00 <MSB>`, `B0 20 <LSB>`, `C0 <program>` – dla nut z iPada)
+    i w kolejce `kbdQ` SysEx brzmienia klawiszy: start sesji (raz na połączenie, `kbdHello`), warstwa 0 wł., brzmienie warstwy 0, pytanie `1D 01`;
+    odpowiedź czyta `kbdSettings()` (wpis „BRZMIENIE klawiszy (odpowiedź keyboardu)” – zgodne / INNE, w diagnostyce `D.kbdTone`).
+    Bank/program dla COLOR w `VOICES[id].kbd` (fortepian 16/0/0, reszta bank 0). Wysyłane przy otwarciu utworu,
     zmianie brzmienia, Starcie (każdy tryb) i podłączeniu keyboardu; `kbdVoiceReset()` po powrocie do biblioteki → fortepian; ostatni program w `kbdProg`.
     `S.kbdMode`: `'song'` (przełączaj) / `'kbd'` (nie ruszaj – brzmienie wybrane na keyboardzie), Ustawienia → „Keyboard” (`#kbdModeSel`).
     **iPad**: `tone(n, dur, at, vol, dest, voice)` – fortepian próbkami, reszta `synthNote()` (WebAudio, nic nie pobiera): dance = 2 rozstrojone piły + filtr,
@@ -186,7 +200,7 @@ Zasady:
 - Polskie nazwy nut w interfejsie: C, Cis, D, Dis, E, F, Fis, G, Gis, A, **B (= A#)**, **H (= B)**.
   W notacji `makeSong` używamy angielskich liter (B = H).
 
-## Stan (11.11.2026)
+## Stan (12.11.2026)
 
 Gotowe i działa:
 - 6 wbudowanych utworów: Wlazł kotek, Panie Janie, Mrugaj gwiazdko, Oda do radości, Dla Elizy (początek, obie ręce), Gama C-dur.
@@ -265,7 +279,10 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
       Jeśli keyboard nie gra – włączyć „Dźwięk z iPada”.
       **Potwierdzone 11.11.2026: keyboard gra nuty z iPada**, ale nie fortepianem. Do sprawdzenia: czy keyboard przyjmuje Program Change
       (Opcje → „Brzmienie utworu”: stuknięcie gra pasaż na keyboardzie; wpisy „BRZMIENIE keyboardu:” w dzienniku); jeśli nie – szukać komendy SysEx brzmienia w open-one-piano.
-- [ ] Sprawdzić brzmienia na iPadzie i keyboardzie: czy Program Change zmienia też brzmienie klawiszy, gdy Łukasz gra sam (nie tylko nuty z iPada);
+- [ ] Sprawdzić na iPadzie brzmienie klawiszy przez SysEx (12.11.2026): otworzyć utwór z syntezatorem, zagrać – czy klawisze grają syntezatorem;
+      w dzienniku „BRZMIENIE klawiszy (odpowiedź keyboardu): … zgodne z wybranym”. Brak odpowiedzi → Web MIDI Browser może nie przepuszczać SysEx
+      (sprawdzić „SysEx: tak” w diagnostyce). Po wyjściu do biblioteki klawisze wracają do fortepianu (16/0/0).
+- [ ] Sprawdzić brzmienia na iPadzie i keyboardzie:
       czy programy 80/81 (syntezatory), 4, 6, 10, 19 brzmią sensownie na COLOR; jak brzmi synteza na iPadzie (głośność względem fortepianu);
       czy propozycje trafiają na prawdziwych utworach (Darude, ABBA, Bach, kolędy, hity Billboard).
 - [ ] Pomysły do brzmień: więcej brzmień (gitara, smyczki, trąbka), ikona/nazwa brzmienia na karcie w bibliotece, propozycja brzmienia przy wynikach katalogu.
@@ -294,6 +311,10 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
       bemole zamiast krzyżyków w tonacjach bemolowych, regulacja wysokości widoku / szybkości wodospadu.
 
 ## Dziennik zmian
+
+- 12.11.2026: klawiszami grało domyślne brzmienie keyboardu, a nie wybrane w aplikacji – Program Change działa tylko na nuty z iPada;
+  teraz brzmienie klawiszy ustawia komenda SysEx keyboardu z open-one-piano (start sesji, warstwa 0, bank/program z listy COLOR),
+  aplikacja pyta keyboard o ustawienia i zapisuje odpowiedź w dzienniku; fortepian COLOR = bank 16; testy w `smoke_test.py`.
 
 - 11.11.2026: zapis pobranych utworów – pliki MIDI przeniesione z `localStorage` (~5 MB, po zapełnieniu nowe utwory znikały po zamknięciu)
   do IndexedDB; w `localStorage` zostaje sama lista; stare zapisy przenoszone przy starcie; brakujący plik pobierany znowu ze źródła;
