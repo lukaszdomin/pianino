@@ -289,6 +289,16 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 - [ ] Pomysły do brzmień: więcej brzmień (gitara, smyczki, trąbka), ikona/nazwa brzmienia na karcie w bibliotece, propozycja brzmienia przy wynikach katalogu.
 - [ ] Pomysł do „Pokazu”: przycisk na karcie utworu w bibliotece („Posłuchaj na keyboardzie”), granie całej aranżacji
       (wszystkie ścieżki) niezależnie od wybranych rąk, perkusja na kanale 10.
+- [ ] Pomysł na później (12.11.2026): **perkusja z pliku** – przełącznik „z perkusją” w Pokazie i przy grze z akompaniamentem.
+      Teraz `parseMidi()` pomija nuty perkusji (kanał 10, liczy je tylko w `drums`), trzeba by je zachować i wysyłać do keyboardu na kanale 10
+      (`99 <nuta> <siła>`). Najpierw sprawdzić, czy The ONE COLOR ma zestaw perkusyjny na kanale 10 (np. Ustawienia → testowa nuta 36/38/42 na kanale 10);
+      bez keyboardu – czy iPad ma czym ją zagrać (synteza WebAudio: stopa, werbel, hi-hat).
+- [ ] Pomysł (12.11.2026, omówiony, czeka na decyzję Łukasza): **gra jedną ręką z akompaniamentem** – w menu Opcje „Ćwiczę: Obie / Prawa / Lewa”
+      i „Druga ręka gra sama”; akompaniament = pozostałe nuty utworu (druga ręka i niezaznaczone ścieżki, np. bas i akordy przy melodii ⭐), bez perkusji.
+      „W tempie”: akompaniament na zegarze jak w Pokazie (`demoNote()`); „Czekaj na mnie”: gra do Twojej następnej nuty i czeka.
+      Diody tylko dla ćwiczonej ręki, druga ręka na ekranie przygaszona, akompaniament ciszej (siła ×0,6), trafienia liczone tylko dla ćwiczonej ręki.
+      Kod: `prepare()` dzieli nuty na `ns` (moje) i `acc` (akompaniament); wybór ręki zapamiętany dla utworu.
+      Ryzyko: jeśli keyboard odsyła nuty z iPada jako wciśnięte – nie liczyć nut wysłanych przez aplikację w ostatnich ~150 ms.
 - [ ] Sprawdzić etap 3 na iPadzie: przewijanie siatki palcem, „Graj dalej” po zamknięciu i ponownym otwarciu Web MIDI Browser,
       szukanie z klawiaturą ekranową (Enter → katalog), czas pierwszego otwarcia przy wielu pobranych utworach (miniatury `rollOldSongs()`).
 - [ ] Pomysł: katalog też jako pełny ekran w stylu biblioteki (teraz okno nad biblioteką), karty wyników z miniaturą po odsłuchu.
