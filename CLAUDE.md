@@ -87,6 +87,19 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
     Bez keyboardu gra iPad (`tone()`). Wybór „Pokaz” w menu Opcje przełącza widok na wodospad. Tempo działa jak w „W tempie”.
     Kto gra Pokaz: `S.demoOut` (`'kbd'` keyboard / `'ipad'` – gra iPad, keyboard tylko świeci; `demoKbd()`), Ustawienia → „Pokaz gra” (`#demoOutSel`).
     Pokaz gra **brzmieniem utworu** (niżej);
+  - **gra jedną ręką z akompaniamentem** (12.11.2026): menu Opcje → „Ręce” (`#handSeg`: Obie / Prawa / Lewa, widoczne, gdy w wybranych
+    ścieżkach są obie ręce – `handsBoth`; zapamiętane dla utworu w `S.songHand[id]`, `practiceHand()`) i „Reszta utworu gra sama”
+    (`#accomp`, `S.accomp`, domyślnie wł.; opis `#accWhy`; `renderHands()`). `prepare()` dzieli nuty: `ns` = moje (światła, kroki, trafienia),
+    `acc` = akompaniament: druga ręka + **niezaznaczone ścieżki** (`h: 'A'`; przy piosence z melodią ⭐ to bas, akordy itd. – gra „z zespołem”).
+    Perkusji nie ma (parser ją pomija). Na Pokaz nie działa (Pokaz gra wybrane ścieżki obiema rękami; zmiana trybu woła `prepare()`).
+    Gra keyboard (`demoNote(n, ACC_VEL)`, siła ×0,6, wspólna mapa `demoOn`), a iPad (`tone()`), gdy keyboard nie gra Pokazu (`S.demoOut`)
+    albo włączony „Dźwięk z iPada” (`accKbd()`). „W tempie”: `accRun(t)` w `loop()`, przewijanie `accSeek()`. „Czekaj na mnie”: zegar `wc`
+    (`waitClock(from, to, seek)` / `waitTick()`): po zagraniu kroku akompaniament gra do czasu następnego kroku i tam staje; start/przeskok
+    (`showStep(false)`) – od tego kroku, na początku utworu od wstępu; ostatni akord wybrzmiewa 1,5 s po końcu. Brzmiące nuty w `accVis`,
+    klawisz na ekranie lekko wciśnięty i przygaszony (`.key.acc`, `accKeys()`); w wodospadzie przerywane obrysy w kolorze ręki (biały dla innych ścieżek),
+    na pięciolinii akompaniamentu nie ma. Na przycisku Opcje „Prawa ręka” / „Lewa ręka”.
+    **Echo**: nuta wysłana przez aplikację (`sentAt`, także w Pokazie) i odebrana z keyboardu w ciągu `ECHO_MS` (150 ms) nie jest moim
+    klawiszem (`noteOn()` ją pomija, w dzienniku „ECHO: …”). Dziennik: „RĘCE:”, „AKOMPANIAMENT:”;
   - **brzmienie dobrane do utworu** (11.11.2026): tabela `VOICES` (id → nazwa, program GM): `piano` Fortepian 0, `epiano` Pianino elektryczne 4,
     `pop` Syntezator pop 80, `synth` Syntezator dance 81, `organ` Organy 19, `harpsi` Klawesyn 6, `box` Pozytywka 10.
     `suggestVoice(s)` → `{v, why}` (zapamiętane w `s._vs`), po kolei: słowa w tytule z wykonawcą (`VOICE_KW`: kolędy i piosenki dla dzieci → pozytywka,
@@ -213,6 +226,8 @@ Gotowe i działa:
 - **Brzmienie dobrane do utworu**: aplikacja proponuje brzmienie (syntezator do dance/techno i popu, pianino elektryczne do piosenek z zespołem,
   klawesyn do baroku, organy, pozytywka do kolęd i piosenek dla dzieci, fortepian do klasyki), a w menu Opcje można je zmienić dla każdego utworu.
   Keyboard przełącza się na to brzmienie (Program Change), iPad gra je syntezą.
+- **Gra jedną ręką z akompaniamentem** (12.11.2026): w menu Opcje „Ręce: Obie / Prawa / Lewa” (zapamiętane dla utworu) i „Reszta utworu gra sama” –
+  drugą rękę i pozostałe ścieżki piosenki (bas, akordy) gra keyboard, ciszej; w „Czekaj na mnie” akompaniament czeka na moją następną nutę.
 - Klawiatura na ekranie, test świateł, przesunięcie świateł, diagnostyka i dziennik.
 - Pływający odtwarzacz: Start/Pauza, cofnij/dalej, od początku; suwak kroków pod tytułem; reszta opcji w menu „Opcje”.
 - Widok nut nad klawiaturą do wyboru: „Bez nut”, „Nuty” (uproszczona pięciolinia z dużą nazwą aktualnej nuty) albo
@@ -293,12 +308,11 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
       Teraz `parseMidi()` pomija nuty perkusji (kanał 10, liczy je tylko w `drums`), trzeba by je zachować i wysyłać do keyboardu na kanale 10
       (`99 <nuta> <siła>`). Najpierw sprawdzić, czy The ONE COLOR ma zestaw perkusyjny na kanale 10 (np. Ustawienia → testowa nuta 36/38/42 na kanale 10);
       bez keyboardu – czy iPad ma czym ją zagrać (synteza WebAudio: stopa, werbel, hi-hat).
-- [ ] Pomysł (12.11.2026, omówiony, czeka na decyzję Łukasza): **gra jedną ręką z akompaniamentem** – w menu Opcje „Ćwiczę: Obie / Prawa / Lewa”
-      i „Druga ręka gra sama”; akompaniament = pozostałe nuty utworu (druga ręka i niezaznaczone ścieżki, np. bas i akordy przy melodii ⭐), bez perkusji.
-      „W tempie”: akompaniament na zegarze jak w Pokazie (`demoNote()`); „Czekaj na mnie”: gra do Twojej następnej nuty i czeka.
-      Diody tylko dla ćwiczonej ręki, druga ręka na ekranie przygaszona, akompaniament ciszej (siła ×0,6), trafienia liczone tylko dla ćwiczonej ręki.
-      Kod: `prepare()` dzieli nuty na `ns` (moje) i `acc` (akompaniament); wybór ręki zapamiętany dla utworu.
-      Ryzyko: jeśli keyboard odsyła nuty z iPada jako wciśnięte – nie liczyć nut wysłanych przez aplikację w ostatnich ~150 ms.
+- [ ] Sprawdzić na iPadzie grę z akompaniamentem (12.11.2026): „Dla Elizy” → Opcje → Ręce „Prawa”, tryb „Czekaj” i „W tempie”:
+      czy keyboard gra lewą rękę, czy głośność akompaniamentu (×0,6) jest dobra, czy nie ma opóźnień przez Bluetooth.
+      Czy w dzienniku pojawia się „ECHO:” (keyboard odsyła nuty z iPada) – jeśli tak, a mimo to wpadają pomyłki, zwiększyć `ECHO_MS`.
+      Piosenka z Lakh (melodia ⭐): czy podkład (bas, akordy) brzmi sensownie jednym brzmieniem utworu i czy w „Czekaj” nie rwie się za bardzo.
+      Pomysły: osobne brzmienie / głośność akompaniamentu, akompaniament na pięciolinii, perkusja (punkt wyżej).
 - [ ] Sprawdzić etap 3 na iPadzie: przewijanie siatki palcem, „Graj dalej” po zamknięciu i ponownym otwarciu Web MIDI Browser,
       szukanie z klawiaturą ekranową (Enter → katalog), czas pierwszego otwarcia przy wielu pobranych utworach (miniatury `rollOldSongs()`).
 - [ ] Pomysł: katalog też jako pełny ekran w stylu biblioteki (teraz okno nad biblioteką), karty wyników z miniaturą po odsłuchu.
@@ -322,6 +336,11 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
       bemole zamiast krzyżyków w tonacjach bemolowych, regulacja wysokości widoku / szybkości wodospadu.
 
 ## Dziennik zmian
+
+- 12.11.2026: **gra jedną ręką z akompaniamentem** – w menu Opcje „Ręce: Obie / Prawa / Lewa” (zapamiętane dla utworu) i „Reszta utworu gra sama”;
+  drugą rękę i niezaznaczone ścieżki gra keyboard (ciszej) albo iPad; „W tempie” na zegarze, „Czekaj na mnie” – do mojej następnej nuty;
+  światła, kroki i trafienia tylko dla ćwiczonej ręki; akompaniament w wodospadzie jako przerywane obrysy, klawisze lekko wciśnięte;
+  nuty odesłane przez keyboard (echo) nie liczą się jako pomyłki; menu Opcje przewija się zamiast ściskać przyciski; testy w `smoke_test.py` (`accomp_tests`).
 
 - 12.11.2026: klawiszami grało domyślne brzmienie keyboardu, a nie wybrane w aplikacji – Program Change działa tylko na nuty z iPada;
   teraz brzmienie klawiszy ustawia komenda SysEx keyboardu z open-one-piano (start sesji, warstwa 0, bank/program z listy COLOR),

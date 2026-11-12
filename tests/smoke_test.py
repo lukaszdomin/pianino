@@ -339,6 +339,89 @@ async def view_tests(page, check):
     await page.click('#playBtn')
 
 
+async def accomp_tests(page, check):
+    """Gra jedną ręką z akompaniamentem (otwarta „Gama C-dur (obie ręce)”): wybór ręki w menu Opcje, druga ręka gra keyboard
+    (ciszej, w „Czekaj” do następnego kroku), światła i trafienia tylko dla ćwiczonej ręki, echo z keyboardu pomijane,
+    zapamiętanie ręki dla utworu, Pokaz gra obie ręce."""
+    view0 = await page.evaluate('S.view')
+    await page.click('#optsBtn')
+    check(await page.is_visible('#handOpt') and await page.is_hidden('#accOpt')
+          and await page.text_content('#handSeg button.on') == 'Obie', 'ręce: wybór widać przy utworze na dwie ręce (domyślnie obie)')
+    await page.click('#handSeg >> text=Prawa')
+    r = await page.evaluate("""() => ({ns: ns.length, mine: ns.every(n => n.m >= 60 && n.h === 'R'), acc: acc.length,
+        accL: acc.every(n => n.h === 'L'), steps: steps.length, saved: S.songHand[song.id]})""")
+    check(r == {'ns': 15, 'mine': True, 'acc': 15, 'accL': True, 'steps': 15, 'saved': 'R'},
+          'prawa ręka: ćwiczę prawą, lewa idzie do akompaniamentu ' + str(r))
+    check(await page.is_visible('#accOpt') and 'lewą rękę zagra keyboard' in await page.text_content('#accWhy'),
+          'akompaniament: opis „lewą rękę zagra keyboard” ' + await page.text_content('#accWhy'))
+    check('Prawa ręka' in await page.text_content('#optsSum'), 'na przycisku Opcje „Prawa ręka”')
+    await tap_outside(page)
+
+    # „Czekaj na mnie”: świeci tylko prawa ręka; po zagraniu kroku lewa ręka gra do następnego kroku i czeka
+    await page.evaluate('__sent.length = 0')
+    await page.click('#playBtn')
+    await page.wait_for_timeout(100)
+    check(await page.evaluate('[...lit]') == [60] and [0xA2, 48 - 21, 1] not in await page.evaluate('__sent'),
+          'czekaj: świeci tylko prawa ręka (C4), lewa nie')
+    bad0 = await page.evaluate('bad')
+    await page.evaluate('__sent.length = 0; __in.fire([0x90,60,90]); __in.fire([0x90,48,90]); __in.fire([0x80,60,0])')
+    sent = await page.evaluate('__sent')
+    check([0x90, 48, 54] in sent, 'czekaj: po zagraniu C4 keyboard gra lewą rękę (C3) ciszej (siła 54)')
+    check(await page.evaluate('bad') == bad0 and await page.evaluate('stepIdx') == 1,
+          'echo: nuta odesłana przez keyboard nie liczy się jako pomyłka')
+    check(await page.evaluate("document.querySelector('.key[data-n=\"48\"]').classList.contains('acc')"),
+          'czekaj: klawisz akompaniamentu na ekranie wciśnięty')
+    await page.wait_for_timeout(1000)
+    sent = await page.evaluate('__sent')
+    check([0x80, 48, 0] in sent and not any(m[0] == 0x90 and m[1] == 50 for m in sent),
+          'czekaj: akompaniament puszcza C3 i czeka na mój następny krok (D3 jeszcze nie gra)')
+    await page.evaluate('__sent.length = 0; __in.fire([0x90,62,90]); __in.fire([0x80,62,0])')
+    check(any(m[:2] == [0x90, 50] for m in await page.evaluate('__sent')), 'czekaj: po D4 gra D3')
+    await page.click('#playBtn')
+    check(await page.evaluate('accVis.size') == 0, 'pauza wycisza akompaniament')
+
+    # „W tempie”: lewa ręka gra na zegarze, światła tylko prawej
+    await opt(page, '#modeSeg >> text=W tempie')
+    await tap_outside(page)
+    await page.evaluate('__sent.length = 0')
+    await page.click('#playBtn')
+    await page.wait_for_timeout(900)
+    sent = await page.evaluate('__sent')
+    ons = [m[1] for m in sent if m[0] == 0x90]
+    check(48 in ons and 50 in ons and all(n < 60 for n in ons), 'w tempie: keyboard gra lewą rękę na zegarze ' + str(ons))
+    check(not any(m[0] == 0xA2 and m[2] > 0 and m[1] + 21 < 60 for m in sent), 'w tempie: diody tylko prawej ręki')
+    await page.click('#playBtn')
+    # bez keyboardu w Pokazie (albo z dźwiękiem z iPada) akompaniament gra iPad
+    r = await page.evaluate("""() => { const calls = [], t0 = window.tone; S.sound = true; window.tone = (...a) => calls.push(a);
+        __sent.length = 0; accNote(acc[0]); window.tone = t0; S.sound = false; accVis.clear();
+        return {ipad: calls.length, kbd: __sent.filter(m => m[0] === 0x90).length}; }""")
+    check(r == {'ipad': 1, 'kbd': 0}, 'z dźwiękiem z iPada akompaniament gra iPad ' + str(r))
+
+    # wyłączenie akompaniamentu
+    await opt(page, '#accomp')
+    check(await page.evaluate('acc.length') == 0 and not await page.evaluate('S.accomp')
+          and 'wyłączone' in await page.text_content('#accWhy'), 'akompaniament można wyłączyć')
+    await page.click('#accomp')
+    check(await page.evaluate('acc.length') == 15, 'i włączyć z powrotem')
+
+    # Pokaz gra obie ręce, bez wyboru ręki
+    await page.click('#modeSeg >> text=Pokaz')
+    check(await page.is_hidden('#handOpt') and await page.is_hidden('#accOpt') and await page.evaluate('ns.length') == 30
+          and await page.evaluate('acc.length') == 0, 'pokaz: obie ręce, bez akompaniamentu i wyboru ręki')
+    await page.click('#modeSeg >> text=Czekaj na mnie')
+    await page.click('#viewSeg >> text=' + {'off': 'Bez nut', 'staff': 'Nuty', 'fall': 'Wodospad'}[view0])
+    await tap_outside(page)
+
+    # wybór ręki zapamiętany dla utworu
+    await page.click('#backBtn')
+    await page.click('#lib >> text=Gama C-dur (obie ręce)')
+    check(await page.evaluate('practiceHand()') == 'R' and await page.evaluate('ns.length') == 15, 'ręka zapamiętana dla utworu')
+    await opt(page, '#handSeg >> text=Obie')
+    check(await page.evaluate('ns.length') == 30 and await page.evaluate('acc.length') == 0 and 'Gama' not in str(await page.evaluate('S.songHand')),
+          'obie ręce: wszystko moje, bez akompaniamentu')
+    await tap_outside(page)
+
+
 async def demo_tests(page, check):
     """Tryb „Pokaz”: aplikacja sama gra utwór na keyboardzie (Note On / Note Off), klawisze na ekranie się wciskają,
     nuty spływają w wodospadzie, trafień nie liczymy; pauza wycisza keyboard."""
@@ -699,6 +782,7 @@ async def main():
         check(await page.evaluate("document.querySelector('#result').classList.contains('open')"),
               'kończy utwór i pokazuje wynik')
         await page.click('#closeRes')
+        await accomp_tests(page, check)
 
         # Wybór ścieżek: piosenka → tylko melodia (⭐) z nazwą instrumentu; fortepian → obie ręce
         check(await page.query_selector('#file') is None and await page.query_selector('.addfile') is None,
@@ -712,6 +796,10 @@ async def main():
               'piosenka: zaznaczona tylko melodia (z gwiazdką) ' + str(chips))
         check('Lead 2 (sawtooth)' in on[0] and any('Electric Bass (finger)' in c[0] for c in chips), 'ścieżki pokazują instrument')
         check(await page.evaluate('ns.every(n => n.m >= 71)'), 'odtwarzacz dostaje tylko nuty melodii')
+        r = await page.evaluate("""() => ({hand: document.querySelector('#handOpt').hidden, accOpt: document.querySelector('#accOpt').hidden,
+            acc: acc.length > 0 && acc.every(n => n.h === 'A' && !sel.has(n.track)), why: document.querySelector('#accWhy').textContent})""")
+        check(r['hand'] and not r['accOpt'] and r['acc'] and 'pozostałe ścieżki' in r['why'],
+              'piosenka: melodia moja, pozostałe ścieżki grają jako akompaniament ' + str(r))
         await page.click('#tracks .chip >> text=Bass')
         check(await page.evaluate('sel.size') == 2, 'można dołączyć bas')
         await add_song(page, PIANO_MIDI, 'Fortepian')

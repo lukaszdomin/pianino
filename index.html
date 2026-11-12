@@ -127,11 +127,13 @@ input[type=range]{accent-color:var(--accent)}
 #optsBtn[aria-expanded=true]{background:var(--line)}
 .pop{position:fixed;z-index:15;width:min(420px,94vw);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 16px 14px;box-shadow:var(--hl),var(--sh-lg);display:flex;flex-direction:column;gap:6px;overflow-y:auto}
 .pop[hidden]{display:none}
+.pop>*{flex-shrink:0}  /* przy niskim ekranie menu się przewija, a nie ściska przycisków */
 .opt{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;font-size:15px}
 .opt.col{flex-direction:column;align-items:stretch;gap:6px;min-height:0;padding-top:4px}
 .opt .lab{color:var(--muted)} .opt .lab small{font-size:12px}
 .opt .seg{display:flex} .opt .seg button{flex:1;padding:9px 6px}
-.opt input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
+.opt input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent);flex:none}
+.opt[hidden]{display:none}
 /* brzmienie utworu: siatka przycisków, gwiazdka = propozycja aplikacji */
 .voices{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}
 .voices button{padding:7px 6px;min-height:42px;font-size:14px;line-height:1.15;display:flex;align-items:center;justify-content:center;gap:5px;text-align:center}
@@ -171,6 +173,9 @@ body.withView #now{display:none}
 .key{transition:transform .06s}
 .key.lit.press{transform:translateY(3px);box-shadow:0 -6px 22px 2px rgba(255,159,28,.5),inset 0 -2px 0 rgba(0,0,0,.2),inset 0 10px 12px -6px rgba(15,17,49,.35)!important;background:linear-gradient(180deg,#ffc978 0%,var(--right) 60%)!important}
 .key.lit.lh.press{box-shadow:0 -6px 22px 2px rgba(79,163,255,.5),inset 0 -2px 0 rgba(0,0,0,.2),inset 0 10px 12px -6px rgba(15,17,49,.35)!important;background:linear-gradient(180deg,#a9d3ff 0%,var(--left) 60%)!important}
+/* akompaniament (druga ręka, reszta utworu): klawisz grany przez aplikację lekko wciśnięty, przygaszony */
+.key.white.acc:not(.lit){transform:translateY(2px);background:linear-gradient(180deg,#b9bce0 0%,#cfd1ec 100%);box-shadow:inset 0 -3px 0 #a9acd4,inset 0 8px 10px -6px rgba(15,17,49,.3)}
+.key.black.acc:not(.lit){transform:translateY(2px);background:linear-gradient(180deg,#1c2050 0%,#3a3f78 100%)}
 .key.good{background:var(--ok)!important;color:#0d2a1b}
 .key.bad{background:var(--miss)!important;color:#3a0014}
 #view{position:relative;height:24vh;min-height:120px}
@@ -305,6 +310,14 @@ body.fall #optsBtn>.ico{transform:rotate(180deg)}  /* menu otwiera się w dół 
       <button data-mode="demo">Pokaz</button>
     </div>
   </div>
+  <div class="opt col" id="handOpt" hidden><span class="lab">Ręce</span>
+    <div class="seg" id="handSeg">
+      <button data-hand="both">Obie</button>
+      <button data-hand="R">Prawa</button>
+      <button data-hand="L">Lewa</button>
+    </div>
+  </div>
+  <label class="opt" id="accOpt" hidden><span class="lab">Reszta utworu gra sama<br><small id="accWhy"></small></span><input id="accomp" type="checkbox"></label>
   <div class="opt"><span class="lab">Tempo <small>(„W tempie” i „Pokaz”)</small></span><span class="ctl"><input id="speed" type="range" min="25" max="150" step="5"><b id="speedTxt">100%</b></span></div>
   <div class="opt"><span class="lab">Transpozycja</span><span class="ctl"><button id="trDown">−</button><b id="trTxt">0</b><button id="trUp">+</button></span></div>
   <label class="opt"><span class="lab">Dźwięk z iPada</span><input id="sound" type="checkbox"></label>
@@ -432,7 +445,8 @@ function toast(msg, ms = 2800) {
 
 /* ---------------- ustawienia ---------------- */
 const DEF = {low: 36, offset: 0, color: 1, transpose: 0, speed: 100, mode: 'wait', sound: false, outId: '', inId: '', catLvl: 0, libLvl: 0, last: null, view: 'staff',
-  voice: 'auto', songVoice: {}, kbdMode: 'song', demoOut: 'kbd', voiceVer: 2};
+  voice: 'auto', songVoice: {}, kbdMode: 'song', demoOut: 'kbd', voiceVer: 2, songHand: {}, accomp: true};
+// songHand: którą ręką ćwiczę utwór (id → 'R' / 'L'; brak = obie); accomp: resztę utworu (drugą rękę, inne ścieżki) gra aplikacja
 // voice: 'auto' – brzmienie dopasowane do utworu, 'piano' – zawsze fortepian; songVoice: wybór dla utworu (id → brzmienie);
 // kbdMode: 'song' – przełączamy keyboard na brzmienie utworu, 'kbd' – nie ruszamy; demoOut: kto gra Pokaz ('kbd' / 'ipad')
 const S = Object.assign({}, DEF);
@@ -447,6 +461,7 @@ if (Object.keys(stored).length && stored.voiceVer !== 2) {
   delete S.demoVoice; S.voiceVer = 2; saveS();
 }
 if (!S.songVoice || typeof S.songVoice !== 'object') S.songVoice = {};
+if (!S.songHand || typeof S.songHand !== 'object') S.songHand = {};
 const high = () => S.low + 60;
 function mapNote(n) { n += S.transpose; while (n < S.low) n += 12; while (n > high()) n -= 12; return n; }
 
@@ -1242,19 +1257,69 @@ const timed = () => S.mode !== 'wait';  // „W tempie” i „Pokaz” idą z z
    Bez keyboardu gra iPad. Nie liczymy trafień. */
 const demoOn = new Map();  // nuta brzmiąca na keyboardzie → koniec (sekundy utworu)
 const demoKbd = () => !!out && S.demoOut !== 'ipad';  // czy w Pokazie gra keyboard (a nie iPad)
-function demoNote(n) {
+const sentAt = new Map();  // nuta → kiedy aplikacja wysłała ją do keyboardu (performance.now) – do rozpoznania „echa”
+function demoNote(n, vel) {
   if (!demoKbd()) return;
   if (demoOn.has(n.m)) sendRaw([0x80, n.m, 0]);  // ta sama nuta jeszcze brzmi – uderzamy ją od nowa
-  sendRaw([0x90, n.m, Math.max(1, Math.min(127, n.v || 90))]);
-  demoOn.set(n.m, n.end);
+  sendRaw([0x90, n.m, Math.max(1, Math.min(127, Math.round((n.v || 90) * (vel || 1))))]);
+  demoOn.set(n.m, n.end); sentAt.set(n.m, performance.now());
 }
 function demoOffs(t) { for (const [m, e] of demoOn) if (e <= t) { sendRaw([0x80, m, 0]); demoOn.delete(m); } }
 function demoSilence() {
+  if (accVis.size) { accVis.clear(); accKeys(); }
   if (!demoOn.size) return;
   for (const m of demoOn.keys()) sendRaw([0x80, m, 0]);
   demoOn.clear();
   sendRaw([0xB0, 123, 0]);  // All Notes Off – na wszelki wypadek
 }
+
+/* Akompaniament („Reszta utworu gra sama”, 12.11.2026): ćwiczę jedną ręką (S.songHand) albo samą melodię,
+   a resztę utworu – drugą rękę i niezaznaczone ścieżki (bas, akordy…) – gra aplikacja, ciszej (ACC_VEL).
+   prepare() dzieli nuty: `ns` – moje (światła, kroki, trafienia), `acc` – akompaniament.
+   Gra keyboard (jak Pokaz, ta sama mapa demoOn), a gdy keyboard nie gra Pokazu albo włączony „Dźwięk z iPada” – iPad.
+   „W tempie”: na zegarze utworu (loop()). „Czekaj na mnie”: zegar `wc` biegnie od zagranego kroku do następnego
+   i tam staje, aż zagram następny krok (waitClock() / waitTick()). Na Pokaz nie działa – Pokaz gra wybrane ścieżki obiema rękami.
+   Echo: gdyby keyboard odsyłał nuty przysłane z iPada jako wciśnięte, nuta wysłana przez aplikację w ostatnich ECHO_MS
+   nie liczy się jako zagrana (noteOn()). */
+const ACC_VEL = 0.6, ECHO_MS = 150;
+let acc = [], accIdx = 0, accRaf = 0, wc = null, handsBoth = false, accAvail = false, echoLogged = 0;
+const accVis = new Map();  // nuta akompaniamentu, która teraz brzmi → koniec (czas utworu); klawisz na ekranie wciśnięty
+const accKbd = () => demoKbd() && !S.sound;
+const accRate = () => timed() ? S.speed / 100 : 1;
+function accNote(n) {
+  accVis.set(n.m, n.end);
+  if (accKbd()) demoNote(n, ACC_VEL);
+  else tone(n.m, (n.end - n.start) / accRate(), 0, 0.06 + (n.v || 90) / 127 * 0.1);
+}
+/* gra nuty akompaniamentu do czasu t (w „Czekaj” najwyżej do granicy lim – następnego kroku) i puszcza te, które się skończyły */
+function accRun(t, lim) {
+  const n0 = accVis.size; let ch = false;
+  while (accIdx < acc.length && acc[accIdx].start <= t && !(lim !== undefined && acc[accIdx].start >= lim - 0.02)) { accNote(acc[accIdx++]); ch = true; }
+  for (const [m, e] of accVis) if (e <= t) accVis.delete(m);
+  demoOffs(t);
+  if (ch || accVis.size !== n0) accKeys();
+}
+function accSeek(t) { accIdx = acc.findIndex(n => n.start >= t - 0.02); if (accIdx < 0) accIdx = acc.length; }
+function accKeys() { for (const [n, el] of keyEls) el.classList.toggle('acc', accVis.has(n)); }
+/* „Czekaj na mnie”: akompaniament od czasu from do to. seek = przeskok (start, przewijanie) – bez dogrywania tego, co było wcześniej */
+function waitClock(from, to, seek) {
+  if (!acc.length || S.mode !== 'wait') return;
+  if (seek) demoSilence();
+  while (accIdx < acc.length && acc[accIdx].start < from - 0.02) accIdx++;
+  if (seek) accSeek(from);
+  wc = {t: from, at: performance.now(), lim: to};
+  accRun(from, to);  // nuty razem z zagranym krokiem – od razu
+  if (!accRaf) accRaf = requestAnimationFrame(waitTick);
+}
+function waitTick() {
+  accRaf = 0;
+  if (!playing || S.mode !== 'wait' || !wc) return;
+  accRun(Math.min(wc.lim, wc.t + (performance.now() - wc.at) / 1000), wc.lim);
+  accRaf = requestAnimationFrame(waitTick);
+}
+/* którą ręką ćwiczę ('both' / 'R' / 'L'); jedna ręka tylko wtedy, gdy w wybranych ścieżkach są obie */
+const practiceHand = () => { const h = song && S.songHand[song.id]; return handsBoth && S.mode !== 'demo' && (h === 'R' || h === 'L') ? h : 'both'; };
+const HAND_NAME = {R: 'Prawa ręka', L: 'Lewa ręka'};
 
 /* przycisk Start/Pauza: sama ikona (napis w aria-label i podpowiedzi) */
 const ICO_PLAY = '<svg class="ico" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
@@ -1294,10 +1359,17 @@ function hands(s, list) {
 }
 function prepare() {
   if (!song) return;
-  ns = song.notes.filter(n => sel.has(n.track))
-    .map(n => ({start: n.start, end: n.end, m: mapNote(n.note), track: n.track, v: n.v || 90}));
-  const handOf = hands(song, ns);
-  ns.forEach(n => { n.h = handOf(n); });
+  const mk = n => ({start: n.start, end: n.end, m: mapNote(n.note), track: n.track, v: n.v || 90});
+  const all = song.notes.filter(n => sel.has(n.track)).map(mk);
+  const handOf = hands(song, all);
+  all.forEach(n => { n.h = handOf(n); });
+  handsBoth = all.some(n => n.h === 'L') && all.some(n => n.h === 'R');
+  // moje nuty (ćwiczona ręka) i akompaniament: druga ręka + niezaznaczone ścieżki (h = 'A'); Pokaz gra wszystkie wybrane
+  const hand = practiceHand(), rest = song.notes.filter(n => !sel.has(n.track)).map(n => Object.assign(mk(n), {h: 'A'}));
+  ns = hand === 'both' ? all : all.filter(n => n.h === hand);
+  accAvail = S.mode !== 'demo' && (hand !== 'both' || rest.length > 0);
+  acc = accAvail && S.accomp ? all.filter(n => hand !== 'both' && n.h !== hand).concat(rest) : [];
+  acc.sort((a, b) => a.start - b.start || a.m - b.m); accIdx = 0;
   ns.sort((a, b) => a.start - b.start || a.m - b.m);
   steps = [];
   for (const n of ns) {
@@ -1307,6 +1379,7 @@ function prepare() {
   }
   lastEnd = ns.reduce((m, n) => Math.max(m, n.end), 0);
   reset();
+  renderHands(); renderOpts();
 }
 function reset() { stop(); stepIdx = 0; pauseT = 0; good = bad = 0; hit = new Set(); audioIdx = 0; refreshView(); }
 function curT() { return playing ? (performance.now() - t0) / 1000 * (S.speed / 100) : pauseT; }
@@ -1327,14 +1400,16 @@ function play() {
 }
 function stop() {
   if (playing && timed()) pauseT = curT();
-  playing = false; cancelAnimationFrame(rafId); demoSilence();
+  playing = false; cancelAnimationFrame(rafId); cancelAnimationFrame(accRaf); accRaf = 0; wc = null; demoSilence();
   setLit(new Set()); playUI(false);
   refreshView();
 }
-function seekAudio(t) { demoSilence(); audioIdx = ns.findIndex(n => n.start >= t); if (audioIdx < 0) audioIdx = ns.length; }
+function seekAudio(t) { demoSilence(); audioIdx = ns.findIndex(n => n.start >= t); if (audioIdx < 0) audioIdx = ns.length; accSeek(t); }
+// blink = krok po zagraniu poprzedniego; bez blink – start albo przeskok (akompaniament zaczyna od tego kroku, na początku utworu – od wstępu)
 function showStep(blink) {
   const st = steps[stepIdx];
   if (!st) { finish(); return; }
+  if (!blink) waitClock(stepIdx === 0 ? 0 : st.time, st.time, true);
   hit = new Set(); litHand = new Map(st.notes.map(m => [m, st.hands[m] || 'R'])); setLit(new Set(st.notes), blink); refreshView();
 }
 function loop() {
@@ -1348,24 +1423,32 @@ function loop() {
     if (S.sound || (demo && !demoKbd())) tone(n.m, (n.end - n.start) / (S.speed / 100), 0, demo ? 0.12 + (n.v || 90) / 127 * 0.2 : 0);
   }
   if (demo) demoOffs(t);
+  if (acc.length) accRun(t);
   showPosition(); updateNow(); drawView();
   if (t > lastEnd + 0.4) { finish(); return; }
   rafId = requestAnimationFrame(loop);
 }
 function finish() {
   const secs = startedAt ? (performance.now() - startedAt) / 1000 : 0;
-  playing = false; cancelAnimationFrame(rafId); demoSilence(); setLit(new Set());
+  playing = false; cancelAnimationFrame(rafId); cancelAnimationFrame(accRaf); accRaf = 0; wc = null; setLit(new Set());
+  // ostatni akord akompaniamentu w „Czekaj” niech wybrzmi chwilę
+  if (S.mode === 'wait' && accVis.size) setTimeout(() => { if (!playing) demoSilence(); }, 1500); else demoSilence();
   playUI(false);
   if (S.mode === 'wait') stepIdx = steps.length; else pauseT = lastEnd;
   startedAt = 0; refreshView();
   if (S.mode === 'demo') { toast('Koniec utworu'); return; }
-  const total = good + bad, acc = total ? Math.round(good / total * 100) : 100;
-  $('#resTitle').textContent = acc >= 90 ? 'Brawo!' : acc >= 70 ? 'Dobrze!' : 'Ćwicz dalej';
-  $('#resText').innerHTML = `Trafione: <b>${good}</b> · Pomyłki: <b>${bad}</b> · Celność: <b>${acc}%</b>` +
+  const total = good + bad, pct = total ? Math.round(good / total * 100) : 100;
+  $('#resTitle').textContent = pct >= 90 ? 'Brawo!' : pct >= 70 ? 'Dobrze!' : 'Ćwicz dalej';
+  $('#resText').innerHTML = `Trafione: <b>${good}</b> · Pomyłki: <b>${bad}</b> · Celność: <b>${pct}%</b>` +
     (S.mode === 'wait' && secs ? `<br>Czas: ${fmtTime(secs)}` : '');
   $('#result').classList.add('open');
 }
 function noteOn(n, fromScreen) {
+  // echo: nuta, którą przed chwilą wysłała aplikacja (akompaniament, Pokaz), to nie mój klawisz
+  if (!fromScreen && sentAt.has(n) && performance.now() - sentAt.get(n) < ECHO_MS) {
+    sentAt.delete(n); if (echoLogged < 5) { echoLogged++; log('ECHO: keyboard odesłał nutę ' + nn(n) + ' wysłaną z iPada – pomijam'); }
+    return;
+  }
   held.add(n);
   if (fromScreen && S.sound) { ensureAudio(); tone(n, 0.5); }
   if (playing && S.mode !== 'demo') {
@@ -1375,7 +1458,11 @@ function noteOn(n, fromScreen) {
         if (st.notes.includes(n)) {
           if (!hit.has(n)) { hit.add(n); good++; }
           flash(n, 'good');
-          if (st.notes.every(x => hit.has(x))) { stepIdx++; showStep(true); return; }
+          if (st.notes.every(x => hit.has(x))) {
+            const nx = steps[stepIdx + 1];
+            waitClock(st.time, nx ? nx.time : lastEnd + 0.05, false);  // akompaniament gra do następnego kroku
+            stepIdx++; showStep(true); return;
+          }
         } else { bad++; wrongHeld.add(n); flash(n, 'bad'); }
       }
     } else {
@@ -1453,6 +1540,7 @@ function renderKeys() {
     el.classList.toggle('hitk', L && hit.has(n) && S.mode === 'wait');
     el.classList.toggle('held', held.has(n));
     el.classList.toggle('press', L && playing && S.mode === 'demo');
+    el.classList.toggle('acc', accVis.has(n));
     const label = (L || N) ? nnShort(n) : (pc(n) === 0 ? nn(n) : '');
     if (el.textContent !== label) el.textContent = label;
   }
@@ -1678,6 +1766,16 @@ function drawFall({c, w, h}, tRef) {
   const exp = expected(), curStep = S.mode === 'wait' ? steps[stepIdx] : null;
   c.textAlign = 'center'; c.textBaseline = 'bottom';
   const glowing = [];
+  // akompaniament (druga ręka, reszta utworu): przygaszone obrysy w kolorze ręki, bez nazw – to gra aplikacja
+  for (const n of acc) {
+    if (n.start > tRef + win) break;
+    if (n.end <= tRef - 0.02) continue;
+    const g = kGeom.get(n.m); if (!g) continue;
+    const x = g.l * w + 3, bw = g.w * w - 6, yBot = yOf(n.start), bh = Math.max(6, yBot - yOf(n.end)), r = Math.min(7, bw / 3);
+    const col = n.h === 'L' ? '79,163,255' : n.h === 'R' ? '255,159,28' : '238,237,255';
+    c.fillStyle = 'rgba(' + col + ',.1)'; rrect(c, x, yBot - bh, bw, bh, r); c.fill();
+    c.strokeStyle = 'rgba(' + col + ',.5)'; c.lineWidth = 1.5; c.setLineDash([4, 3]); c.stroke(); c.setLineDash([]);
+  }
   const bar = (n, x, bw, yBot, bh, col, txt) => {
     c.fillStyle = col; rrect(c, x, yBot - bh, bw, bh, Math.min(7, bw / 3)); c.fill();
     if (bw >= 12 && Math.min(h, yBot) - Math.max(0, yBot - bh) >= 16) {
@@ -1871,7 +1969,7 @@ function removeUserSong(u) {
   const i = userSongs.indexOf(u); if (i >= 0) userSongs.splice(i, 1);
   delete cache[u.id]; delete songBuf[u.id]; saveUser();
   idbDel(SONG_KEY(u.id)).catch(() => {});
-  if (S.songVoice[u.id]) { delete S.songVoice[u.id]; saveS(); }
+  if (S.songVoice[u.id] || S.songHand[u.id]) { delete S.songVoice[u.id]; delete S.songHand[u.id]; saveS(); }
   if (!userSongs.length) libEditing = false;
   toast('Usunięto: ' + u.title);
   renderLib();
@@ -2377,14 +2475,15 @@ window.addEventListener('resize', () => { vw.pos = null; drawView(); });
 const modeLabel = () => S.mode === 'wait' ? 'Czekaj na mnie' : S.mode === 'demo' ? 'Pokaz' + (S.speed !== 100 ? ' ' + S.speed + '%' : '') : 'W tempie ' + S.speed + '%';
 function renderOpts() {
   // podsumowanie słowami na przycisku w odtwarzaczu (tryb, transpozycja, dźwięk, widok)
-  const p = [modeLabel()];
+  const p = [modeLabel()], ph = practiceHand();
+  if (ph !== 'both') p.push(HAND_NAME[ph]);
   if (S.transpose) p.push((S.transpose > 0 ? '+' : '') + S.transpose);
   if (S.sound) p.push('<svg class="ico" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>');
   const vc = voiceOf(song);
   if (vc !== 'piano') p.push('<span class="dim">' + VOICES[vc].name + '</span>');
   p.push('<span class="dim">' + {off: 'Bez nut', staff: 'Nuty', fall: 'Wodospad'}[S.view] + '</span>');
   $('#optsSum').innerHTML = p.map(x => x.startsWith('<') ? x : '<span>' + x + '</span>').join('');
-  $('#optsBtn').title = modeLabel() +
+  $('#optsBtn').title = modeLabel() + (ph !== 'both' ? ', ' + HAND_NAME[ph].toLowerCase() : '') +
     (S.transpose ? ', transpozycja ' + S.transpose : '') + (S.sound ? ', dźwięk z iPada' : '') + ', brzmienie: ' + VOICES[vc].name.toLowerCase() +
     ', ' + {off: 'bez nut', staff: 'nuty', fall: 'wodospad'}[S.view];
 }
@@ -2407,7 +2506,7 @@ window.addEventListener('resize', () => { if (optsOpen()) closeOpts(); });
 function renderMode() { document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.mode === S.mode)); renderOpts(); }
 document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => {
   if (S.mode === b.dataset.mode) return;
-  stop(); S.mode = b.dataset.mode; saveS(); renderMode(); reset();
+  stop(); S.mode = b.dataset.mode; saveS(); renderMode(); prepare();  // Pokaz gra obie ręce, bez akompaniamentu
   if (S.mode === 'demo') {
     // w pokazie nuty spływają na klawisze
     if (S.view !== 'fall') { S.view = 'fall'; saveS(); renderView(); }
@@ -2474,7 +2573,28 @@ function setSongVoice(id) {
   // krótka próbka: tam, gdzie będzie słychać utwór
   if (out && S.kbdMode === 'song' && !S.sound && !(S.mode === 'demo' && S.demoOut === 'ipad')) kbdArp(); else ipadArp(id);
 }
-$('#sound').onchange = e => { S.sound = e.target.checked; saveS(); renderOpts(); renderVoices(); if (S.sound) ensureAudio(); };
+$('#sound').onchange = e => { S.sound = e.target.checked; saveS(); renderOpts(); renderVoices(); renderHands(); if (S.sound) ensureAudio(); };
+/* menu Opcje → „Ręce” i „Reszta utworu gra sama” (akompaniament) */
+function renderHands() {
+  const ph = practiceHand(), show = !!song && handsBoth && S.mode !== 'demo';
+  $('#handOpt').hidden = !show;
+  document.querySelectorAll('#handSeg button').forEach(b => b.classList.toggle('on', b.dataset.hand === ph));
+  $('#accOpt').hidden = !song || !accAvail;
+  $('#accomp').checked = S.accomp;
+  if (!song || !accAvail) return;
+  const other = song.notes.some(n => !sel.has(n.track)), what = [];
+  if (ph !== 'both') what.push(ph === 'R' ? 'lewą rękę' : 'prawą rękę');
+  if (other) what.push(ph !== 'both' ? 'pozostałe ścieżki' : 'pozostałe ścieżki (bas, akordy…)');
+  $('#accWhy').textContent = S.accomp ? what.join(' i ') + ' zagra ' + (accKbd() ? 'keyboard' : 'iPad') + ', ciszej' :
+    'wyłączone – słychać tylko to, co grasz';
+}
+document.querySelectorAll('#handSeg button').forEach(b => b.onclick = () => {
+  if (!song || practiceHand() === b.dataset.hand) return;
+  if (b.dataset.hand === 'both') delete S.songHand[song.id]; else S.songHand[song.id] = b.dataset.hand;
+  saveS(); log('RĘCE: „' + song.title + '” → ' + (HAND_NAME[b.dataset.hand] || 'obie ręce'));
+  prepare();
+});
+$('#accomp').onchange = e => { S.accomp = e.target.checked; saveS(); log('AKOMPANIAMENT: ' + (S.accomp ? 'wł.' : 'wył.')); prepare(); };
 $('#againBtn').onclick = () => { $('#result').classList.remove('open'); reset(); play(); };
 $('#closeRes').onclick = () => { $('#result').classList.remove('open'); };
 
