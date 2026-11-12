@@ -38,7 +38,8 @@ https://github.com/vhorvath2010/open-one-piano/blob/main/PROTOCOL.md
 | Brzmienie warstwy | `F0 00 20 2B 69 06 01 <warstwa> <bank MSB> <bank LSB> <program> F7` |
 | Zapytaj o ustawienia | `F0 00 20 2B 69 1D 01 F7` → odpowiedź `… 5D 01 <dane> F7` (bajty 6, 7, 8: LSB, MSB, program warstwy 0) |
 
-- Zwykłe Program Change na kanale 1 zmienia tylko brzmienie nut **przysłanych** z iPada – klawisze grają dalej swoim (sprawdzone 12.11.2026).
+- Zwykłe Program Change na kanale 1 zmienia tylko brzmienie nut **przysłanych** z iPada – klawisze grają dalej swoim (sprawdzone 12.11.2026:
+  w Pokazie wybrane brzmienia grały poprawnie, a klawisze, w które gra Łukasz – domyślnym brzmieniem keyboardu).
 - Banki są własne dla modelu: COLOR włącza się z fortepianem **bank 16/0, program 0**. Para spoza listy → domyślny fortepian.
 
 ## Środowisko uruchomieniowe
@@ -277,8 +278,8 @@ Sprawdzone 11.11.2026 ze strony lukaszdomin.github.io:
 - [ ] Sprawdzić „Pokaz” na iPadzie: czy keyboard gra nuty wysłane z iPada (ten sam test: Ustawienia → „Zagraj C na keyboardzie”),
       czy nie ma opóźnień / zawieszonych nut przez Bluetooth, czy keyboard nie odsyła granych nut jako wciśniętych (fioletowe klawisze).
       Jeśli keyboard nie gra – włączyć „Dźwięk z iPada”.
-      **Potwierdzone 11.11.2026: keyboard gra nuty z iPada**, ale nie fortepianem. Do sprawdzenia: czy keyboard przyjmuje Program Change
-      (Opcje → „Brzmienie utworu”: stuknięcie gra pasaż na keyboardzie; wpisy „BRZMIENIE keyboardu:” w dzienniku); jeśli nie – szukać komendy SysEx brzmienia w open-one-piano.
+      **Potwierdzone 11.11.2026: keyboard gra nuty z iPada.** **Potwierdzone 12.11.2026: w Pokazie Program Change działa** (wybrane brzmienia grają poprawnie).
+      Po zmianie z 12.11.2026 fortepian idzie jako bank 16 zamiast 0 – sprawdzić, czy Pokaz dalej gra fortepianem.
 - [ ] Sprawdzić na iPadzie brzmienie klawiszy przez SysEx (12.11.2026): otworzyć utwór z syntezatorem, zagrać – czy klawisze grają syntezatorem;
       w dzienniku „BRZMIENIE klawiszy (odpowiedź keyboardu): … zgodne z wybranym”. Brak odpowiedzi → Web MIDI Browser może nie przepuszczać SysEx
       (sprawdzić „SysEx: tak” w diagnostyce). Po wyjściu do biblioteki klawisze wracają do fortepianu (16/0/0).
